@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#111111"/>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#222222" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="800" fill="url(#grid)"/>
+  <circle cx="400" cy="380" r="70" fill="none" stroke="#E63B2E" stroke-width="2"/>
+  <line x1="300" y1="380" x2="500" y2="380" stroke="#E63B2E" stroke-width="1"/>
+  <line x1="400" y1="310" x2="400" y2="450" stroke="#E63B2E" stroke-width="1"/>
+  <text x="50%" y="490" font-family="monospace" font-size="22" fill="#ffffff" text-anchor="middle" letter-spacing="1">CUSTOM BUILD 01</text>
+  <text x="50%" y="520" font-family="monospace" font-size="14" fill="#666666" text-anchor="middle" letter-spacing="2">CLIENT COMMISSION</text>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000">
+  <rect width="1600" height="1000" fill="#111111"/>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#222222" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#grid)"/>
+  <circle cx="800" cy="480" r="70" fill="none" stroke="#E63B2E" stroke-width="2"/>
+  <line x1="700" y1="480" x2="900" y2="480" stroke="#E63B2E" stroke-width="1"/>
+  <line x1="800" y1="410" x2="800" y2="550" stroke="#E63B2E" stroke-width="1"/>
+  <text x="50%" y="590" font-family="monospace" font-size="22" fill="#ffffff" text-anchor="middle" letter-spacing="1">GOMEZ GARAGE STUDIO</text>
+  <text x="50%" y="620" font-family="monospace" font-size="14" fill="#666666" text-anchor="middle" letter-spacing="2">FLAGSHIP PRODUCT PHOTO</text>
+</svg>

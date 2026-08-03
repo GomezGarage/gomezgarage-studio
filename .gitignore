@@ -2,6 +2,9 @@
 config.php
 .env
 
+# Composer dependencies (PHPMailer etc) - ruleaza `composer install` la deploy
+/vendor/
+
 # macOS
 .DS_Store
 
@@ -9,5 +12,6 @@ config.php
 .vscode/
 *.log
 
-# Upload-uri produse (prea mari pentru git)
-assets/images/products/
+# Upload-uri produse (prea mari pentru git) - dar pastram placeholder-urile SVG
+assets/images/products/*
+!assets/images/products/*.svg

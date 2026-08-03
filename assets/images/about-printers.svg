@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#111111"/>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#222222" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="900" fill="url(#grid)"/>
+  <circle cx="600" cy="430" r="70" fill="none" stroke="#333333" stroke-width="2"/>
+  <line x1="500" y1="430" x2="700" y2="430" stroke="#333333" stroke-width="1"/>
+  <line x1="600" y1="360" x2="600" y2="500" stroke="#333333" stroke-width="1"/>
+  <text x="50%" y="540" font-family="monospace" font-size="22" fill="#ffffff" text-anchor="middle" letter-spacing="1">INDUSTRIAL FDM PRINTERS</text>
+  <text x="50%" y="570" font-family="monospace" font-size="14" fill="#666666" text-anchor="middle" letter-spacing="2">HEATED CHAMBER</text>
+</svg>

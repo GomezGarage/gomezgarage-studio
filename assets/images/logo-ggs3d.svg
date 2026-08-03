@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#1a1a1a" stroke="#333333" stroke-width="2"/>
+  <rect x="10" y="10" width="180" height="180" fill="none" stroke="#E63B2E" stroke-width="1"/>
+  <text x="50%" y="46%" font-family="Rajdhani, sans-serif" font-weight="700" font-size="40" fill="#ffffff" text-anchor="middle" letter-spacing="2">GGS</text>
+  <text x="50%" y="62%" font-family="Space Mono, monospace" font-size="14" fill="#888888" text-anchor="middle" letter-spacing="4">3D STUDIO</text>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60">
+  <rect width="240" height="60" fill="none"/>
+  <g fill="none" stroke="#E63B2E" stroke-width="2">
+    <path d="M8 42 L20 22 L34 22 L44 42 Z"/>
+    <circle cx="18" cy="44" r="5"/>
+    <circle cx="38" cy="44" r="5"/>
+  </g>
+  <text x="54" y="30" font-family="Rajdhani, sans-serif" font-weight="700" font-size="20" fill="#ffffff" letter-spacing="1">GOMEZ</text>
+  <text x="54" y="48" font-family="Rajdhani, sans-serif" font-weight="700" font-size="20" fill="#888888" letter-spacing="1">GARAGE</text>
+</svg>
