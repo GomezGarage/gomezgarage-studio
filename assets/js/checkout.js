@@ -1,12 +1,14 @@
 /* ==========================================================================
    GOMEZ GARAGE STUDIO — checkout.js
    Checkout form -> create-order.php -> Revolut Checkout Widget (embedded)
+   or straight to order-success.html for Cash on Delivery.
    ========================================================================== */
 
 (function () {
   'use strict';
 
   const API_BASE = '/studio/api';
+  const REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'street', 'city', 'postal', 'country'];
 
   const SHIPPING_RATES = {
     RO: { eur: 5, label: 'Romania' },
@@ -37,13 +39,17 @@
     }
 
     renderOrderSummary(cart);
+    document.addEventListener('ggs:currency-changed', () => renderOrderSummary(cart));
 
     const countrySelect = form.querySelector('[name="country"]');
     countrySelect.addEventListener('change', () => renderOrderSummary(cart));
 
+    initPaymentMethodSelector(form);
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      submitOrder(form, cart);
+      if (!validateCheckoutForm(form)) return;
+      submitOrder(form, cart, getSelectedPaymentMethod(form));
     });
   }
 
@@ -72,10 +78,106 @@
     if (window.GGSLang) window.GGSLang.refresh();
   }
 
-  function submitOrder(form, cart) {
-    const submitBtn = form.querySelector('[type="submit"]');
+  /* ======================= Payment method selector ======================= */
+
+  function getSelectedPaymentMethod(form) {
+    const checked = form.querySelector('input[name="payment_method"]:checked');
+    return checked && checked.value === 'cod' ? 'cod' : 'online';
+  }
+
+  function initPaymentMethodSelector(form) {
+    const cards = form.querySelectorAll('[data-payment-option]');
+    const codNote = document.getElementById('cod-note');
+    const submitBtn = document.getElementById('checkout-submit-btn');
+    const widget = document.getElementById('revolut-widget-container');
+
+    function updateUI() {
+      const method = getSelectedPaymentMethod(form);
+
+      cards.forEach((card) => {
+        card.classList.toggle('active', card.getAttribute('data-payment-option') === method);
+      });
+
+      if (codNote) codNote.classList.toggle('hidden', method !== 'cod');
+
+      if (submitBtn) {
+        submitBtn.setAttribute('data-en', method === 'cod' ? 'Place Order' : 'Continue to Payment');
+        submitBtn.setAttribute('data-ro', method === 'cod' ? 'Plaseaza Comanda' : 'Continua spre plata');
+        submitBtn.textContent = document.documentElement.lang === 'ro'
+          ? submitBtn.getAttribute('data-ro')
+          : submitBtn.getAttribute('data-en');
+      }
+
+      // Switching away from Online should hide any widget shown for a
+      // previous submit attempt — it must only ever appear after a fresh
+      // successful order creation on the Online path.
+      if (widget && method !== 'online') {
+        widget.classList.add('hidden');
+      }
+    }
+
+    cards.forEach((card) => {
+      card.addEventListener('click', () => {
+        const radio = card.querySelector('input[type="radio"]');
+        radio.checked = true;
+        updateUI();
+      });
+    });
+
+    updateUI();
+  }
+
+  /* ======================= Validation ======================= */
+
+  function clearFieldErrors(form) {
+    form.querySelectorAll('.field-error').forEach((el) => el.remove());
+    form.querySelectorAll('.field-invalid').forEach((el) => el.classList.remove('field-invalid'));
+  }
+
+  function showFieldError(input, messageEn, messageRo) {
+    input.classList.add('field-invalid');
+    const error = document.createElement('div');
+    error.className = 'field-error';
+    error.setAttribute('data-en', messageEn);
+    error.setAttribute('data-ro', messageRo);
+    error.textContent = document.documentElement.lang === 'ro' ? messageRo : messageEn;
+    input.insertAdjacentElement('afterend', error);
+  }
+
+  function validateCheckoutForm(form) {
+    clearFieldErrors(form);
+    let valid = true;
+
+    REQUIRED_FIELDS.forEach((name) => {
+      const input = form.querySelector(`[name="${name}"]`);
+      if (!input) return;
+      if (!input.value || !input.value.trim()) {
+        showFieldError(input, 'This field is required.', 'Acest camp este obligatoriu.');
+        valid = false;
+      }
+    });
+
+    const emailInput = form.querySelector('[name="email"]');
+    if (emailInput && emailInput.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim())) {
+      showFieldError(emailInput, 'Enter a valid email address.', 'Introdu o adresa de email valida.');
+      valid = false;
+    }
+
+    if (!valid) {
+      const firstInvalid = form.querySelector('.field-invalid');
+      if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    return valid;
+  }
+
+  /* ======================= Submit ======================= */
+
+  function submitOrder(form, cart, method) {
+    const submitBtn = document.getElementById('checkout-submit-btn');
+    const originalLabel = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Processing…';
+    submitBtn.textContent = document.documentElement.lang === 'ro' ? 'Se proceseaza…' : 'Processing…';
 
     const formData = new FormData(form);
     const payload = {
@@ -90,6 +192,7 @@
       note: formData.get('note') || '',
       items: cart.map((i) => ({ product_id: i.product_id, name: i.name_en, price_eur: i.price_eur, qty: i.qty })),
       shipping_eur: currentShippingEur(form),
+      payment_method: method === 'cod' ? 'cod' : 'card',
     };
 
     fetch(`${API_BASE}/create-order.php`, {
@@ -100,20 +203,51 @@
       .then((res) => res.json())
       .then((data) => {
         if (!data.success) throw new Error(data.error || 'Order creation failed');
-        initRevolutWidget(data);
+
+        if (method === 'cod') {
+          window.GGSCart.clearCart();
+          window.location.href = `/studio/order-success.html?order=${data.order_number}`;
+          return;
+        }
+
+        // The order now exists in the DB — anything past this point is a
+        // widget/display concern, not an order failure. Handle it on its
+        // own so a script-load hiccup can't send a customer with a valid
+        // pending order to order-failed.html (and risk a duplicate order
+        // on retry).
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+        try {
+          initRevolutWidget(data);
+        } catch (err) {
+          showWidgetLoadError();
+        }
       })
       .catch(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
         window.location.href = '/studio/order-failed.html';
       });
   }
 
+  function showWidgetLoadError() {
+    const container = document.getElementById('revolut-widget-container');
+    if (!container) return;
+    container.classList.remove('hidden');
+    container.textContent = document.documentElement.lang === 'ro'
+      ? 'Widget-ul de plata nu a putut fi incarcat. Reincarca pagina si incearca din nou.'
+      : 'Unable to load the payment widget. Please refresh and try again.';
+  }
+
   /*
    * Loads the Revolut Checkout Widget (RevolutCheckout JS) and mounts it
-   * against the public order id returned by create-order.php.
+   * against the public order id returned by create-order.php. Only ever
+   * called after a valid form submit on the Online Payment path.
    * Docs: https://developer.revolut.com/docs/merchant/accept-payments/embedded-checkout
    */
   function initRevolutWidget(order) {
     const container = document.getElementById('revolut-widget-container');
+    container.classList.remove('hidden');
     container.textContent = '';
 
     const script = document.createElement('script');

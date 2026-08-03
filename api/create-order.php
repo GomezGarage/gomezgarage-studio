@@ -4,13 +4,18 @@
  * ARCHITECTURE.md section 6.3, step 2:
  *   - validate customer + cart data
  *   - save order in MySQL with status 'pending'
- *   - create the matching order via the Revolut Merchant API
- *   - return revolut public_id to the client so it can mount the
- *     embedded Checkout Widget
+ *   - Online payment (payment_method 'card'): create the matching order via
+ *     the Revolut Merchant API and return the public_id so the client can
+ *     mount the embedded Checkout Widget.
+ *   - Cash on Delivery (payment_method 'cod'): no payment gateway involved —
+ *     the order is confirmed at placement, so stock is decremented and the
+ *     confirmation/notification emails go out immediately instead of
+ *     waiting on api/webhook.php.
  */
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/mailer.php';
 
 ggs_cors_headers();
 
@@ -84,6 +89,7 @@ if ($country === 'RO') {
 
 $totalEur = round($subtotalEur + $shippingEur, 2);
 $orderNumber = ggs_generate_order_number();
+$paymentMethod = (($body['payment_method'] ?? '') === 'cod') ? 'cod' : 'card';
 
 $shippingAddress = [
   'street' => $body['street'],
@@ -94,11 +100,12 @@ $shippingAddress = [
 
 $stmt = $db->prepare(
   'INSERT INTO orders
-    (order_number, status, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, total_eur)
-   VALUES (?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    (order_number, status, payment_method, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, total_eur)
+   VALUES (?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->execute([
   $orderNumber,
+  $paymentMethod,
   trim($body['first_name'] . ' ' . $body['last_name']),
   $body['email'],
   $body['phone'] ?? '',
@@ -110,6 +117,38 @@ $stmt->execute([
   $totalEur,
 ]);
 $orderId = (int) $db->lastInsertId();
+
+if ($paymentMethod === 'cod') {
+  // No payment gateway in the loop — the order is confirmed the moment it's
+  // placed, so reserve stock and notify both sides right away.
+  foreach ($orderItems as $item) {
+    $db->prepare('UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id = ?')
+      ->execute([$item['qty'], $item['product_id']]);
+
+    $productStmt = $db->prepare('SELECT * FROM products WHERE id = ?');
+    $productStmt->execute([$item['product_id']]);
+    $product = $productStmt->fetch();
+    if ($product && $product['stock'] <= $product['stock_threshold']) {
+      ggs_notify_low_stock($product);
+    }
+  }
+
+  $orderRow = [
+    'id' => $orderId,
+    'order_number' => $orderNumber,
+    'customer_name' => trim($body['first_name'] . ' ' . $body['last_name']),
+    'customer_email' => $body['email'],
+    'shipping_address' => json_encode($shippingAddress),
+    'items' => json_encode($orderItems),
+    'subtotal_eur' => $subtotalEur,
+    'shipping_eur' => $shippingEur,
+    'total_eur' => $totalEur,
+  ];
+  ggs_notify_new_order($orderRow);
+  ggs_send_order_confirmation($orderRow);
+
+  ggs_json_response(['success' => true, 'order_number' => $orderNumber]);
+}
 
 $revolut = ggs_create_revolut_order($totalEur, $orderNumber, $body['email']);
 

@@ -270,6 +270,96 @@
   display: flex; align-items: center; justify-content: center;
 }
 
+/* ---------- Payment method selector ---------- */
+.payment-method-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media (max-width: 640px) { .payment-method-selector { grid-template-columns: 1fr; } }
+
+.payment-option-card {
+  display: block;
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: border-color var(--transition), background var(--transition);
+}
+.payment-option-card input[type="radio"] {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.payment-option-card.active {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--surface) 0%, #170b0a 100%);
+}
+.payment-option-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.payment-option-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.payment-option-radio-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color var(--transition);
+}
+.payment-option-card.active .payment-option-radio-dot { border-color: var(--accent); }
+.payment-option-card.active .payment-option-radio-dot::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.payment-option-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.payment-option-desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.cod-note {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+
+/* ---------- Inline field validation ---------- */
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+}
+.form-group input.field-invalid,
+.form-group select.field-invalid,
+.form-group textarea.field-invalid {
+  border-color: var(--danger);
+}
+
 #revolut-widget-container {
   min-height: 220px;
   border: 1px dashed var(--border);

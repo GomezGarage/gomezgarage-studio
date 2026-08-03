@@ -1,6 +1,11 @@
 -- ==========================================================================
 -- GOMEZ GARAGE STUDIO — MySQL schema
 -- Per ARCHITECTURE.md section 6.2. Run once on a fresh database.
+--
+-- Migrating an already-deployed database: CREATE TABLE IF NOT EXISTS won't
+-- retroactively add new columns to an existing `orders` table. If you ran
+-- this file before the payment_method column was added, run once:
+--   ALTER TABLE orders ADD COLUMN payment_method VARCHAR(20) DEFAULT 'card' AFTER status;
 -- ==========================================================================
 
 SET NAMES utf8mb4;
@@ -41,6 +46,7 @@ CREATE TABLE IF NOT EXISTS orders (
   order_number VARCHAR(20) UNIQUE,  -- GGS-2026-0001
   revolut_order_id VARCHAR(100),
   status ENUM('pending','paid','processing','shipped','delivered','cancelled') DEFAULT 'pending',
+  payment_method VARCHAR(20) DEFAULT 'card', -- 'card' (Revolut online) | 'cod' (cash on delivery)
   customer_name VARCHAR(200),
   customer_email VARCHAR(200),
   customer_phone VARCHAR(50),
