@@ -1,0 +1,13 @@
+# Config cu credentials - NICIODATA pe GitHub
+config.php
+.env
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+*.log
+
+# Upload-uri produse (prea mari pentru git)
+assets/images/products/
