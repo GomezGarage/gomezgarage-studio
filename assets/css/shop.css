@@ -347,6 +347,16 @@
   margin-bottom: 20px;
 }
 
+.checkout-error-banner {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+
 /* ---------- Inline field validation ---------- */
 .field-error {
   color: var(--danger);

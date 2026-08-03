@@ -171,11 +171,28 @@
     return valid;
   }
 
+  /* ======================= Inline order-creation error ======================= */
+
+  function showCheckoutError(messageEn, messageRo) {
+    const el = document.getElementById('checkout-order-error');
+    if (!el) return;
+    el.setAttribute('data-en', messageEn);
+    el.setAttribute('data-ro', messageRo);
+    el.textContent = document.documentElement.lang === 'ro' ? messageRo : messageEn;
+    el.classList.remove('hidden');
+  }
+
+  function hideCheckoutError() {
+    const el = document.getElementById('checkout-order-error');
+    if (el) el.classList.add('hidden');
+  }
+
   /* ======================= Submit ======================= */
 
   function submitOrder(form, cart, method) {
     const submitBtn = document.getElementById('checkout-submit-btn');
     const originalLabel = submitBtn.textContent;
+    hideCheckoutError();
     submitBtn.disabled = true;
     submitBtn.textContent = document.documentElement.lang === 'ro' ? 'Se proceseaza…' : 'Processing…';
 
@@ -210,23 +227,30 @@
           return;
         }
 
-        // The order now exists in the DB — anything past this point is a
-        // widget/display concern, not an order failure. Handle it on its
-        // own so a script-load hiccup can't send a customer with a valid
-        // pending order to order-failed.html (and risk a duplicate order
-        // on retry).
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalLabel;
+        // The order now exists in the DB. Keep the submit button disabled —
+        // the customer now interacts with the embedded widget below, not
+        // this button — and only re-enable it if they cancel out of the
+        // widget (see onCancel in initRevolutWidget) or the widget itself
+        // fails to load.
         try {
           initRevolutWidget(data);
         } catch (err) {
           showWidgetLoadError();
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalLabel;
         }
       })
       .catch(() => {
+        // Order creation failed (network/validation/server error) — this is
+        // not a payment failure, so stay on the page: show an inline error
+        // and let the customer fix things and retry, instead of bouncing
+        // them to order-failed.html.
         submitBtn.disabled = false;
         submitBtn.textContent = originalLabel;
-        window.location.href = '/studio/order-failed.html';
+        showCheckoutError(
+          "We couldn't place your order. Please check your details and try again.",
+          'Nu am putut plasa comanda. Verifica datele si incearca din nou.'
+        );
       });
   }
 
@@ -234,43 +258,65 @@
     const container = document.getElementById('revolut-widget-container');
     if (!container) return;
     container.classList.remove('hidden');
-    container.textContent = document.documentElement.lang === 'ro'
-      ? 'Widget-ul de plata nu a putut fi incarcat. Reincarca pagina si incearca din nou.'
-      : 'Unable to load the payment widget. Please refresh and try again.';
+    const placeholder = document.getElementById('revolut-widget-placeholder');
+    if (placeholder) placeholder.classList.add('hidden');
+    const mountTarget = document.getElementById('revolut-payment-mount');
+    if (mountTarget) {
+      mountTarget.textContent = document.documentElement.lang === 'ro'
+        ? 'Widget-ul de plata nu a putut fi incarcat. Reincarca pagina si incearca din nou.'
+        : 'Unable to load the payment widget. Please refresh and try again.';
+    }
   }
 
   /*
    * Loads the Revolut Checkout Widget (RevolutCheckout JS) and mounts it
-   * against the public order id returned by create-order.php. Only ever
-   * called after a valid form submit on the Online Payment path.
+   * embedded (not the payWithPopup flow, which gets blocked on mobile and
+   * Safari) against the public order id returned by create-order.php. Only
+   * ever called after a valid form submit on the Online Payment path.
    * Docs: https://developer.revolut.com/docs/merchant/accept-payments/embedded-checkout
    */
   function initRevolutWidget(order) {
     const container = document.getElementById('revolut-widget-container');
+    const placeholder = document.getElementById('revolut-widget-placeholder');
+    const mountTarget = document.getElementById('revolut-payment-mount');
+
     container.classList.remove('hidden');
-    container.textContent = '';
+    if (placeholder) placeholder.classList.add('hidden');
+    if (mountTarget) mountTarget.innerHTML = '';
 
     const script = document.createElement('script');
     script.src = 'https://merchant.revolut.com/embed.js';
     script.onload = () => {
       if (!window.RevolutCheckout) {
-        container.textContent = 'Unable to load payment widget.';
+        showWidgetLoadError();
         return;
       }
       window.RevolutCheckout(order.public_id, order.mode || 'prod').then((instance) => {
-        instance.payWithPopup({
+        instance.mount('#revolut-payment-mount', {
           onSuccess() {
             window.GGSCart.clearCart();
             window.location.href = `/studio/order-success.html?order=${order.order_number}`;
           },
-          onError() {
+          onError(message) {
+            console.error('Revolut error:', message);
             window.location.href = `/studio/order-failed.html?order=${order.order_number}`;
+          },
+          onCancel() {
+            // Customer closed the widget without paying — stay on the
+            // page and let them retry (a fresh order will be created).
+            const btn = document.getElementById('checkout-submit-btn');
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = document.documentElement.lang === 'ro'
+                ? btn.getAttribute('data-ro')
+                : btn.getAttribute('data-en');
+            }
           },
         });
       });
     };
     script.onerror = () => {
-      container.textContent = 'Unable to reach Revolut payment service.';
+      showWidgetLoadError();
     };
     document.body.appendChild(script);
   }

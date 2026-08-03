@@ -136,10 +136,13 @@
 
               <p class="cod-note hidden" id="cod-note" data-en="You'll pay on delivery. Cash-on-delivery fee: 10 RON." data-ro="Vei plati la livrare. Taxa ramburs: 10 RON.">You'll pay on delivery. Cash-on-delivery fee: 10 RON.</p>
 
+              <div id="checkout-order-error" class="checkout-error-banner hidden"></div>
+
               <button type="submit" class="btn btn-primary btn-block" id="checkout-submit-btn" data-en="Continue to Payment" data-ro="Continua spre plata">Continue to Payment</button>
 
               <div id="revolut-widget-container" class="hidden" style="margin-top:20px;">
-                <span data-en="Payment widget loads after order details are submitted." data-ro="Widget-ul de plata se incarca dupa trimiterea datelor comenzii.">Payment widget loads after order details are submitted.</span>
+                <p id="revolut-widget-placeholder" data-en="Payment widget loads after order details are submitted." data-ro="Widget-ul de plata se incarca dupa trimiterea datelor comenzii.">Payment widget loads after order details are submitted.</p>
+                <div id="revolut-payment-mount"></div>
               </div>
             </div>
           </form>
