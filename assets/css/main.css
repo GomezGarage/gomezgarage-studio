@@ -472,7 +472,3 @@ section { padding: 100px 0; }
 .empty-state { text-align: center; padding: 80px 20px; color: var(--text-secondary); }
 .empty-state h3 { color: var(--text); margin-bottom: 12px; }
 
-/* ---------- Lang toggle visibility ---------- */
-[data-ro] { display: none; }
-html[lang="ro"] [data-en] { display: none; }
-html[lang="ro"] [data-ro] { display: initial; }

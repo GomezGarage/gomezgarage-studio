@@ -150,10 +150,11 @@
       const top3 = products.slice(0, 3);
       if (!top3.length) {
         grid.innerHTML = '<p class="empty-state" data-en="Products coming soon." data-ro="Produse in curand.">Products coming soon.</p>';
-        return;
+      } else {
+        grid.innerHTML = top3.map(productCardHtml).join('');
+        bindAddToCartButtons(grid, top3);
       }
-      grid.innerHTML = top3.map(productCardHtml).join('');
-      bindAddToCartButtons(grid, top3);
+      if (window.GGSLang) window.GGSLang.refresh();
     });
   }
 
@@ -175,10 +176,11 @@
 
       if (!list.length) {
         grid.innerHTML = '<p class="empty-state" data-en="No products match this filter." data-ro="Niciun produs pentru acest filtru.">No products match this filter.</p>';
-        return;
+      } else {
+        grid.innerHTML = list.map(productCardHtml).join('');
+        bindAddToCartButtons(grid, list);
       }
-      grid.innerHTML = list.map(productCardHtml).join('');
-      bindAddToCartButtons(grid, list);
+      if (window.GGSLang) window.GGSLang.refresh();
     }
 
     document.querySelectorAll('[data-filter-btn]').forEach((btn) => {
@@ -220,7 +222,9 @@
         return;
       }
       renderProductDetail(wrap, product);
+      injectProductSchema(product);
       loadRelated(product);
+      if (window.GGSLang) window.GGSLang.refresh();
     });
   }
 
@@ -282,6 +286,35 @@
     });
   }
 
+  /* Schema.org Product markup (ARCHITECTURE.md section 8). */
+  function injectProductSchema(p) {
+    const images = (p.images && p.images.length) ? p.images : ['/studio/assets/images/products/placeholder.svg'];
+    const schema = {
+      '@context': 'https://schema.org/',
+      '@type': 'Product',
+      name: p.name_en,
+      description: p.desc_short_en,
+      image: images.map((img) => `https://gomezgarage.eu${img}`),
+      sku: String(p.id),
+      material: p.material,
+      offers: {
+        '@type': 'Offer',
+        url: `https://gomezgarage.eu/studio/product.html?id=${p.id}`,
+        priceCurrency: 'EUR',
+        price: p.price_eur,
+        availability: p.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      },
+    };
+    let tag = document.getElementById('product-schema');
+    if (!tag) {
+      tag = document.createElement('script');
+      tag.type = 'application/ld+json';
+      tag.id = 'product-schema';
+      document.head.appendChild(tag);
+    }
+    tag.textContent = JSON.stringify(schema);
+  }
+
   function stockBadgeText(p) {
     if (p.stock <= 0) return document.documentElement.lang === 'ro' ? 'Stoc epuizat' : 'Out of stock';
     if (p.stock <= p.stock_threshold) return (document.documentElement.lang === 'ro' ? 'Stoc redus' : 'Low stock') + ` (${p.stock})`;
@@ -295,6 +328,7 @@
       const related = products.filter((p) => p.id !== product.id).slice(0, 3);
       grid.innerHTML = related.map(productCardHtml).join('');
       bindAddToCartButtons(grid, related);
+      if (window.GGSLang) window.GGSLang.refresh();
     });
   }
 
@@ -309,13 +343,14 @@
       if (!cart.length) {
         list.innerHTML = '<div class="empty-state"><h3 data-en="Your cart is empty" data-ro="Cosul este gol">Your cart is empty</h3><a href="/studio/products.html" class="btn btn-outline" data-en="Continue Shopping" data-ro="Continua cumparaturile">Continue Shopping</a></div>';
         updateSummary(cart);
+        if (window.GGSLang) window.GGSLang.refresh();
         return;
       }
       list.innerHTML = cart.map((item) => `
         <div class="cart-item" data-item="${item.product_id}">
           <img src="${item.image || '/studio/assets/images/products/placeholder.svg'}" alt="${window.GGSUtil.escapeHtml(item.name_en)}">
           <div>
-            <div class="cart-item-name">${window.GGSUtil.escapeHtml(item.name_en)}</div>
+            <div class="cart-item-name" data-en="${window.GGSUtil.escapeHtml(item.name_en)}" data-ro="${window.GGSUtil.escapeHtml(item.name_ro || item.name_en)}">${window.GGSUtil.escapeHtml(item.name_en)}</div>
             <div class="cart-item-material mono">${window.GGSUtil.escapeHtml(item.material || '')}</div>
             <button class="cart-item-remove" data-remove="${item.product_id}" data-en="Remove" data-ro="Elimina">Remove</button>
           </div>
@@ -358,6 +393,7 @@
       });
 
       updateSummary(cart);
+      if (window.GGSLang) window.GGSLang.refresh();
     }
 
     function updateSummary(cart) {

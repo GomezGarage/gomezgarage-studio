@@ -8,9 +8,18 @@
 
   const LANG_KEY = 'ggs_lang';
 
-  /* ---------- Language toggle ---------- */
+  /* ---------- Language toggle ----------
+     Every translatable element carries both data-en and data-ro attributes
+     holding the two versions of its text; the attribute values are already
+     HTML-entity-decoded by the parser, so a plain textContent swap is safe. */
   function applyLang(lang) {
     document.documentElement.setAttribute('lang', lang);
+
+    document.querySelectorAll('[data-en]').forEach((el) => {
+      const text = el.getAttribute(lang === 'ro' ? 'data-ro' : 'data-en');
+      if (text !== null && text !== '') el.textContent = text;
+    });
+
     document.querySelectorAll('[data-lang-btn]').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === lang);
     });
@@ -28,6 +37,14 @@
       });
     });
   }
+
+  /* Re-applies the current language to any newly-injected DOM (e.g. product
+     cards fetched after the initial DOMContentLoaded pass). */
+  window.GGSLang = {
+    refresh() {
+      applyLang(localStorage.getItem(LANG_KEY) || 'en');
+    },
+  };
 
   /* ---------- Mobile nav ---------- */
   function initMobileNav() {

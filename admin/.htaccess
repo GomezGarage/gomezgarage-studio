@@ -1,0 +1,6 @@
+# Admin panel — directory listing off, only .php entry points are served.
+Options -Indexes
+
+<FilesMatch "\.(bak|sql|log|inc)$">
+  Require all denied
+</FilesMatch>

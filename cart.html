@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cart — Gomez Garage Studio</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://gomezgarage.eu/studio/cart.html">
+<link rel="icon" type="image/svg+xml" href="/studio/assets/images/favicon.svg">
+<link rel="stylesheet" href="/studio/assets/css/main.css">
+<link rel="stylesheet" href="/studio/assets/css/shop.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a href="/studio/index.html" class="nav-logo">
+      <img src="/studio/assets/images/logo-gomez.svg" alt="Gomez Garage">
+    </a>
+    <nav class="nav-links">
+      <a href="/studio/products.html" data-en="Products" data-ro="Produse">Products</a>
+      <a href="/studio/custom.html" data-en="Custom Order" data-ro="Comanda Custom">Custom Order</a>
+      <a href="/studio/about.html" data-en="About" data-ro="Despre">About</a>
+    </nav>
+    <div class="nav-actions">
+      <div class="nav-toggle" data-lang-toggle>
+        <button data-lang-btn="en" class="active">EN</button>
+        <button data-lang-btn="ro">RO</button>
+      </div>
+      <div class="nav-toggle" data-currency-toggle>
+        <button data-currency-btn="EUR" class="active">EUR</button>
+        <button data-currency-btn="RON">RON</button>
+      </div>
+      <a href="/studio/cart.html" class="cart-icon-link" aria-label="Cart">
+        🛒<span class="cart-count hidden" data-cart-count>0</span>
+      </a>
+      <button class="nav-burger" data-nav-burger aria-label="Menu">☰</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="page-hero">
+    <div class="container">
+      <span class="section-label mono" data-en="Your Cart" data-ro="Cosul Tau">Your Cart</span>
+      <h1 data-en="Cart" data-ro="Cos">Cart</h1>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="cart-layout">
+        <div data-cart-list>
+          <p class="empty-state" data-en="Loading cart…" data-ro="Se incarca cosul…">Loading cart…</p>
+        </div>
+        <div class="cart-summary">
+          <h3 data-en="Order Summary" data-ro="Sumar Comanda">Order Summary</h3>
+          <div class="summary-row">
+            <span data-en="Subtotal" data-ro="Subtotal">Subtotal</span>
+            <span data-cart-subtotal class="mono">€0.00</span>
+          </div>
+          <p class="form-hint" style="margin:10px 0 20px;" data-en="Shipping calculated at checkout." data-ro="Livrarea se calculeaza la checkout.">Shipping calculated at checkout.</p>
+          <a href="/studio/checkout.html" class="btn btn-primary btn-block hidden" data-go-checkout data-en="Proceed to Checkout" data-ro="Continua spre Checkout">Proceed to Checkout</a>
+          <a href="/studio/products.html" class="btn btn-outline btn-block" style="margin-top:12px;" data-en="Continue Shopping" data-ro="Continua Cumparaturile">Continue Shopping</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="nav-logo"><img src="/studio/assets/images/logo-gomez.svg" alt="Gomez Garage"></div>
+        <p data-en="Precision made. Built to last." data-ro="Precizie. Facut sa dureze.">Precision made. Built to last.</p>
+      </div>
+      <div class="footer-cols">
+        <div class="footer-col">
+          <h5 data-en="Shop" data-ro="Magazin">Shop</h5>
+          <a href="/studio/products.html" data-en="Products" data-ro="Produse">Products</a>
+          <a href="/studio/custom.html" data-en="Custom Order" data-ro="Comanda Custom">Custom Order</a>
+          <a href="/studio/about.html" data-en="About" data-ro="Despre">About</a>
+        </div>
+        <div class="footer-col">
+          <h5 data-en="Contact" data-ro="Contact">Contact</h5>
+          <p>contact@gomezgarage.eu</p>
+        </div>
+        <div class="footer-col">
+          <h5 data-en="Follow" data-ro="Urmareste">Follow</h5>
+          <div class="social-links">
+            <a href="https://instagram.com" aria-label="Instagram" target="_blank" rel="noopener">Instagram</a>
+            <a href="https://tiktok.com" aria-label="TikTok" target="_blank" rel="noopener">TikTok</a>
+            <a href="https://youtube.com" aria-label="YouTube" target="_blank" rel="noopener">YouTube</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Lancer Land SRL · gomezgarage.eu</span>
+      <span class="mono">GOMEZ GARAGE STUDIO</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/studio/assets/js/currency.js"></script>
+<script src="/studio/assets/js/shop.js"></script>
+<script src="/studio/assets/js/main.js"></script>
+</body>
+</html>

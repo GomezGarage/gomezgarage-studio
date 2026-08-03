@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — Gomez Garage Studio</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://gomezgarage.eu/studio/checkout.html">
+<link rel="icon" type="image/svg+xml" href="/studio/assets/images/favicon.svg">
+<link rel="stylesheet" href="/studio/assets/css/main.css">
+<link rel="stylesheet" href="/studio/assets/css/shop.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a href="/studio/index.html" class="nav-logo">
+      <img src="/studio/assets/images/logo-gomez.svg" alt="Gomez Garage">
+    </a>
+    <nav class="nav-links">
+      <a href="/studio/products.html" data-en="Products" data-ro="Produse">Products</a>
+      <a href="/studio/custom.html" data-en="Custom Order" data-ro="Comanda Custom">Custom Order</a>
+      <a href="/studio/about.html" data-en="About" data-ro="Despre">About</a>
+    </nav>
+    <div class="nav-actions">
+      <div class="nav-toggle" data-lang-toggle>
+        <button data-lang-btn="en" class="active">EN</button>
+        <button data-lang-btn="ro">RO</button>
+      </div>
+      <div class="nav-toggle" data-currency-toggle>
+        <button data-currency-btn="EUR" class="active">EUR</button>
+        <button data-currency-btn="RON">RON</button>
+      </div>
+      <a href="/studio/cart.html" class="cart-icon-link" aria-label="Cart">
+        🛒<span class="cart-count hidden" data-cart-count>0</span>
+      </a>
+      <button class="nav-burger" data-nav-burger aria-label="Menu">☰</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="page-hero">
+    <div class="container">
+      <span class="section-label mono" data-en="Checkout" data-ro="Finalizare Comanda">Checkout</span>
+      <h1 data-en="Checkout" data-ro="Finalizare Comanda">Checkout</h1>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="checkout-layout">
+        <div>
+          <form data-checkout-form>
+            <div class="checkout-step">
+              <h3><span class="step-badge">1</span><span data-en="Your details" data-ro="Datele tale">Your details</span></h3>
+              <div class="form-row">
+                <div class="form-group"><label data-en="First name" data-ro="Prenume">First name</label><input type="text" name="first_name" required></div>
+                <div class="form-group"><label data-en="Last name" data-ro="Nume">Last name</label><input type="text" name="last_name" required></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
+                <div class="form-group"><label data-en="Phone (optional)" data-ro="Telefon (optional)">Phone (optional)</label><input type="tel" name="phone"></div>
+              </div>
+              <div class="form-group"><label data-en="Street address" data-ro="Adresa">Street address</label><input type="text" name="street" required></div>
+              <div class="form-row">
+                <div class="form-group"><label data-en="City" data-ro="Oras">City</label><input type="text" name="city" required></div>
+                <div class="form-group"><label data-en="Postal code" data-ro="Cod postal">Postal code</label><input type="text" name="postal" required></div>
+              </div>
+              <div class="form-group">
+                <label data-en="Country" data-ro="Tara">Country</label>
+                <select name="country" required>
+                  <option value="RO">Romania</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="AT">Austria</option>
+                  <option value="BE">Belgium</option>
+                  <option value="BG">Bulgaria</option>
+                  <option value="HR">Croatia</option>
+                  <option value="CY">Cyprus</option>
+                  <option value="CZ">Czechia</option>
+                  <option value="DK">Denmark</option>
+                  <option value="EE">Estonia</option>
+                  <option value="FI">Finland</option>
+                  <option value="FR">France</option>
+                  <option value="DE">Germany</option>
+                  <option value="GR">Greece</option>
+                  <option value="HU">Hungary</option>
+                  <option value="IE">Ireland</option>
+                  <option value="IT">Italy</option>
+                  <option value="LV">Latvia</option>
+                  <option value="LT">Lithuania</option>
+                  <option value="LU">Luxembourg</option>
+                  <option value="MT">Malta</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="PL">Poland</option>
+                  <option value="PT">Portugal</option>
+                  <option value="SK">Slovakia</option>
+                  <option value="SI">Slovenia</option>
+                  <option value="ES">Spain</option>
+                  <option value="SE">Sweden</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-en="Order note (optional)" data-ro="Nota comanda (optional)">Order note (optional)</label>
+                <textarea name="note" rows="3"></textarea>
+              </div>
+            </div>
+
+            <div class="checkout-step">
+              <h3><span class="step-badge">2</span><span data-en="Payment" data-ro="Plata">Payment</span></h3>
+              <button type="submit" class="btn btn-primary btn-block" data-en="Place Order" data-ro="Plaseaza Comanda">Place Order</button>
+              <div id="revolut-widget-container" style="margin-top:20px;">
+                <span data-en="Payment widget loads after order details are submitted." data-ro="Widget-ul de plata se incarca dupa trimiterea datelor comenzii.">Payment widget loads after order details are submitted.</span>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="cart-summary">
+          <h3 data-en="Order Summary" data-ro="Sumar Comanda">Order Summary</h3>
+          <div data-order-summary></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© 2026 Lancer Land SRL · gomezgarage.eu</span>
+      <span class="mono">GOMEZ GARAGE STUDIO</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/studio/assets/js/currency.js"></script>
+<script src="/studio/assets/js/shop.js"></script>
+<script src="/studio/assets/js/checkout.js"></script>
+<script src="/studio/assets/js/main.js"></script>
+</body>
+</html>

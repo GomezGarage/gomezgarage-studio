@@ -69,6 +69,7 @@
         <div class="summary-row total"><span data-en="Total" data-ro="Total">Total</span><span>${money(total)}</span></div>
       </div>
     `;
+    if (window.GGSLang) window.GGSLang.refresh();
   }
 
   function submitOrder(form, cart) {

@@ -1,0 +1,16 @@
+# GOMEZ GARAGE STUDIO — root .htaccess
+# ARCHITECTURE.md section 9: config.php and internal folders must never be
+# reachable directly, and directory listings must be off everywhere.
+
+Options -Indexes
+ServerSignature Off
+
+# Never serve the config file or composer metadata directly.
+<FilesMatch "^(config\.php|config\.example\.php|composer\.(json|lock))$">
+  Require all denied
+</FilesMatch>
+
+# Block direct access to shared PHP includes and the raw SQL schema —
+# these are loaded via require_once from admin/ and api/, never requested directly.
+RewriteEngine On
+RewriteRule ^(includes|database)/ - [F,L]

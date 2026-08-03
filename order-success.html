@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Confirmed — Gomez Garage Studio</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/studio/assets/images/favicon.svg">
+<link rel="stylesheet" href="/studio/assets/css/main.css">
+<link rel="stylesheet" href="/studio/assets/css/shop.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a href="/studio/index.html" class="nav-logo">
+      <img src="/studio/assets/images/logo-gomez.svg" alt="Gomez Garage">
+    </a>
+    <nav class="nav-links">
+      <a href="/studio/products.html" data-en="Products" data-ro="Produse">Products</a>
+      <a href="/studio/custom.html" data-en="Custom Order" data-ro="Comanda Custom">Custom Order</a>
+      <a href="/studio/about.html" data-en="About" data-ro="Despre">About</a>
+    </nav>
+    <div class="nav-actions">
+      <div class="nav-toggle" data-lang-toggle>
+        <button data-lang-btn="en" class="active">EN</button>
+        <button data-lang-btn="ro">RO</button>
+      </div>
+      <a href="/studio/cart.html" class="cart-icon-link" aria-label="Cart">
+        🛒<span class="cart-count hidden" data-cart-count>0</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container status-page">
+    <div>
+      <div class="status-icon success">✓</div>
+      <h1 data-en="Order confirmed" data-ro="Comanda confirmata">Order confirmed</h1>
+      <p data-en="Thank you — we've received your order and a confirmation email is on its way." data-ro="Multumim — am primit comanda ta si un email de confirmare este pe drum.">Thank you — we've received your order and a confirmation email is on its way.</p>
+      <div class="order-number mono" data-order-number>Order #—</div>
+      <a href="/studio/products.html" class="btn btn-primary" data-en="Back to shop" data-ro="Inapoi la magazin">Back to shop</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© 2026 Lancer Land SRL · gomezgarage.eu</span>
+      <span class="mono">GOMEZ GARAGE STUDIO</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/studio/assets/js/currency.js"></script>
+<script src="/studio/assets/js/shop.js"></script>
+<script src="/studio/assets/js/main.js"></script>
+<script>
+  var orderNumber = new URLSearchParams(window.location.search).get('order');
+  if (orderNumber) {
+    document.querySelector('[data-order-number]').textContent = 'Order #' + orderNumber;
+  }
+</script>
+</body>
+</html>
