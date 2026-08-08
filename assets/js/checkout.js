@@ -1,25 +1,27 @@
 /* ==========================================================================
    GOMEZ GARAGE STUDIO — checkout.js
-   Checkout form -> create-order.php -> Revolut Checkout (payWithPopup)
-   or straight to order-success.html for Cash on Delivery.
+   Checkout form -> Revolut embedded Checkout (all payment methods) or
+   straight to order-success.html for Cash on Delivery.
 
-   Two-step flow, both to keep Safari/mobile from blocking the payment
-   popup and so a customer can retry payment without re-submitting the
-   whole form:
-     1. "Continua spre plata" validates the form and creates the order.
-        embed.js is preloaded via <script defer> in <head>, so
-        window.RevolutCheckout is already available by the time this
-        resolves — but the create-order.php round trip itself is still a
-        real async gap, so the popup is NOT opened here.
-     2. A "Pay Now" button appears once the order exists. That click is a
-        direct, fresh user gesture — its handler calls
-        RevolutCheckout(...).then(instance => instance.payWithPopup(...))
-        synchronously, which is what Safari/mobile actually allow.
+   window.RevolutCheckout.embeddedCheckout({ publicToken, target,
+   createOrder, onSuccess, onError, onCancel }) mounts an embedded widget
+   (an iframe inside our own page, not a window.open() popup) that shows
+   every payment method enabled on the Revolut Business account together
+   (Revolut Pay, Card, Apple Pay, Google Pay) and calls our createOrder()
+   callback itself, at the moment the customer actually commits to paying.
+   Because it's embedded rather than a popup, there's no user-gesture /
+   Safari-popup-blocker constraint to design around — a single click on
+   "Continua spre plata" is enough.
 
-   payWithPopup() is the real, documented method on the RevolutCheckout
-   instance (verified against the published @revolut/checkout package's
-   type definitions) — instance.open() and instance.mount() do not exist
-   on it and will throw at runtime.
+   publicToken here is the *merchant* public key (REVOLUT_PUBLIC_KEY,
+   fetched from api/get-checkout-config.php — config.php isn't reachable
+   from this static frontend), not an order's public_id — that's created
+   lazily inside createOrder() from api/create-order.php.
+
+   Verified against the published @revolut/checkout package's type
+   definitions: embeddedCheckout is real (RevolutCheckout.embeddedCheckout,
+   a static property on the loaded RevolutCheckout function). instance.open()
+   and instance.mount() are not — calling either throws at runtime.
    ========================================================================== */
 
 (function () {
@@ -36,9 +38,18 @@
 
   const EU_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
 
-  // Order returned by create-order.php for the Online path, held here so the
-  // separate "Pay Now" click handler can read it without re-fetching.
-  let currentOrder = null;
+  // Filled in by preloadCheckoutConfig(); used when mounting the widget.
+  let revolutPublicKey = null;
+  let revolutMode = 'prod';
+
+  // The order_number of the order created by the widget's createOrder()
+  // callback, used to build the redirect URLs (Revolut's own callback
+  // payloads carry Revolut's internal orderId, not ours).
+  let lastOrderNumber = null;
+
+  // Current mounted widget instance, so a second submit can clean up the
+  // previous one before mounting a fresh one.
+  let embeddedInstance = null;
 
   function shippingZoneFor(countryCode) {
     if (countryCode === 'RO') return 'RO';
@@ -48,6 +59,21 @@
 
   function money(priceEur) {
     return window.GGSCurrency ? window.GGSCurrency.format(priceEur) : `€${priceEur}`;
+  }
+
+  function preloadCheckoutConfig() {
+    return fetch(`${API_BASE}/get-checkout-config.php`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          revolutPublicKey = data.public_key;
+          revolutMode = data.mode;
+        }
+      })
+      .catch(() => {
+        // openRevolutEmbedded() re-checks revolutPublicKey and surfaces an
+        // inline error if it's still missing by the time of submit.
+      });
   }
 
   function initCheckoutPage() {
@@ -67,7 +93,7 @@
     countrySelect.addEventListener('change', () => renderOrderSummary(cart));
 
     initPaymentMethodSelector(form);
-    initPayNowButton();
+    preloadCheckoutConfig();
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -130,10 +156,9 @@
           : submitBtn.getAttribute('data-en');
       }
 
-      // Switching away from Online should hide the Pay Now step from a
-      // previous attempt — it must only ever appear after a fresh
-      // successful order creation on the Online path.
-      if (method !== 'online') hidePayNowStep();
+      // Switching away from Online should tear down any mounted widget
+      // from a previous attempt.
+      if (method !== 'online') resetPaymentWidget();
     }
 
     cards.forEach((card) => {
@@ -216,12 +241,12 @@
       : submitBtn.getAttribute('data-en');
   }
 
-  /* ======================= Submit (step 1: create the order) ======================= */
+  /* ======================= Submit ======================= */
 
   function submitOrder(form, cart, method) {
     const submitBtn = document.getElementById('checkout-submit-btn');
     hideCheckoutError();
-    hidePayNowStep();
+    resetPaymentWidget();
     submitBtn.disabled = true;
     submitBtn.textContent = document.documentElement.lang === 'ro' ? 'Se proceseaza…' : 'Processing…';
 
@@ -239,104 +264,110 @@
       items: cart.map((i) => ({ product_id: i.product_id, name: i.name_en, price_eur: i.price_eur, qty: i.qty })),
       shipping_eur: currentShippingEur(form),
       payment_method: method === 'cod' ? 'cod' : 'card',
+      // Charge in whatever currency the customer was just shown in the
+      // order summary, so the payment form matches (not always EUR).
+      currency: window.GGSCurrency ? window.GGSCurrency.current : 'EUR',
     };
 
-    fetch(`${API_BASE}/create-order.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.success) throw new Error(data.error || 'Order creation failed');
-
-        if (method === 'cod') {
+    if (method === 'cod') {
+      fetch(`${API_BASE}/create-order.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.success) throw new Error(data.error || 'Order creation failed');
           window.GGSCart.clearCart();
           window.location.href = `/studio/order-success.html?order=${data.order_number}`;
-          return;
-        }
+        })
+        .catch(() => {
+          resetSubmitButton();
+          showCheckoutError(
+            "We couldn't place your order. Please check your details and try again.",
+            'Nu am putut plasa comanda. Verifica datele si incearca din nou.'
+          );
+        });
+      return;
+    }
 
-        // Order created. Keep the original submit button disabled (a second
-        // click would create a duplicate order) and reveal the Pay Now
-        // step instead.
-        currentOrder = data;
-        showPayNowStep();
-      })
-      .catch(() => {
-        // Order creation failed (network/validation/server error) — this is
-        // not a payment failure, so stay on the page: show an inline error
-        // and let the customer fix things and retry, instead of bouncing
-        // them to order-failed.html.
-        resetSubmitButton();
-        showCheckoutError(
-          "We couldn't place your order. Please check your details and try again.",
-          'Nu am putut plasa comanda. Verifica datele si incearca din nou.'
-        );
-      });
+    // Online: mount the embedded widget right here. The order itself is
+    // created lazily by createOrder() below, called by the widget once the
+    // customer actually picks a payment method — not before.
+    mountEmbeddedCheckout(payload);
   }
 
-  /* ======================= Pay Now (step 2: open the popup) ======================= */
+  /* ======================= Embedded Revolut Checkout ======================= */
 
-  function showPayNowStep() {
-    const container = document.getElementById('revolut-widget-container');
-    const payNowBtn = document.getElementById('revolut-pay-now-btn');
-    if (container) container.classList.remove('hidden');
-    if (payNowBtn) payNowBtn.disabled = false;
-  }
-
-  function hidePayNowStep() {
+  function resetPaymentWidget() {
+    if (embeddedInstance && typeof embeddedInstance.destroy === 'function') {
+      embeddedInstance.destroy();
+    }
+    embeddedInstance = null;
+    lastOrderNumber = null;
     const container = document.getElementById('revolut-widget-container');
     if (container) container.classList.add('hidden');
-    currentOrder = null;
+    const target = document.getElementById('revolut-embedded-target');
+    if (target) target.innerHTML = '';
   }
 
-  /*
-   * Wires the "Pay Now" button, shown after a successful order creation on
-   * the Online Payment path. This click is the direct user gesture that
-   * opens the Revolut popup (payWithPopup) — RevolutCheckout(...).then(...)
-   * must be called synchronously from *this* handler, never from inside an
-   * async fetch chain, or Safari/mobile browsers block the popup.
-   * Docs: https://developer.revolut.com/docs/merchant/accept-payments
-   */
-  function initPayNowButton() {
-    const payNowBtn = document.getElementById('revolut-pay-now-btn');
-    if (!payNowBtn) return;
+  function mountEmbeddedCheckout(payload) {
+    if (!revolutPublicKey || !window.RevolutCheckout || !window.RevolutCheckout.embeddedCheckout) {
+      resetSubmitButton();
+      showCheckoutError(
+        'Unable to reach the payment service. Please refresh and try again.',
+        'Serviciul de plata nu este disponibil. Reincarca pagina si incearca din nou.'
+      );
+      return;
+    }
 
-    payNowBtn.addEventListener('click', () => {
-      if (!currentOrder) return;
+    const container = document.getElementById('revolut-widget-container');
+    const target = document.getElementById('revolut-embedded-target');
+    if (container) container.classList.remove('hidden');
 
-      if (!window.RevolutCheckout) {
+    window.RevolutCheckout.embeddedCheckout({
+      publicToken: revolutPublicKey,
+      mode: revolutMode,
+      target,
+      email: payload.email,
+      createOrder() {
+        return fetch(`${API_BASE}/create-order.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data.success || !data.public_id) throw new Error(data.error || 'Order creation failed');
+            lastOrderNumber = data.order_number;
+            return { publicId: data.public_id };
+          });
+      },
+      onSuccess() {
+        window.GGSCart.clearCart();
+        window.location.href = `/studio/order-success.html?order=${lastOrderNumber || ''}`;
+      },
+      onError(errPayload) {
+        console.error('Revolut error:', errPayload && errPayload.error);
+        window.location.href = `/studio/order-failed.html?order=${lastOrderNumber || ''}`;
+      },
+      onCancel() {
+        // Customer backed out without paying — tear down the widget and
+        // re-enable the submit button so they can retry.
+        resetPaymentWidget();
+        resetSubmitButton();
+      },
+    })
+      .then((instance) => {
+        embeddedInstance = instance;
+      })
+      .catch(() => {
+        resetSubmitButton();
         showCheckoutError(
-          'Payment is still loading — please try again in a moment.',
-          'Plata se incarca inca — mai incearca o data in cateva secunde.'
+          "We couldn't load the payment form. Please refresh and try again.",
+          'Nu am putut incarca formularul de plata. Reincarca pagina si incearca din nou.'
         );
-        return;
-      }
-
-      hideCheckoutError();
-      payNowBtn.disabled = true;
-
-      const order = currentOrder;
-      window.RevolutCheckout(order.public_id, order.mode || 'prod').then((instance) => {
-        instance.payWithPopup({
-          onSuccess() {
-            window.GGSCart.clearCart();
-            window.location.href = `/studio/order-success.html?order=${order.order_number}`;
-          },
-          onError(message) {
-            console.error('Revolut error:', message);
-            window.location.href = `/studio/order-failed.html?order=${order.order_number}`;
-          },
-          onCancel() {
-            // Customer closed the popup without paying — hide the Pay Now
-            // step and re-enable the original submit button so they can
-            // retry (a fresh order will be created on the next attempt).
-            hidePayNowStep();
-            resetSubmitButton();
-          },
-        });
       });
-    });
   }
 
   document.addEventListener('DOMContentLoaded', initCheckoutPage);

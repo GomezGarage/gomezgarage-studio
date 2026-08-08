@@ -150,7 +150,21 @@ if ($paymentMethod === 'cod') {
   ggs_json_response(['success' => true, 'order_number' => $orderNumber]);
 }
 
-$revolut = ggs_create_revolut_order($totalEur, $orderNumber, $body['email']);
+// Charge in whatever currency the customer was actually shown on the
+// checkout page (the order summary), not always EUR — otherwise the
+// payment popup/widget shows a different amount than what they agreed to,
+// which is exactly the mismatch we saw in testing (220 RON on the page vs
+// €44.00 in the widget). subtotal/shipping/total stay stored in EUR as the
+// canonical bookkeeping currency; only the Revolut charge amount changes.
+$requestedCurrency = strtoupper((string) ($body['currency'] ?? 'EUR'));
+$chargeCurrency = $requestedCurrency === 'RON' ? 'RON' : 'EUR';
+$chargeAmount = $totalEur;
+if ($chargeCurrency === 'RON') {
+  $rate = (float) ggs_get_setting('eur_ron_rate', '5.00');
+  $chargeAmount = round($totalEur * $rate, 2);
+}
+
+$revolut = ggs_create_revolut_order($chargeAmount, $chargeCurrency, $orderNumber, $body['email']);
 
 if (!$revolut['success']) {
   ggs_json_response(['success' => false, 'error' => $revolut['error'], 'order_number' => $orderNumber], 502);
@@ -170,11 +184,11 @@ ggs_json_response([
  * Creates an order on the Revolut Merchant API.
  * https://developer.revolut.com/docs/merchant/create-order
  */
-function ggs_create_revolut_order(float $amountEur, string $orderNumber, string $customerEmail): array
+function ggs_create_revolut_order(float $amount, string $currency, string $orderNumber, string $customerEmail): array
 {
   $payload = json_encode([
-    'amount' => (int) round($amountEur * 100), // minor units
-    'currency' => 'EUR',
+    'amount' => (int) round($amount * 100), // minor units
+    'currency' => $currency,
     'merchant_order_ext_ref' => $orderNumber,
     'email' => $customerEmail,
     'capture_mode' => 'AUTOMATIC',
