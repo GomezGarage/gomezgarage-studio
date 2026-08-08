@@ -139,11 +139,6 @@
               <div id="checkout-order-error" class="checkout-error-banner hidden"></div>
 
               <button type="submit" class="btn btn-primary btn-block" id="checkout-submit-btn" data-en="Continue to Payment" data-ro="Continua spre plata">Continue to Payment</button>
-
-              <div id="revolut-widget-container" class="hidden" style="margin-top:20px;">
-                <p id="revolut-pay-instructions" data-en="Your order has been created. Click below to pay securely via Revolut." data-ro="Comanda ta a fost creata. Apasa mai jos pentru a plati in siguranta prin Revolut.">Your order has been created. Click below to pay securely via Revolut.</p>
-                <button type="button" class="btn btn-primary btn-block" id="revolut-pay-now-btn" data-en="Pay Now" data-ro="Plateste acum">Pay Now</button>
-              </div>
             </div>
           </form>
         </div>
@@ -166,6 +161,12 @@
   </div>
 </footer>
 
+<!-- Preloaded with defer so window.RevolutCheckout is already available by
+     the time the customer clicks submit — minimizes (but does not fully
+     eliminate) the async gap before payWithPopup() that Safari/mobile
+     popup blockers can catch; see checkout.js for the create-order.php
+     round trip that remains in between. -->
+<script src="https://merchant.revolut.com/embed.js" defer></script>
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js"></script>
 <script src="/studio/assets/js/checkout.js"></script>

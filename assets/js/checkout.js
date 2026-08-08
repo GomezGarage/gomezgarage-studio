@@ -2,6 +2,15 @@
    GOMEZ GARAGE STUDIO — checkout.js
    Checkout form -> create-order.php -> Revolut Checkout (payWithPopup)
    or straight to order-success.html for Cash on Delivery.
+
+   Single-click flow: embed.js is preloaded via a <script defer> tag in
+   checkout.html so window.RevolutCheckout is available up front. On submit
+   we validate, create the order, then open payWithPopup() immediately in
+   the same callback — no separate "Pay Now" step. This still opens the
+   popup from inside the create-order.php fetch's .then(), which is a real
+   async network round trip; Safari/mobile can still block it despite the
+   script being preloaded, since the gap that matters is the order-creation
+   request, not the script load.
    ========================================================================== */
 
 (function () {
@@ -17,10 +26,6 @@
   };
 
   const EU_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
-
-  // Order returned by create-order.php for the Online path, held here so the
-  // separate "Pay Now" click handler can read it without re-fetching.
-  let currentOrder = null;
 
   function shippingZoneFor(countryCode) {
     if (countryCode === 'RO') return 'RO';
@@ -49,7 +54,6 @@
     countrySelect.addEventListener('change', () => renderOrderSummary(cart));
 
     initPaymentMethodSelector(form);
-    initPayNowButton();
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -111,11 +115,6 @@
           ? submitBtn.getAttribute('data-ro')
           : submitBtn.getAttribute('data-en');
       }
-
-      // Switching away from Online should hide the Pay Now step from a
-      // previous attempt — it must only ever appear after a fresh
-      // successful order creation on the Online path.
-      if (method !== 'online') hidePayNowStep();
     }
 
     cards.forEach((card) => {
@@ -198,12 +197,11 @@
       : submitBtn.getAttribute('data-en');
   }
 
-  /* ======================= Submit (step 1: create the order) ======================= */
+  /* ======================= Submit ======================= */
 
   function submitOrder(form, cart, method) {
     const submitBtn = document.getElementById('checkout-submit-btn');
     hideCheckoutError();
-    hidePayNowStep();
     submitBtn.disabled = true;
     submitBtn.textContent = document.documentElement.lang === 'ro' ? 'Se proceseaza…' : 'Processing…';
 
@@ -238,20 +236,7 @@
           return;
         }
 
-        // Order created. Keep the original submit button disabled (a second
-        // click would create a duplicate order) and reveal the Pay Now
-        // step instead. Preload the Revolut script now, in the background,
-        // so that by the time the customer actually clicks Pay Now the
-        // RevolutCheckout(...) call resolves near-instantly — Safari and
-        // mobile browsers only allow the payment popup when it opens as a
-        // direct continuation of that click, not from inside this fetch
-        // callback.
-        currentOrder = data;
-        showPayNowStep();
-        loadRevolutScript().catch(() => {
-          // Preload failed silently here; the Pay Now click handler checks
-          // window.RevolutCheckout again and surfaces an error if needed.
-        });
+        openRevolutPopup(data);
       })
       .catch(() => {
         // Order creation failed (network/validation/server error) — this is
@@ -266,84 +251,37 @@
       });
   }
 
-  /* ======================= Pay Now (step 2: open the popup) ======================= */
-
-  function showPayNowStep() {
-    const container = document.getElementById('revolut-widget-container');
-    const payNowBtn = document.getElementById('revolut-pay-now-btn');
-    if (container) container.classList.remove('hidden');
-    if (payNowBtn) payNowBtn.disabled = false;
-  }
-
-  function hidePayNowStep() {
-    const container = document.getElementById('revolut-widget-container');
-    if (container) container.classList.add('hidden');
-    currentOrder = null;
-  }
-
-  let revolutScriptPromise = null;
-
-  /* Loads https://merchant.revolut.com/embed.js once and caches the promise. */
-  function loadRevolutScript() {
-    if (window.RevolutCheckout) return Promise.resolve();
-    if (revolutScriptPromise) return revolutScriptPromise;
-
-    revolutScriptPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://merchant.revolut.com/embed.js';
-      script.onload = () => (window.RevolutCheckout ? resolve() : reject(new Error('RevolutCheckout unavailable')));
-      script.onerror = () => reject(new Error('Failed to load Revolut script'));
-      document.body.appendChild(script);
-    });
-
-    return revolutScriptPromise;
-  }
-
   /*
-   * Wires the "Pay Now" button, shown after a successful order creation on
-   * the Online Payment path. This click is the direct user gesture that
-   * opens the Revolut popup (payWithPopup) — RevolutCheckout(...).then(...)
-   * must be called synchronously from *this* handler, never from inside an
-   * async fetch chain, or Safari/mobile browsers block the popup.
+   * Opens the Revolut payment popup for a just-created order. embed.js is
+   * preloaded (defer) in checkout.html, so window.RevolutCheckout should
+   * already be defined here.
    * Docs: https://developer.revolut.com/docs/merchant/accept-payments
    */
-  function initPayNowButton() {
-    const payNowBtn = document.getElementById('revolut-pay-now-btn');
-    if (!payNowBtn) return;
+  function openRevolutPopup(order) {
+    if (!window.RevolutCheckout) {
+      resetSubmitButton();
+      showCheckoutError(
+        'Unable to reach the payment service. Please refresh and try again.',
+        'Serviciul de plata nu este disponibil. Reincarca pagina si incearca din nou.'
+      );
+      return;
+    }
 
-    payNowBtn.addEventListener('click', () => {
-      if (!currentOrder) return;
-
-      if (!window.RevolutCheckout) {
-        showCheckoutError(
-          'Payment is still loading — please try again in a moment.',
-          'Plata se incarca inca — mai incearca o data in cateva secunde.'
-        );
-        return;
-      }
-
-      hideCheckoutError();
-      payNowBtn.disabled = true;
-
-      const order = currentOrder;
-      window.RevolutCheckout(order.public_id, order.mode || 'prod').then((instance) => {
-        instance.payWithPopup({
-          onSuccess() {
-            window.GGSCart.clearCart();
-            window.location.href = `/studio/order-success.html?order=${order.order_number}`;
-          },
-          onError(message) {
-            console.error('Revolut error:', message);
-            window.location.href = `/studio/order-failed.html?order=${order.order_number}`;
-          },
-          onCancel() {
-            // Customer closed the popup without paying — hide the Pay Now
-            // step and re-enable the original submit button so they can
-            // retry (a fresh order will be created on the next attempt).
-            hidePayNowStep();
-            resetSubmitButton();
-          },
-        });
+    window.RevolutCheckout(order.public_id, order.mode || 'prod').then((instance) => {
+      instance.payWithPopup({
+        onSuccess() {
+          window.GGSCart.clearCart();
+          window.location.href = `/studio/order-success.html?order=${order.order_number}`;
+        },
+        onError(message) {
+          console.error('Revolut error:', message);
+          window.location.href = `/studio/order-failed.html?order=${order.order_number}`;
+        },
+        onCancel() {
+          // Customer closed the popup without paying — re-enable the
+          // submit button so they can retry (a fresh order is created).
+          resetSubmitButton();
+        },
       });
     });
   }
