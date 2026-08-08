@@ -10,7 +10,7 @@ ServerSignature Off
   Require all denied
 </FilesMatch>
 
-# Block direct access to shared PHP includes and the raw SQL schema —
-# these are loaded via require_once from admin/ and api/, never requested directly.
+# Block direct access to shared PHP includes, the raw SQL schema, and
+# one-off CLI admin scripts — none of these are ever requested over HTTP.
 RewriteEngine On
-RewriteRule ^(includes|database)/ - [F,L]
+RewriteRule ^(includes|database|scripts)/ - [F,L]

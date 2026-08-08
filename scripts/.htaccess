@@ -1,0 +1,2 @@
+# One-off CLI admin scripts — never served over HTTP, run via `php scripts/...` only.
+Require all denied
