@@ -40,10 +40,15 @@ curl_setopt_array($ch, [
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlError = curl_error($ch);
-curl_close($ch);
 
-if ($httpCode === 204) {
+// The docs describe a bare 204 No Content on success, but the live API has
+// been observed returning 200 with a small JSON body instead — accept any
+// 2xx rather than trust the exact documented code.
+if ($httpCode >= 200 && $httpCode < 300) {
   echo "Success — {$domain} is registered for Apple Pay.\n";
+  if ($response !== false && $response !== '') {
+    echo "Response: {$response}\n";
+  }
   exit(0);
 }
 

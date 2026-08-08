@@ -209,7 +209,6 @@ function ggs_create_revolut_order(float $amount, string $currency, string $order
   $response = curl_exec($ch);
   $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
   $curlError = curl_error($ch);
-  curl_close($ch);
 
   if ($response === false || $httpCode >= 400) {
     error_log('Revolut create-order failed: ' . ($curlError ?: $response));
