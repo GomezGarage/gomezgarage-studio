@@ -372,6 +372,7 @@ section { padding: 100px 0; }
 }
 .footer-brand { max-width: 320px; }
 .footer-brand .nav-logo { margin-bottom: 14px; }
+.footer-brand .nav-logo img { height: 28px; }
 .footer-brand p { color: var(--text-secondary); font-size: 14px; }
 .footer-cols { display: flex; gap: 64px; flex-wrap: wrap; }
 .footer-col h5 {
