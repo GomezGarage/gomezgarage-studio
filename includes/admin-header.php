@@ -13,7 +13,7 @@ $activeNav = $activeNav ?? '';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle) ?> — Gomez Garage Studio Admin</title>
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" href="/studio/assets/images/logo-Gomez_Garage-back.png">
+<link rel="icon" type="image/png" href="/studio/assets/images/logo-ggs3d.png">
 <link rel="stylesheet" href="/studio/assets/css/main.css">
 <link rel="stylesheet" href="/studio/assets/css/admin.css">
 </head>
@@ -21,7 +21,7 @@ $activeNav = $activeNav ?? '';
 <div class="admin-shell">
   <aside class="admin-sidebar">
     <div class="nav-logo">
-      <img src="/studio/assets/images/logo-Gomez_Garage-back.png" alt="Gomez Garage">
+      <img src="/studio/assets/images/logo-ggs3d.png" alt="Gomez Garage">
     </div>
     <a href="/studio/admin/index.php" class="admin-nav-link <?= $activeNav === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
     <a href="/studio/admin/products.php" class="admin-nav-link <?= $activeNav === 'products' ? 'active' : '' ?>">Products</a>

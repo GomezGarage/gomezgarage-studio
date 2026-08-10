@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Login — Gomez Garage Studio</title>
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" href="/studio/assets/images/logo-Gomez_Garage-back.png">
+<link rel="icon" type="image/png" href="/studio/assets/images/logo-ggs3d.png">
 <link rel="stylesheet" href="/studio/assets/css/main.css">
 <link rel="stylesheet" href="/studio/assets/css/admin.css">
 </head>
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="admin-login-wrap">
     <div class="admin-login-card">
       <div class="nav-logo">
-        <img src="/studio/assets/images/logo-Gomez_Garage-back.png" alt="Gomez Garage">
+        <img src="/studio/assets/images/logo-ggs3d.png" alt="Gomez Garage">
       </div>
       <h1>Studio Admin</h1>
 

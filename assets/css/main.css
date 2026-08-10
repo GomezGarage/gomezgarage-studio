@@ -251,6 +251,11 @@ section { position: relative; }
   margin-bottom: 18px;
   display: block;
 }
+.hero-brand-logo {
+  height: 56px;
+  width: auto;
+  margin-bottom: 20px;
+}
 .hero h1 {
   font-size: clamp(40px, 7vw, 84px);
   margin-bottom: 20px;
@@ -401,6 +406,15 @@ section { padding: 100px 0; }
   font-size: 12px;
   color: var(--text-muted);
 }
+.footer-parent-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+.footer-parent-brand:hover { color: var(--text-secondary); }
+.footer-parent-brand img { height: 24px; width: auto; }
 .social-links { display: flex; gap: 16px; }
 .social-links a { color: var(--text-secondary); }
 .social-links a:hover { color: var(--accent); }
