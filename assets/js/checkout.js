@@ -28,7 +28,7 @@
   'use strict';
 
   const API_BASE = '/studio/api';
-  const REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'street', 'city', 'postal', 'country'];
+  const REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'street', 'city', 'postal', 'country'];
 
   const SHIPPING_RATES = {
     RO: { eur: 5, label: 'Romania' },
@@ -206,6 +206,25 @@
     if (emailInput && emailInput.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim())) {
       showFieldError(emailInput, 'Enter a valid email address.', 'Introdu o adresa de email valida.');
       valid = false;
+    }
+
+    const postalInput = form.querySelector('[name="postal"]');
+    const countryInput = form.querySelector('[name="country"]');
+    if (postalInput && postalInput.value.trim() && countryInput) {
+      const postalValue = postalInput.value.trim();
+      const isRomania = countryInput.value === 'RO';
+      const postalIsValid = isRomania
+        ? /^\d{6}$/.test(postalValue)
+        : /^[a-zA-Z0-9]{3,}$/.test(postalValue);
+
+      if (!postalIsValid) {
+        showFieldError(
+          postalInput,
+          isRomania ? 'Romanian postal code must be exactly 6 digits.' : 'Enter a valid postal code (at least 3 letters/digits).',
+          isRomania ? 'Codul postal trebuie sa aiba exact 6 cifre.' : 'Introdu un cod postal valid (minim 3 litere/cifre).'
+        );
+        valid = false;
+      }
     }
 
     if (!valid) {

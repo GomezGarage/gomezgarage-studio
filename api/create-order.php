@@ -97,6 +97,8 @@ $shippingAddress = [
   'postal' => $body['postal'],
   'country' => $country,
 ];
+$customerName = trim($body['first_name'] . ' ' . $body['last_name']);
+$customerPhone = $body['phone'] ?? '';
 
 $stmt = $db->prepare(
   'INSERT INTO orders
@@ -106,9 +108,9 @@ $stmt = $db->prepare(
 $stmt->execute([
   $orderNumber,
   $paymentMethod,
-  trim($body['first_name'] . ' ' . $body['last_name']),
+  $customerName,
   $body['email'],
-  $body['phone'] ?? '',
+  $customerPhone,
   json_encode($shippingAddress),
   $body['note'] ?? '',
   json_encode($orderItems),
@@ -136,7 +138,7 @@ if ($paymentMethod === 'cod') {
   $orderRow = [
     'id' => $orderId,
     'order_number' => $orderNumber,
-    'customer_name' => trim($body['first_name'] . ' ' . $body['last_name']),
+    'customer_name' => $customerName,
     'customer_email' => $body['email'],
     'shipping_address' => json_encode($shippingAddress),
     'items' => json_encode($orderItems),
@@ -164,7 +166,7 @@ if ($chargeCurrency === 'RON') {
   $chargeAmount = round($totalEur * $rate, 2);
 }
 
-$revolut = ggs_create_revolut_order($chargeAmount, $chargeCurrency, $orderNumber, $body['email']);
+$revolut = ggs_create_revolut_order($chargeAmount, $chargeCurrency, $orderNumber, $body['email'], $shippingAddress, $customerName, $customerPhone);
 
 if (!$revolut['success']) {
   ggs_json_response(['success' => false, 'error' => $revolut['error'], 'order_number' => $orderNumber], 502);
@@ -183,15 +185,35 @@ ggs_json_response([
 /**
  * Creates an order on the Revolut Merchant API.
  * https://developer.revolut.com/docs/merchant/create-order
+ *
+ * @param array{street: string, city: string, postal: string, country: string} $shippingAddress
  */
-function ggs_create_revolut_order(float $amount, string $currency, string $orderNumber, string $customerEmail): array
-{
+function ggs_create_revolut_order(
+  float $amount,
+  string $currency,
+  string $orderNumber,
+  string $customerEmail,
+  array $shippingAddress,
+  string $customerName,
+  string $customerPhone
+): array {
   $payload = json_encode([
     'amount' => (int) round($amount * 100), // minor units
     'currency' => $currency,
     'merchant_order_ext_ref' => $orderNumber,
     'email' => $customerEmail,
     'capture_mode' => 'AUTOMATIC',
+    'shipping_address' => [
+      'street_line_1' => $shippingAddress['street'],
+      'city' => $shippingAddress['city'],
+      'postcode' => $shippingAddress['postal'],
+      'country_code' => $shippingAddress['country'],
+    ],
+    'customer' => [
+      'name' => $customerName,
+      'email' => $customerEmail,
+      'phone' => $customerPhone,
+    ],
   ]);
 
   $ch = curl_init(REVOLUT_API_BASE . '/orders');
