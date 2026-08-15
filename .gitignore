@@ -15,3 +15,7 @@ config.php
 # Upload-uri produse (prea mari pentru git) - dar pastram placeholder-urile SVG
 assets/images/products/*
 !assets/images/products/*.svg
+
+# Facturi PDF generate - contin date personale ale clientilor, niciodata pe git
+invoices/*
+!invoices/.htaccess

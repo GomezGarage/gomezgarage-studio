@@ -10,7 +10,9 @@ ServerSignature Off
   Require all denied
 </FilesMatch>
 
-# Block direct access to shared PHP includes, the raw SQL schema, and
-# one-off CLI admin scripts — none of these are ever requested over HTTP.
+# Block direct access to shared PHP includes, the raw SQL schema,
+# one-off CLI admin scripts, and generated PDF invoices — none of these
+# are ever requested over HTTP directly (invoices are streamed through
+# api/download-invoice.php instead).
 RewriteEngine On
-RewriteRule ^(includes|database|scripts)/ - [F,L]
+RewriteRule ^(includes|database|scripts|invoices)/ - [F,L]

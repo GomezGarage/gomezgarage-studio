@@ -6,6 +6,15 @@
 -- retroactively add new columns to an existing `orders` table. If you ran
 -- this file before the payment_method column was added, run once:
 --   ALTER TABLE orders ADD COLUMN payment_method VARCHAR(20) DEFAULT 'card' AFTER status;
+--
+-- If you ran this file before the invoicing columns were added, run once
+-- (also in README.md / handed to the user directly for phpMyAdmin):
+--   ALTER TABLE orders ADD COLUMN invoice_number VARCHAR(20) NULL AFTER order_number;
+--   ALTER TABLE orders ADD COLUMN customer_type ENUM('pf','pj') DEFAULT 'pf' AFTER invoice_number;
+--   ALTER TABLE orders ADD COLUMN company_name VARCHAR(200) NULL AFTER customer_type;
+--   ALTER TABLE orders ADD COLUMN company_cui VARCHAR(20) NULL AFTER company_name;
+--   ALTER TABLE orders ADD COLUMN company_reg VARCHAR(50) NULL AFTER company_cui;
+--   ALTER TABLE orders ADD COLUMN company_address TEXT NULL AFTER company_reg;
 -- ==========================================================================
 
 SET NAMES utf8mb4;
@@ -44,6 +53,12 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_number VARCHAR(20) UNIQUE,  -- GGS-2026-0001
+  invoice_number VARCHAR(20) NULL,  -- GGS3D-1524, set once the order is paid
+  customer_type ENUM('pf','pj') DEFAULT 'pf',
+  company_name VARCHAR(200) NULL,   -- PJ invoices only
+  company_cui VARCHAR(20) NULL,
+  company_reg VARCHAR(50) NULL,
+  company_address TEXT NULL,
   revolut_order_id VARCHAR(100),
   status ENUM('pending','paid','processing','shipped','delivered','cancelled') DEFAULT 'pending',
   payment_method VARCHAR(20) DEFAULT 'card', -- 'card' (Revolut online) | 'cod' (cash on delivery)

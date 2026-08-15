@@ -1,0 +1,5 @@
+# Generated PDF invoices — contain customer PII, never served directly.
+# All access must go through api/download-invoice.php, which reads the
+# file server-side via PHP (unaffected by this rule) and validates the
+# order number before streaming it back.
+Require all denied

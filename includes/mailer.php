@@ -29,7 +29,7 @@ function ggs_mailer(): PHPMailer
   return $mail;
 }
 
-function ggs_send_mail(string $to, string $subject, string $htmlBody): bool
+function ggs_send_mail(string $to, string $subject, string $htmlBody, ?string $attachmentPath = null): bool
 {
   try {
     $mail = ggs_mailer();
@@ -37,6 +37,9 @@ function ggs_send_mail(string $to, string $subject, string $htmlBody): bool
     $mail->Subject = $subject;
     $mail->Body = $htmlBody;
     $mail->AltBody = strip_tags($htmlBody);
+    if ($attachmentPath !== null && is_file($attachmentPath)) {
+      $mail->addAttachment($attachmentPath);
+    }
     return $mail->send();
   } catch (PHPMailerException $e) {
     error_log('GGS mailer error: ' . $e->getMessage());
@@ -69,8 +72,8 @@ function ggs_notify_new_order(array $order): bool
   return ggs_send_mail($to, $subject, $body);
 }
 
-/** Trigger 2 — order confirmation, sent to the customer. */
-function ggs_send_order_confirmation(array $order): bool
+/** Trigger 2 — order confirmation, sent to the customer. $invoicePath attaches the PDF invoice, if generated. */
+function ggs_send_order_confirmation(array $order, ?string $invoicePath = null): bool
 {
   $subject = sprintf('Your Gomez Garage Studio order #%s', $order['order_number']);
   $address = json_decode($order['shipping_address'], true);
@@ -80,17 +83,20 @@ function ggs_send_order_confirmation(array $order): bool
     $itemsHtml .= sprintf('<li>%s × %d — %.2f EUR</li>', htmlspecialchars($item['name']), $item['qty'], $item['price_eur']);
   }
 
+  $invoiceLine = $invoicePath ? '<p>Your invoice is attached to this email.</p>' : '';
+
   $body = "
     <h2>Thank you for your order, {$order['customer_name']}!</h2>
     <p>Your order <strong>#{$order['order_number']}</strong> is confirmed.</p>
     <ul>{$itemsHtml}</ul>
     <p><strong>Total:</strong> {$order['total_eur']} EUR</p>
     <p><strong>Shipping to:</strong> {$address['street']}, {$address['city']}, {$address['postal']}, {$address['country']}</p>
+    {$invoiceLine}
     <p>Custom and made-to-order items typically ship in 7-14 days. We'll email you again once your order ships.</p>
     <p>— Gomez Garage Studio</p>
   ";
 
-  return ggs_send_mail($order['customer_email'], $subject, $body);
+  return ggs_send_mail($order['customer_email'], $subject, $body, $invoicePath);
 }
 
 /** Trigger 3 — low stock alert, sent to the shop owner. */

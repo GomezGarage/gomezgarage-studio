@@ -41,6 +41,16 @@ function ggs_generate_order_number(): string
   return sprintf('GGS-%s-%04d', $year, $next);
 }
 
+/** Generates the next sequential fiscal invoice number, e.g. "GGS3D-1524". */
+function ggs_generate_invoice_number(PDO $db): string
+{
+  $stmt = $db->query("SELECT MAX(CAST(SUBSTRING_INDEX(invoice_number, '-', -1) AS UNSIGNED)) as max_num FROM orders WHERE invoice_number IS NOT NULL");
+  $row = $stmt->fetch();
+  $next = max(INVOICE_START, ($row['max_num'] ?? INVOICE_START - 1) + 1);
+  if ($next > INVOICE_MAX) throw new RuntimeException('Invoice number range exhausted');
+  return INVOICE_SERIES . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+}
+
 function ggs_json_response(array $data, int $status = 200): void
 {
   http_response_code($status);

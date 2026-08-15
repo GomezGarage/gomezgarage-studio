@@ -47,3 +47,18 @@ define('SMTP_FROM_NAME', 'Gomez Garage Studio');
 // CORS — restrict API responses to the site's own domain only
 // ---------------------------------------------------------------------
 define('ALLOWED_ORIGIN', 'https://gomezgarage.eu');
+
+// ---------------------------------------------------------------------
+// Company details (fiscal invoices, includes/invoice.php)
+// ---------------------------------------------------------------------
+define('COMPANY_NAME', 'LANCER LAND SRL');
+define('COMPANY_CUI', '24884753');
+define('COMPANY_EUID', 'ROONRC.J2008021110403');
+define('COMPANY_REG_COM', 'J2008021110403');
+define('COMPANY_BANK', 'Revolut UAB Vilnius Sucursala Bucuresti');
+define('COMPANY_IBAN', 'RO42REVO0000364714559043');
+define('COMPANY_ADDRESS', 'Str. Reconstructiei nr. 1, Sector 3, Bucuresti, Romania');
+define('INVOICE_SERIES', 'GGS3D');
+define('INVOICE_START', 1524);
+define('INVOICE_MAX', 9999);
+define('VAT_REGISTERED', false);

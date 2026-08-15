@@ -17,6 +17,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/invoice.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
   ggs_json_response(['success' => false, 'error' => 'Method not allowed'], 405);
@@ -53,8 +54,11 @@ if ($order['status'] !== 'pending') {
 }
 
 if (in_array($event['event'], $paidEvents, true)) {
-  $db->prepare('UPDATE orders SET status = "paid" WHERE id = ?')->execute([$order['id']]);
+  $invoiceNumber = ggs_generate_invoice_number($db);
+  $db->prepare('UPDATE orders SET invoice_number = ?, status = "paid" WHERE revolut_order_id = ?')
+    ->execute([$invoiceNumber, $event['order_id']]);
   $order['status'] = 'paid';
+  $order['invoice_number'] = $invoiceNumber;
 
   foreach (json_decode($order['items'], true) as $item) {
     $db->prepare('UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id = ?')
@@ -69,8 +73,17 @@ if (in_array($event['event'], $paidEvents, true)) {
     }
   }
 
+  // Invoicing is best-effort: a PDF hiccup shouldn't stop the payment from
+  // being acknowledged or the confirmation email from going out.
+  $invoicePath = null;
+  try {
+    $invoicePath = ggs_generate_invoice_pdf($order);
+  } catch (Throwable $e) {
+    error_log('GGS invoice generation failed for ' . $order['order_number'] . ': ' . $e->getMessage());
+  }
+
   ggs_notify_new_order($order);
-  ggs_send_order_confirmation($order);
+  ggs_send_order_confirmation($order, $invoicePath);
 } elseif (in_array($event['event'], $failedEvents, true)) {
   $db->prepare('UPDATE orders SET status = "cancelled" WHERE id = ?')->execute([$order['id']]);
 }
