@@ -414,7 +414,7 @@ section { padding: 100px 0; }
   transition: color var(--transition);
 }
 .footer-parent-brand:hover { color: var(--text-secondary); }
-.footer-parent-brand img { height: 24px; width: auto; }
+.footer-parent-brand img { height: 22px; width: auto; }
 .social-links { display: flex; gap: 16px; }
 .social-links a { color: var(--text-secondary); }
 .social-links a:hover { color: var(--accent); }
