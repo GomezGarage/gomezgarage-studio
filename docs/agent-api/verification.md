@@ -1,0 +1,42 @@
+# Verificare locală — 21 octombrie 2026
+
+API pregătit pentru review, dezactivat implicit. Aceste probe nu confirmă un deploy.
+
+| Verificare | Rezultat |
+|---|---|
+| PHP 8.1.34 lint | PASS, 10 fișiere PHP |
+| `tests/agent/run.php` | PASS, 88 verificări SQLite sintetice |
+| HTTP entry points PHP | PASS, auth, scopes, revocare, throttle și audit |
+| OpenAPI 3.1 / JSON Schema 2020-12 | PASS, 58 răspunsuri SQLite, 8 MariaDB, 4 exemple |
+| PHP 8.1.34 + MariaDB 10.6.28 | PASS, 35 verificări într-o instanță fără TCP |
+| PHP 8.5.9 + MySQL 8.4.13 | PASS, 35 verificări într-o instanță fără TCP |
+| Apache 2.4.69 + mod_php 8.1.34 HTTPS | PASS, loopback cu certificat temporar verificat |
+
+Detalii și reproducere: [MariaDB/PHP/Apache](hosting-verification.md),
+[MySQL](mysql-verification.md), [configurare și rollback](operations.md).
+
+Probele acoperă credentiale absente/invalide/expirate/revocate, scopes inclusiv drafturi,
+lipsa fallbackului admin, GET-only, validarea filtrelor, cursor semnat și expirare,
+egalități de timestamp, UTC, bani decimal/EUR, proiecție fără date personale și erori
+redactate. Testul permisiunilor a detectat cache stat pe PHP 8.1; loaderul îl golește
+explicit înaintea revalidării. Citirile păstrează snapshotul datelor comerciale identic.
+
+Testele nu încarcă config.php/vendor/mailer/invoice și nu trimit mesaje sau plăți.
+Instanțele DB sunt temporare, cu bootstrap de fixture separat de userul SELECT-only
+al API-ului. Codul de producție este probat prin PDO și granturi efective, inclusiv
+interzicerea scrierilor, a coloanelor nepermise și întreruperea unui SELECT la timeout.
+
+Limitele rămase sunt explicite:
+
+- Configurația live, schema, timezone-ul istoric, granturile, TLS/FastCGI/WAF și
+  protecția fișierelor trebuie verificate în mediul de deploy.
+- EXPLAIN pe schema locală arată scanare fără index adecvat; performanța la volum
+  nu este validată. Nu s-a efectuat nicio migrare.
+- Paginarea nu este snapshot tranzacțional și nu oferă tombstones sau toate
+  tranzițiile intermediare. Consumatorul trebuie să folosească overlap și reconciliere.
+- Limitarea este locală per host; traficul neautentificat necesită limitare la hosting.
+- Statusul comenzii nu dovedește încasarea; payment_state rămâne unknown.
+- Runtime-ul și transportul consumatorului sunt în afara acestei extensii de website.
+
+Checkoutul comercial, facturarea, stocul și configurația reală nu sunt modificate.
+Modificările preexistente au fost păstrate; composer.lock nu este inclus în acest patch.

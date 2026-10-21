@@ -1,0 +1,26 @@
+{
+  "cursor_key_hex": "REPLACE_WITH_INDEPENDENT_RANDOM_32_BYTES_HEX",
+  "rate_limit_dir": "/absolute/private/studio-agent/rate",
+  "timestamp_storage_verified": false,
+  "database": {
+    "engine": "mariadb",
+    "host": "localhost",
+    "name": "REPLACE_WITH_VERIFIED_DATABASE_NAME",
+    "user": "REPLACE_WITH_SELECT_ONLY_SERVICE_USER",
+    "password": "REPLACE_PRIVATELY"
+  },
+  "credentials": [
+    {
+      "id": "service-pilot-01",
+      "token_sha256": "REPLACE_WITH_SHA256_OF_RANDOM_SERVICE_TOKEN",
+      "active": false,
+      "expires_at": "2026-11-21T00:00:00Z",
+      "scopes": [
+        "agent.health.read",
+        "products.read",
+        "products.drafts.read",
+        "orders.read"
+      ]
+    }
+  ]
+}

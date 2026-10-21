@@ -19,3 +19,10 @@ assets/images/products/*
 # Facturi PDF generate - contin date personale ale clientilor, niciodata pe git
 invoices/*
 !invoices/.htaccess
+
+# Local test tooling and private environment files
+__pycache__/
+*.py[cod]
+.venv/
+.env.*
+!.env.example

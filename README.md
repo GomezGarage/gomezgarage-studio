@@ -52,3 +52,10 @@ full design decisions, page structure, schema and payment flow.
   `assets/images/products/` — replace via the admin product editor.
 - `sitemap.xml` lists product URLs by id manually; update it when products
   are added/removed (see ARCHITECTURE.md section 8).
+
+## Service read-only API
+
+The separate, disabled-by-default service API is documented in
+[docs/agent-api/README.md](docs/agent-api/README.md), including its OpenAPI 3.1
+contract, synthetic tests, synchronization limits, configuration and deployment/
+rollback gates. It does not load the shop credentials or change checkout behavior.
