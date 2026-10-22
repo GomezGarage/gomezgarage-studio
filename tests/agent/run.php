@@ -184,7 +184,10 @@ try {
     file_put_contents($path, json_encode($config));
     chmod($path, 0600);
     check(Config::load($path, dirname(__DIR__, 2))['credentials'][0]['id'] === 'synthetic-service', 'private config loads');
-    check(!str_starts_with(Config::defaultPath(), dirname(__DIR__, 2) . '/'), 'cPanel default config is outside repository/document root');
+    $webRoot = $dir . '/public_html';
+    mkdir($webRoot, 0700);
+    check(Config::defaultPath($webRoot) === dirname(realpath($webRoot)) . '/private/studio-agent/config.json', 'cPanel config is outside active document root');
+    rmdir($webRoot);
     raises(static fn() => Config::load($path, $dir), 'config in web root rejected');
     chmod($path, 0644);
     raises(static fn() => Config::load($path, dirname(__DIR__, 2)), 'world readable config rejected');

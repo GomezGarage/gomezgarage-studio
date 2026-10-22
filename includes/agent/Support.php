@@ -37,10 +37,14 @@ final class Config
 {
     public const SCOPES = ['agent.health.read', 'products.read', 'products.drafts.read', 'orders.read'];
 
-    /** Default shared-hosting location, next to (never inside) public_html. */
-    public static function defaultPath(): string
+    /** Default shared-hosting location, next to (never inside) the active web root. */
+    public static function defaultPath(string $documentRoot): string
     {
-        return dirname(__DIR__, 3) . '/private/studio-agent/config.json';
+        $root = realpath($documentRoot);
+        if (!$root || !is_dir($root)) {
+            throw new RuntimeException('Invalid document root.');
+        }
+        return dirname($root) . '/private/studio-agent/config.json';
     }
 
     public static function load(string $path, string $documentRoot): array

@@ -10,9 +10,10 @@ review; aprobarea și provisioningul efectiv preced activarea.
    repository-ului**, pornind din [config.example.json](config.example.json). Exemplul
    are placeholders deliberat invalide, `enabled: false` și credential inactiv. Pe cPanel,
    când proiectul este direct în `public_html`, calea implicită este
-   `/home/<cpanel-user>/private/studio-agent/config.json`; se poate crea din File Manager
-   în afara `public_html`. Dacă proiectul nu este chiar în rădăcina documentului, verifică
-   `Config::defaultPath()` și document root înainte de folosire. Directorul contorului
+   directorul părinte al document root-ului activ, de regulă
+   `/home/<cpanel-user>/private/studio-agent/config.json` când document root-ul este
+   `/home/<cpanel-user>/public_html`; se poate crea din File Manager în afara web root.
+   Verifică document root-ul domeniului în cPanel înainte de folosire. Directorul contorului
    trebuie să existe, să fie privat (0700), local, accesibil numai utilizatorului PHP.
    Fișierul config: 0600, sau 0640 cu grup dedicat minim; accesul pentru others este
    respins. Nu îl include în arhive de deploy sau backup necriptat.
