@@ -42,7 +42,7 @@ def main():
         rate = private / 'rate'
         rate.mkdir(mode=0o700)
         token = secrets.token_urlsafe(32)
-        config = {'cursor_key_hex': secrets.token_hex(32), 'rate_limit_dir': str(rate),
+        config = {'enabled': True, 'cursor_key_hex': secrets.token_hex(32), 'rate_limit_dir': str(rate),
                   'credentials': [{'id': 'apache-synthetic', 'token_sha256': hashlib.sha256(token.encode()).hexdigest(),
                   'active': True, 'expires_at': '2099-01-01T00:00:00Z', 'scopes': ['agent.health.read', 'products.read']}]}
         credential_file = private / 'agent.json'

@@ -22,9 +22,14 @@ Numai `GET`; inclusiv `HEAD` și `OPTIONS` primesc 405 cu `Allow: GET`.
 HTTPS obligatoriu; `Authorization: Bearer …` cu credential aleator dedicat. Fără
 sesiune admin, CORS browser, SQL primit de la client sau fallback la feedul public.
 API-ul nu include `config.php`, helpers, mailer, facturi, vendor sau plăți.
-`GGS_AGENT_ENABLED=1` și un fișier privat valid sunt necesare pentru activare.
-Un credential lipsă/invalid sintactic primește 401 inclusiv când API-ul este dezactivat;
-un Bearer valid sintactic primește 503 când configurația este indisponibilă/dezactivată.
+Un fișier privat valid cu `enabled: true` este necesar pentru activare. Pe cPanel,
+configurația implicită este `../private/studio-agent/config.json` față de rădăcina
+proiectului (pentru domeniul principal servit direct din `public_html`, în directorul
+home al contului). Hostingurile care permit variabile per domeniu pot folosi
+`GGS_AGENT_CONFIG_FILE`; `GGS_AGENT_ENABLED=0` dezactivează API-ul ca kill switch
+opțional. Un credential lipsă/invalid sintactic primește 401 inclusiv când API-ul este
+dezactivat; un Bearer valid sintactic primește 503 când configurația e indisponibilă sau
+dezactivată.
 
 DTO-urile sunt proiecții validate server-side. Fiecare răspuns are
 `schema_version`, `request_id` generat de server și `generated_at`. Succesul are

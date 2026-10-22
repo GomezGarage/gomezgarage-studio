@@ -59,7 +59,7 @@ $db->exec('PRAGMA query_only = ON');
 $baseline = serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll()]);
 $repository = new Repository($db);
 $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-$config = ['cursor_key_hex' => bin2hex(random_bytes(32)), 'credentials' => [
+$config = ['enabled' => true, 'cursor_key_hex' => bin2hex(random_bytes(32)), 'credentials' => [
     ['id' => 'synthetic-service', 'token_sha256' => hash('sha256', $token), 'active' => true,
         'expires_at' => '2026-10-22T00:00:00Z', 'scopes' => Config::SCOPES]
 ]];
@@ -184,6 +184,7 @@ try {
     file_put_contents($path, json_encode($config));
     chmod($path, 0600);
     check(Config::load($path, dirname(__DIR__, 2))['credentials'][0]['id'] === 'synthetic-service', 'private config loads');
+    check(!str_starts_with(Config::defaultPath(), dirname(__DIR__, 2) . '/'), 'cPanel default config is outside repository/document root');
     raises(static fn() => Config::load($path, $dir), 'config in web root rejected');
     chmod($path, 0644);
     raises(static fn() => Config::load($path, dirname(__DIR__, 2)), 'world readable config rejected');

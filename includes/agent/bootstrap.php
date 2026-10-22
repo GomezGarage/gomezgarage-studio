@@ -17,10 +17,18 @@ function serve(string $route): void
     });
     $api = new Api(
         static function (): array {
-            if (getenv('GGS_AGENT_ENABLED') !== '1') {
+            // cPanel shared hosting may not expose PHP-FPM pool environment settings.
+            // A private config file is the activation switch there; an optional env
+            // value remains an emergency off switch on hosts that support it.
+            if (getenv('GGS_AGENT_ENABLED') === '0') {
                 throw new \RuntimeException('Agent API disabled.');
             }
-            return Config::load(getenv('GGS_AGENT_CONFIG_FILE') ?: '', $_SERVER['DOCUMENT_ROOT'] ?? '');
+            $path = getenv('GGS_AGENT_CONFIG_FILE') ?: Config::defaultPath();
+            $config = Config::load($path, $_SERVER['DOCUMENT_ROOT'] ?? '');
+            if ($config['enabled'] !== true) {
+                throw new \RuntimeException('Agent API disabled.');
+            }
+            return $config;
         },
         [Repository::class, 'connect'],
         static function (array $config, string $identity, int $now): void {
