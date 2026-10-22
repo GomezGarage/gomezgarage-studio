@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
     rate = private / 'rate'
     rate.mkdir(mode=0o700)
     token = secrets.token_urlsafe(32)
-    config = {'cursor_key_hex':secrets.token_hex(32), 'rate_limit_dir':str(rate),
+    config = {'enabled':True, 'cursor_key_hex':secrets.token_hex(32), 'rate_limit_dir':str(rate),
               'credentials':[{'id':'http-fixture','token_sha256':hashlib.sha256(token.encode()).hexdigest(),
                               'active':True,'expires_at':'2099-01-01T00:00:00Z',
                               'scopes':['agent.health.read','products.read','orders.read']}]}
@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
         f"require '{php_root}/api/agent/v1/' . $parts[2] . '.php';\n")
     with socket.socket() as probe:
         probe.bind(('127.0.0.1', 0)); port = probe.getsockname()[1]
-    env = dict(os.environ, GGS_AGENT_ENABLED='1', GGS_AGENT_CONFIG_FILE=str(config_file))
+    env = dict(os.environ, GGS_AGENT_CONFIG_FILE=str(config_file))
     if args.library_path:
         env['DYLD_LIBRARY_PATH'] = args.library_path
     log_file = temp / 'server.log'
@@ -69,6 +69,11 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
                 connection.close()
                 assert token.encode() not in body, 'Credential leak in HTTP response'
                 return status, json.loads(body), response_headers
+            config['enabled']=False
+            config_file.write_text(json.dumps(config))
+            assert request()[0]==503, 'Private config keeps API disabled by default'
+            config['enabled']=True
+            config_file.write_text(json.dumps(config))
             status, body, headers = request()
             assert status == 200 and body['data']['check']=='liveness', 'Health routing'
             assert headers['Cache-Control']=='no-store' and headers['X-Request-ID']==body['request_id'], 'HTTP headers'

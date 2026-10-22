@@ -37,6 +37,12 @@ final class Config
 {
     public const SCOPES = ['agent.health.read', 'products.read', 'products.drafts.read', 'orders.read'];
 
+    /** Default shared-hosting location, next to (never inside) public_html. */
+    public static function defaultPath(): string
+    {
+        return dirname(__DIR__, 3) . '/private/studio-agent/config.json';
+    }
+
     public static function load(string $path, string $documentRoot): array
     {
         // Recheck permissions and symlink targets on every credential load, including
@@ -53,7 +59,8 @@ final class Config
             }
         }
         $config = json_decode(file_get_contents($real), true, 32, JSON_THROW_ON_ERROR);
-        if (!is_array($config) || !preg_match('/^[a-f0-9]{64}$/D', $config['cursor_key_hex'] ?? '')
+        if (!is_array($config) || !is_bool($config['enabled'] ?? null)
+            || !preg_match('/^[a-f0-9]{64}$/D', $config['cursor_key_hex'] ?? '')
             || !is_array($config['credentials'] ?? null) || !$config['credentials']) {
             throw new RuntimeException('Invalid configuration.');
         }

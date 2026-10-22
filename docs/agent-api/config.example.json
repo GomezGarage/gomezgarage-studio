@@ -1,4 +1,5 @@
 {
+  "enabled": false,
   "cursor_key_hex": "REPLACE_WITH_INDEPENDENT_RANDOM_32_BYTES_HEX",
   "rate_limit_dir": "/absolute/private/studio-agent/rate",
   "timestamp_storage_verified": false,

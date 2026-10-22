@@ -8,7 +8,11 @@ review; aprobarea și provisioningul efectiv preced activarea.
 
 1. Pe hostingul site-ului, pregătește un fișier JSON **în afara document root și a
    repository-ului**, pornind din [config.example.json](config.example.json). Exemplul
-   are placeholders deliberat invalide și credential inactiv. Directorul contorului
+   are placeholders deliberat invalide, `enabled: false` și credential inactiv. Pe cPanel,
+   când proiectul este direct în `public_html`, calea implicită este
+   `/home/<cpanel-user>/private/studio-agent/config.json`; se poate crea din File Manager
+   în afara `public_html`. Dacă proiectul nu este chiar în rădăcina documentului, verifică
+   `Config::defaultPath()` și document root înainte de folosire. Directorul contorului
    trebuie să existe, să fie privat (0700), local, accesibil numai utilizatorului PHP.
    Fișierul config: 0600, sau 0640 cu grup dedicat minim; accesul pentru others este
    respins. Nu îl include în arhive de deploy sau backup necriptat.
@@ -26,9 +30,10 @@ review; aprobarea și provisioningul efectiv preced activarea.
    oprire urgentă blochează prefixul la web server. Rotația cheii cursor invalidează
    toate cursoarele; clientul reia sincronizarea. Expirarea se reevaluează la fiecare
    pagină. Propunere pilot: rotație cel târziu la 30 zile și imediat la incident.
-4. Configurează în mediul PHP/FPM `GGS_AGENT_CONFIG_FILE` cu acea cale absolută și
-   `GGS_AGENT_ENABLED=1` numai după gate-urile de mai jos. Nu configura valori prin
-   HTTP. `HTTPS=on` trebuie stabilit de web server/TLS termination de încredere;
+4. Pe cPanel, configurația privată implicită activează API-ul numai când conține
+   `enabled: true`; nu sunt necesare variabile PHP de mediu. Pe alte hostinguri se poate
+   furniza `GGS_AGENT_CONFIG_FILE`, iar `GGS_AGENT_ENABLED=0` este kill switch opțional.
+   Nu configura valori prin HTTP. `HTTPS=on` trebuie stabilit de web server/TLS termination de încredere;
    `X-Forwarded-Proto` de la client este ignorat. Nu există bypass HTTP de dezvoltare
    în codul de producție. Fișierul Apache `api/agent/.htaccess` folosește CGIPassAuth;
    verifică suportul/AllowOverride înainte de publicare. Pe Nginx/FastCGI configurează
@@ -114,9 +119,9 @@ a ascunde lipsa unui index. Nu se schimbă modelul de stoc/plată/limbă în ace
 
 ## Rollback și incidente
 
-Blochează întâi prefixul `/studio/api/agent/` la hosting sau setează
-`GGS_AGENT_ENABLED=0` în mediul PHP (reîncărcarea workerilor poate fi necesară pentru
-modificări de env). Dezactivează credentialele în fișierul privat, revocă userul DB de
+Blochează întâi prefixul `/studio/api/agent/` la hosting sau setează `enabled: false`
+în fișierul privat (ori `GGS_AGENT_ENABLED=0` dacă variabilele de mediu sunt disponibile).
+Dezactivează credentialele în fișierul privat, revocă userul DB de
 serviciu dacă este compromis. Înlocuiește/elimină numai fișierele noi ale API-ului și
 configurația lui de hosting, păstrând fișierele anterioare ale magazinului. Nu restaura
 DB peste comenzi noi: nu a existat migrare sau scriere comercială de revenit.
