@@ -1,0 +1,2 @@
+# Development-only OpenAPI 3.1 / JSON Schema validation; use an isolated venv.
+openapi-spec-validator==0.7.2

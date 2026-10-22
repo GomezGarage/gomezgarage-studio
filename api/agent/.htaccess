@@ -1,0 +1,3 @@
+Options -Indexes
+# Forward Authorization to PHP/FastCGI. Never put service credentials in URLs.
+CGIPassAuth On
