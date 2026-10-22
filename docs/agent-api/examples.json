@@ -1,18 +1,18 @@
 {
   "health": {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "data": {
       "status": "ok",
-      "contract_version": "1.0.0",
+      "contract_version": "1.1.0",
       "server_time": "2026-10-21T12:00:00Z",
       "check": "liveness"
     },
     "next_cursor": null
   },
   "unauthorized": {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "error": {
@@ -21,7 +21,7 @@
     }
   },
   "products": {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "data": [
@@ -200,7 +200,7 @@
     "sync_before": "2026-10-21T11:59:55Z"
   },
   "orders": {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "data": [
@@ -228,7 +228,8 @@
             "qty": 2,
             "price": "12.30"
           }
-        ]
+        ],
+        "customer_ref": "studio_ca6100ddcaede2d13dd372f2d8234c3fb67084ee608d3296379743bed4318061"
       },
       {
         "source": "studio",
@@ -254,7 +255,8 @@
             "qty": 2,
             "price": "12.30"
           }
-        ]
+        ],
+        "customer_ref": "studio_5bb74c7be18a50bcd699e67dc237c7399ab01ff5c913a4df7543dc0bb0b8b222"
       },
       {
         "source": "studio",
@@ -280,7 +282,8 @@
             "qty": 2,
             "price": "12.30"
           }
-        ]
+        ],
+        "customer_ref": "studio_b25d1f50170e66488e2a3d223b80076c8d7c217cf425e09aec3b6bb1f611f27e"
       }
     ],
     "next_cursor": null,

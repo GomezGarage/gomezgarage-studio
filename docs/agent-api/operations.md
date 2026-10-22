@@ -48,7 +48,9 @@ Coloane products: id, slug, status, name_ro/en, desc_short_ro/en, desc_long_ro/e
 how_made_ro/en, material, category, price_eur, images, specs, stock, updated_at,
 created_at. Coloane orders: id, order_number, status, payment_method, created_at,
 updated_at, subtotal_eur, shipping_eur, total_eur, items, shipping_address,
-tracking_number. Metadata information_schema.COLUMNS trebuie să fie vizibilă pentru
+tracking_number și customer_email. customer_email este citit intern numai pentru
+generarea HMAC a lui customer_ref; coloanele customer_name/customer_phone/customer_note
+rămân fără grant. Metadata information_schema.COLUMNS trebuie să fie vizibilă pentru
 cele patru coloane de timp. Accesul la shipping_address permite proiecția țării în
 SQL; API-ul nu exportă restul adresei. Pentru izolare și mai strictă poate fi evaluat
 ulterior un view, separat de primul patch.

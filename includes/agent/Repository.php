@@ -77,7 +77,8 @@ final class Repository implements ReadRepository
             : "id, order_number, status, payment_method, created_at, updated_at,
                CAST(subtotal_eur AS CHAR) AS subtotal_eur, CAST(shipping_eur AS CHAR) AS shipping_eur,
                CAST(total_eur AS CHAR) AS total_eur, items,
-               NULLIF(JSON_UNQUOTE(JSON_EXTRACT(shipping_address, '$.country')), 'null') AS country, tracking_number";
+               NULLIF(JSON_UNQUOTE(JSON_EXTRACT(shipping_address, '$.country')), 'null') AS country, tracking_number,
+               customer_email";
         $where = ['updated_at < ?'];
         $params = [gmdate('Y-m-d H:i:s', $before)];
         foreach (['updated_from' => 'updated_at >= ?', 'created_from' => 'created_at >= ?', 'created_before' => 'created_at < ?'] as $key => $clause) {

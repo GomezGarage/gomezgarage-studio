@@ -50,10 +50,13 @@ for ($id = 1; $id <= 6; $id++) {
 }
 foreach (['pending', 'paid', 'shipped'] as $index => $status) {
     $stmt = $db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $email = $index === 0 ? 'repeat@example.invalid'
+        : ($index === 1 ? ' Repeat@Example.invalid ' : 'single@example.invalid');
     $stmt->execute([$index + 1, 'SYNTHETIC-' . ($index + 1), $status, $index === 0 ? 'cod' : 'card',
         '2026-10-20 08:00:00', '2026-10-21 10:00:00', '24.60', '5.00', '29.60',
         '[{"product_id":1,"name":"Synthetic product","qty":2,"price_eur":12.3,"private":"discard"}]',
-        '{"street":"PRIVATE-STREET","country":"RO"}', null, 'private@example.invalid', 'PRIVATE-NAME', 'PRIVATE-PHONE', 'PRIVATE-NOTE']);
+        '{"street":"PRIVATE-STREET","country":"RO"}', null,
+        $email, 'PRIVATE-NAME', 'PRIVATE-PHONE', 'PRIVATE-NOTE']);
 }
 $db->exec('PRAGMA query_only = ON');
 $baseline = serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll()]);
@@ -139,6 +142,9 @@ check($orderResponse['body']['data'][1]['payment_state'] === 'unknown', 'manual 
 check($order['customer_language'] === null && $order['country'] === 'RO', 'language not inferred');
 check($order['currency'] === 'EUR' && $order['total'] === '29.60' && $order['items'][0]['price'] === '12.30', 'decimal amounts and currency');
 check($order['created_at'] === '2026-10-20T08:00:00Z', 'UTC timestamp');
+check(is_string($order['customer_ref']) && preg_match('/^studio_[a-f0-9]{64}$/D', $order['customer_ref']) === 1, 'stable pseudonymous customer reference');
+check($order['customer_ref'] === $orderResponse['body']['data'][1]['customer_ref'], 'normalized email identifies repeat customer');
+check($order['customer_ref'] !== $orderResponse['body']['data'][2]['customer_ref'], 'distinct customer reference');
 check(!str_contains(json_encode($orderResponse), 'PRIVATE-') && !str_contains(json_encode($orderResponse), 'private@'), 'PII excluded');
 check(!str_contains(json_encode($orderResponse), 'discard'), 'nested DTO projection');
 check(serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll()]) === $baseline, 'reads preserve every fixture field');
