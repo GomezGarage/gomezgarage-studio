@@ -23,8 +23,9 @@ function serve(string $route): void
             if (getenv('GGS_AGENT_ENABLED') === '0') {
                 throw new \RuntimeException('Agent API disabled.');
             }
-            $path = getenv('GGS_AGENT_CONFIG_FILE') ?: Config::defaultPath();
-            $config = Config::load($path, $_SERVER['DOCUMENT_ROOT'] ?? '');
+            $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+            $path = getenv('GGS_AGENT_CONFIG_FILE') ?: Config::defaultPath($documentRoot);
+            $config = Config::load($path, $documentRoot);
             if ($config['enabled'] !== true) {
                 throw new \RuntimeException('Agent API disabled.');
             }

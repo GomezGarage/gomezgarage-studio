@@ -23,9 +23,9 @@ HTTPS obligatoriu; `Authorization: Bearer …` cu credential aleator dedicat. F�
 sesiune admin, CORS browser, SQL primit de la client sau fallback la feedul public.
 API-ul nu include `config.php`, helpers, mailer, facturi, vendor sau plăți.
 Un fișier privat valid cu `enabled: true` este necesar pentru activare. Pe cPanel,
-configurația implicită este `../private/studio-agent/config.json` față de rădăcina
-proiectului (pentru domeniul principal servit direct din `public_html`, în directorul
-home al contului). Hostingurile care permit variabile per domeniu pot folosi
+configurația implicită este `private/studio-agent/config.json` în directorul părinte al
+document root-ului activ (de exemplu, `/home/<cpanel-user>/private/...` când web root-ul
+este `/home/<cpanel-user>/public_html`). Hostingurile care permit variabile per domeniu pot folosi
 `GGS_AGENT_CONFIG_FILE`; `GGS_AGENT_ENABLED=0` dezactivează API-ul ca kill switch
 opțional. Un credential lipsă/invalid sintactic primește 401 inclusiv când API-ul este
 dezactivat; un Bearer valid sintactic primește 503 când configurația e indisponibilă sau
