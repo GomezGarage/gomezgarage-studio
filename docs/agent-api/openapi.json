@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Gomez Garage Studio — Service read API",
-    "version": "1.0.0",
-    "description": "Local pilot contract, not deployed. Site orders only; no Etsy, write, customer messaging or payment operations. Decimal amounts represent order value in EUR, not receipts."
+    "version": "1.1.0",
+    "description": "Local pilot contract, not deployed. Site orders only; no Etsy, write, customer messaging or payment operations. Orders include a deterministic pseudonymous customer_ref for repeat-purchase analysis; no raw contact fields are returned. Decimal amounts represent order value in EUR, not receipts."
   },
   "servers": [
     {
@@ -1050,7 +1050,8 @@
           "total",
           "created_at",
           "updated_at",
-          "items"
+          "items",
+          "customer_ref"
         ],
         "properties": {
           "source": {
@@ -1157,6 +1158,14 @@
                 }
               }
             }
+          },
+          "customer_ref": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^studio_[a-f0-9]{64}$",
+            "description": "Keyed pseudonymous identifier derived from normalized customer email; null if unavailable. It is linkable across orders and remains sensitive business data."
           }
         }
       },
@@ -1176,7 +1185,7 @@
           },
           "contract_version": {
             "type": "string",
-            "const": "1.0.0"
+            "const": "1.1.0"
           },
           "server_time": {
             "$ref": "#/components/schemas/UtcTimestamp"
@@ -1201,7 +1210,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.0.0"
+            "const": "1.1.0"
           },
           "request_id": {
             "type": "string",
@@ -1247,7 +1256,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.0.0"
+            "const": "1.1.0"
           },
           "request_id": {
             "type": "string",
@@ -1292,7 +1301,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.0.0"
+            "const": "1.1.0"
           },
           "request_id": {
             "type": "string",
@@ -1321,7 +1330,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.0.0"
+            "const": "1.1.0"
           },
           "request_id": {
             "type": "string",

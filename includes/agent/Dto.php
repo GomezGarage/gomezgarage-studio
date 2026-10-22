@@ -107,12 +107,17 @@ final class Dto
         return $result;
     }
 
-    public static function order(array $row): array
+    public static function order(array $row, string $customerRefKey): array
     {
         $result = ['source' => 'studio', 'id' => self::id($row['id'])];
         foreach (['order_number', 'payment_method', 'tracking_number', 'country'] as $field) {
             $result[$field] = self::text($row[$field]);
         }
+        $email = self::text($row['customer_email'] ?? null);
+        $normalizedEmail = $email === null ? '' : strtolower(trim($email));
+        $result['customer_ref'] = $normalizedEmail !== '' && filter_var($normalizedEmail, FILTER_VALIDATE_EMAIL)
+            ? 'studio_' . hash_hmac('sha256', "customer-ref-v1\0" . $normalizedEmail, $customerRefKey)
+            : null;
         $result['status'] = self::choice($row['status'], ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled']);
         // Admin can manually set every native status. None proves receipt of funds.
         $result['payment_state'] = 'unknown';

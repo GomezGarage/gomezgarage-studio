@@ -7,7 +7,7 @@ use Throwable;
 
 final class Api
 {
-    public const VERSION = '1.0.0';
+    public const VERSION = '1.1.0';
     private Closure $configuration;
     private Closure $repository;
     private Closure $limiter;
@@ -109,7 +109,13 @@ final class Api
                 if ($hasMore) {
                     array_pop($rows);
                 }
-                $data = array_map($route === 'products' ? [Dto::class, 'product'] : [Dto::class, 'order'], $rows);
+                if ($route === 'products') {
+                    $data = array_map([Dto::class, 'product'], $rows);
+                } else {
+                    // Purpose-separate a stable pseudonymous customer reference from cursor signing.
+                    $customerRefKey = hash_hmac('sha256', 'studio-customer-ref-key-v1', hex2bin($config['cursor_key_hex']), true);
+                    $data = array_map(static fn(array $row): array => Dto::order($row, $customerRefKey), $rows);
+                }
                 $count = count($data);
                 $next = null;
                 if ($hasMore) {

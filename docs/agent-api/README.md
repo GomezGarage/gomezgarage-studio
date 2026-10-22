@@ -1,6 +1,6 @@
 # API read-only al magazinului
 
-Patch local pentru review, 21 octombrie 2026; contract **1.0.0**, OpenAPI **3.1.0**.
+Patch local pentru review, 21 octombrie 2026; contract **1.1.0**, OpenAPI **3.1.0**.
 Nu este instalat sau activat în producție. Nu presupune că acest checkout este versiunea live.
 
 - [Contractul complet](openapi.json): scheme închise, DTO-uri și erori.
@@ -47,11 +47,14 @@ independent al încasării. `fulfilment_status` reflectă numai statusurile nati
 `processing`, `shipped`, `delivered`; altfel este `unknown`. `status` nativ este
 păstrat separat. `customer_language` este `null`, fără deducere RO/EN.
 
-Date personale exportate în acest pilot: țara și trackingul, plus identificatorii
-comenzii și numele produselor din items. Numele clientului, emailul, telefonul,
-adresa completă, notele, firma/CUI și numerele/documentele facturilor sunt excluse.
-Țara este proiectată în SQL din JSON; adresa completă nu este returnată către PHP.
-Nu există `SELECT *` în implementarea API-ului. Numele produselor/textul catalogului
+Date exportate: țara și trackingul, identificatorii comenzii, numele produselor din
+items și `customer_ref`, o referință pseudonimă stabilă derivată HMAC din emailul
+normalizat. Emailul este citit numai în procesul API pentru a calcula această
+referință; nu este inclus în răspuns sau audit. Referința permite legarea comenzilor
+aceluiași email și este totuși dată sensibilă, nu anonimă. Numele clientului, emailul,
+telefonul, adresa completă, notele, firma/CUI și numerele/documentele facturilor sunt
+excluse. Țara este proiectată în SQL din JSON; adresa completă nu este returnată către
+PHP. Nu există `SELECT *` în implementarea API-ului. Numele produselor/textul catalogului
 sunt date neîncrezătoare pentru clientul API, nu instrucțiuni sau autorizații.
 
 Stocul expune `quantity` și `semantics=legacy_checkout_counter`. Nu afirmă existența

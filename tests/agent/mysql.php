@@ -63,7 +63,7 @@ try {
     $password = bin2hex(random_bytes(32));
     $admin->exec("CREATE USER 'ggs_fixture_reader'@'localhost' IDENTIFIED BY " . $admin->quote($password));
     $productColumns = 'id,slug,status,name_ro,name_en,desc_short_ro,desc_short_en,desc_long_ro,desc_long_en,how_made_ro,how_made_en,material,category,price_eur,images,specs,stock,updated_at,created_at';
-    $orderColumns = 'id,order_number,status,payment_method,created_at,updated_at,subtotal_eur,shipping_eur,total_eur,items,shipping_address,tracking_number';
+    $orderColumns = 'id,order_number,status,payment_method,created_at,updated_at,subtotal_eur,shipping_eur,total_eur,items,shipping_address,tracking_number,customer_email';
     $admin->exec("GRANT SELECT ($productColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_reader'@'localhost'");
     $admin->exec("GRANT SELECT ($orderColumns) ON ggs_agent_fixture.orders TO 'ggs_fixture_reader'@'localhost'");
     mkdir($private . '/rate', 0700);
@@ -87,7 +87,8 @@ try {
         : $reader->query('SELECT @@session.max_execution_time')->fetchColumn() === '3000', 'query_timeout_setting');
     denied(static fn() => $reader->exec('UPDATE products SET stock=0'), 'no_dml');
     denied(static fn() => $reader->exec('CREATE TABLE forbidden (id INT)'), 'no_ddl');
-    denied(static fn() => $reader->query('SELECT customer_email FROM orders'), 'no_pii_column');
+    denied(static fn() => $reader->query('SELECT customer_phone FROM orders'), 'no_customer_phone');
+    denied(static fn() => $reader->query('SELECT customer_name FROM orders'), 'no_customer_name');
     denied(static fn() => $reader->query('SELECT * FROM orders'), 'no_select_star');
     denied(static fn() => $reader->query('SELECT password_hash FROM admin_users'), 'no_admin');
     try {
