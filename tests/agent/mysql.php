@@ -40,7 +40,7 @@ try {
     $admin->exec('CREATE DATABASE ggs_agent_fixture CHARACTER SET utf8mb4');
     $admin->exec('USE ggs_agent_fixture');
     $schema = file_get_contents(__DIR__ . '/../../database/schema.sql');
-    foreach (['products', 'orders'] as $table) {
+    foreach (['products', 'orders', 'product_views_daily'] as $table) {
         verify(preg_match('/CREATE TABLE IF NOT EXISTS ' . $table . ' \(.*?\) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;/s', $schema, $match) === 1, 'source_ddl_' . $table);
         $admin->exec($match[0]);
     }
@@ -59,6 +59,8 @@ try {
             '{"country":"RO","street":"PRIVATE-STREET"}', '24.60', '5.00', '29.60',
             '2026-10-20 11:00:00', '2026-10-20 11:00:00', 'private@example.invalid']);
     }
+    $admin->exec("INSERT INTO product_views_daily(product_id,view_date,view_count) VALUES
+        (1,UTC_DATE(),8),(1,DATE_SUB(UTC_DATE(),INTERVAL 7 DAY),3)");
     $admin->exec("SET time_zone = '+00:00'");
     $password = bin2hex(random_bytes(32));
     $admin->exec("CREATE USER 'ggs_fixture_reader'@'localhost' IDENTIFIED BY " . $admin->quote($password));
@@ -66,6 +68,7 @@ try {
     $orderColumns = 'id,order_number,status,payment_method,created_at,updated_at,subtotal_eur,shipping_eur,total_eur,items,shipping_address,tracking_number,customer_email';
     $admin->exec("GRANT SELECT ($productColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_reader'@'localhost'");
     $admin->exec("GRANT SELECT ($orderColumns) ON ggs_agent_fixture.orders TO 'ggs_fixture_reader'@'localhost'");
+    $admin->exec("GRANT SELECT (product_id,view_date,view_count) ON ggs_agent_fixture.product_views_daily TO 'ggs_fixture_reader'@'localhost'");
     mkdir($private . '/rate', 0700);
     $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     $config = ['cursor_key_hex' => bin2hex(random_bytes(32)), 'rate_limit_dir' => $private . '/rate',
@@ -86,6 +89,7 @@ try {
     verify($maria ? (float) $reader->query('SELECT @@session.max_statement_time')->fetchColumn() === 3.0
         : $reader->query('SELECT @@session.max_execution_time')->fetchColumn() === '3000', 'query_timeout_setting');
     denied(static fn() => $reader->exec('UPDATE products SET stock=0'), 'no_dml');
+    denied(static fn() => $reader->exec('UPDATE product_views_daily SET view_count=0'), 'no_view_dml');
     denied(static fn() => $reader->exec('CREATE TABLE forbidden (id INT)'), 'no_ddl');
     denied(static fn() => $reader->query('SELECT customer_phone FROM orders'), 'no_customer_phone');
     denied(static fn() => $reader->query('SELECT customer_name FROM orders'), 'no_customer_name');
@@ -101,7 +105,7 @@ try {
     } finally {
         if ($maria) { $reader->exec('SET SESSION max_statement_time = 3'); }
     }
-    $snapshot = static fn() => serialize([$admin->query('SELECT * FROM products ORDER BY id')->fetchAll(), $admin->query('SELECT * FROM orders ORDER BY id')->fetchAll()]);
+    $snapshot = static fn() => serialize([$admin->query('SELECT * FROM products ORDER BY id')->fetchAll(), $admin->query('SELECT * FROM orders ORDER BY id')->fetchAll(), $admin->query('SELECT * FROM product_views_daily ORDER BY product_id,view_date')->fetchAll()]);
     $before = $snapshot();
     $events = $responses = [];
     $api = new Api($configuration, [Repository::class, 'connect'], static function (): void {},
@@ -115,6 +119,9 @@ try {
     verify($first['status'] === 200, 'products_real_connection');
     verify($first['body']['data'][0]['updated_at'] === '2026-10-20T08:00:00Z', 'timestamp_offset_normalization');
     verify($first['body']['data'][0]['price']['value'] === '12.30', 'mysql_decimal_string');
+    verify($first['body']['data'][0]['view_stats']['current_7d'] === 8
+        && $first['body']['data'][0]['view_stats']['previous_7d'] === 3
+        && $first['body']['data'][0]['view_stats']['delta_7d'] === 5, 'mysql_utc_product_view_aggregate');
     $ids = array_column($first['body']['data'], 'id');
     $cursor = $first['body']['next_cursor'];
     for ($page = 0; $cursor !== null && $page < 10; $page++) {

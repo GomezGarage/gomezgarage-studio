@@ -1,18 +1,18 @@
 {
   "health": {
-    "schema_version": "1.1.0",
+    "schema_version": "1.2.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "data": {
       "status": "ok",
-      "contract_version": "1.1.0",
+      "contract_version": "1.2.0",
       "server_time": "2026-10-21T12:00:00Z",
       "check": "liveness"
     },
     "next_cursor": null
   },
   "unauthorized": {
-    "schema_version": "1.1.0",
+    "schema_version": "1.2.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "error": {
@@ -21,7 +21,7 @@
     }
   },
   "products": {
-    "schema_version": "1.1.0",
+    "schema_version": "1.2.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "data": [
@@ -57,7 +57,14 @@
           "quantity": 2,
           "semantics": "legacy_checkout_counter"
         },
-        "updated_at": "2026-10-21T10:00:00Z"
+        "updated_at": "2026-10-21T10:00:00Z",
+        "view_stats": {
+          "metric": "product_detail_view_events",
+          "current_7d": 8,
+          "previous_7d": 3,
+          "delta_7d": 5,
+          "window": "current_7_utc_days_vs_previous_7_utc_days"
+        }
       },
       {
         "source": "studio",
@@ -91,7 +98,14 @@
           "quantity": 2,
           "semantics": "legacy_checkout_counter"
         },
-        "updated_at": "2026-10-21T10:00:00Z"
+        "updated_at": "2026-10-21T10:00:00Z",
+        "view_stats": {
+          "metric": "product_detail_view_events",
+          "current_7d": 8,
+          "previous_7d": 3,
+          "delta_7d": 5,
+          "window": "current_7_utc_days_vs_previous_7_utc_days"
+        }
       },
       {
         "source": "studio",
@@ -125,7 +139,14 @@
           "quantity": 2,
           "semantics": "legacy_checkout_counter"
         },
-        "updated_at": "2026-10-21T10:00:00Z"
+        "updated_at": "2026-10-21T10:00:00Z",
+        "view_stats": {
+          "metric": "product_detail_view_events",
+          "current_7d": 8,
+          "previous_7d": 3,
+          "delta_7d": 5,
+          "window": "current_7_utc_days_vs_previous_7_utc_days"
+        }
       },
       {
         "source": "studio",
@@ -159,7 +180,14 @@
           "quantity": 2,
           "semantics": "legacy_checkout_counter"
         },
-        "updated_at": "2026-10-21T10:00:00Z"
+        "updated_at": "2026-10-21T10:00:00Z",
+        "view_stats": {
+          "metric": "product_detail_view_events",
+          "current_7d": 8,
+          "previous_7d": 3,
+          "delta_7d": 5,
+          "window": "current_7_utc_days_vs_previous_7_utc_days"
+        }
       },
       {
         "source": "studio",
@@ -193,14 +221,21 @@
           "quantity": 2,
           "semantics": "legacy_checkout_counter"
         },
-        "updated_at": "2026-10-21T10:00:00Z"
+        "updated_at": "2026-10-21T10:00:00Z",
+        "view_stats": {
+          "metric": "product_detail_view_events",
+          "current_7d": 8,
+          "previous_7d": 3,
+          "delta_7d": 5,
+          "window": "current_7_utc_days_vs_previous_7_utc_days"
+        }
       }
     ],
     "next_cursor": null,
     "sync_before": "2026-10-21T11:59:55Z"
   },
   "orders": {
-    "schema_version": "1.1.0",
+    "schema_version": "1.2.0",
     "request_id": "0123456789abcdef0123456789abcdef",
     "generated_at": "2026-10-21T12:00:00Z",
     "data": [

@@ -103,6 +103,18 @@ final class Dto
             return ['key' => $spec['key'], 'value' => $spec['value']];
         }, self::listJson($row['specs']));
         $result['stock'] = ['quantity' => self::integer($row['stock']), 'semantics' => 'legacy_checkout_counter'];
+        $currentViews = self::integer($row['views_current_7d']);
+        $previousViews = self::integer($row['views_previous_7d']);
+        if ($currentViews < 0 || $previousViews < 0) {
+            throw new RuntimeException('Invalid product view count.');
+        }
+        $result['view_stats'] = [
+            'metric' => 'product_detail_view_events',
+            'current_7d' => $currentViews,
+            'previous_7d' => $previousViews,
+            'delta_7d' => $currentViews - $previousViews,
+            'window' => 'current_7_utc_days_vs_previous_7_utc_days',
+        ];
         $result['updated_at'] = self::date($row['updated_at']);
         return $result;
     }

@@ -1,5 +1,21 @@
 # Verificare locală — 21 octombrie 2026
 
+## Extensia view_stats — 24 octombrie 2026
+
+Codul local propune contractul 1.2.0 și nu este publicat. Verificări pe această schimbare:
+
+| Verificare | Rezultat |
+|---|---|
+| `php tests/product-views.php` | PASS, 14 probe sintetice pentru origin, metodă, body și agregare fără identificatori |
+| `php tests/agent/run.php` | PASS, 93 verificări SQLite sintetice, inclusiv delta de 7 zile |
+| `python3 tests/agent/http_smoke.py` | PASS, rutele API existente, autentificare și headers |
+| OpenAPI 3.1 / JSON Schema 2020-12 | PASS, 59 răspunsuri sintetice și 4 exemple |
+| PDO MariaDB 10.6.28 / MySQL 8.4.13 pentru noul JOIN | **Nereverificat în această sesiune**; instanțele izolate nu sunt disponibile |
+
+Tabela și endpointul sunt pregătite, dar migrarea nu a fost rulată și nu s-a făcut deploy.
+Pentru activare sunt necesare migrarea izolată și grant SELECT descrise în
+[operations.md](operations.md), apoi probele runtime pe MariaDB 10.6.28 și PHP-ul hostingului.
+
 API pregătit pentru review, dezactivat implicit. Aceste probe nu confirmă un deploy.
 
 | Verificare | Rezultat |

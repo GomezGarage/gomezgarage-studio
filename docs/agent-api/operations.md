@@ -40,13 +40,15 @@ review; aprobarea și provisioningul efectiv preced activarea.
    verifică suportul/AllowOverride înainte de publicare. Pe Nginx/FastCGI configurează
    echivalentul pentru Authorization și HTTPS și refuză accesul la includes/tests/docs.
 5. Contul DB al API-ului este separat, cu **SELECT numai pe coloanele necesare din
-   products și orders**, fără grant option, DML, DDL, FILE, proceduri sau acces la
-   admin_users/settings. Acest cont și SQL-ul nu sunt oferite clientului API. DBA verifică
+   products, orders și product_views_daily**, fără grant option, DML, DDL, FILE, proceduri
+   sau acces la admin_users/settings. Acest cont și SQL-ul nu sunt oferite clientului API. DBA verifică
    granturile în staging. Nu se folosește contul existent al checkoutului.
 
 Coloane products: id, slug, status, name_ro/en, desc_short_ro/en, desc_long_ro/en,
 how_made_ro/en, material, category, price_eur, images, specs, stock, updated_at,
-created_at. Coloane orders: id, order_number, status, payment_method, created_at,
+created_at. Pentru `view_stats`, contul serviciului primește SELECT numai pe
+`product_views_daily(product_id, view_date, view_count)`; nu primește scriere pe analytics.
+Coloane orders: id, order_number, status, payment_method, created_at,
 updated_at, subtotal_eur, shipping_eur, total_eur, items, shipping_address,
 tracking_number și customer_email. customer_email este citit intern numai pentru
 generarea HMAC a lui customer_ref; coloanele customer_name/customer_phone/customer_note
@@ -88,8 +90,13 @@ acoperit de contorul local cu flock.
 
 ## Migrare
 
-**Nicio migrație necesară sau executată.** Nu modifica `database/schema.sql` și nu îl
-rerula: include seeduri/setări/admin și nu este migrator. Schema live poate fi diferită:
+Contractul 1.2.0 necesită tabela agregată `product_views_daily`. Pentru o bază existentă,
+rulează o singură dată migrarea izolată `database/migrations/20261024_product_views_daily.sql`
+în phpMyAdmin/cPanel înainte de publicarea versiunii API 1.2.0 și acordă userului API numai
+SELECT pe cele trei coloane indicate mai sus. Endpointul de colectare folosește conexiunea
+website-ului; browserul nu primește credential DB.
+
+Nu rerula `database/schema.sql`: include seeduri/setări/admin și nu este migrator. Schema live poate fi diferită:
 verifică explicit existența payment_method, items, timestamps/defaulturi/ON UPDATE și
 coloanele proiectate. O lipsă produce 503; nu există fallback care fabrică date.
 
@@ -110,8 +117,9 @@ a ascunde lipsa unui index. Nu se schimbă modelul de stoc/plată/limbă în ace
    readonly, JSON și refuzul metodelor pe web serverul efectiv. Testează rotația/revocarea.
 4. Backup al versiunii instalate și al configurației private prin mecanismul aprobat;
    restaurare verificată. DB nu se modifică. Păstrează prefixul API blocat/dezactivat.
-5. Publică numai cele trei endpointuri `api/agent/v1/*.php`, `api/agent/.htaccess` dacă
-   este compatibil, și cele cinci fișiere `includes/agent/*.php`. Păstrează protecția
+5. Publică numai endpointurile `api/agent/v1/*.php`, `api/agent/.htaccess` dacă este
+   compatibil, fișierele `includes/agent/*.php`, `api/record-product-view.php`,
+   `includes/product-views.php` și frontendul `assets/js/shop.js`. Păstrează protecția
    existentă pe includes. **Nu publica tests, docs, fișiere temporare sau configul privat.**
 6. După aprobarea activării, provisionează secretul/granturile și activează prefixul.
    Probele live de citire au autorizare separată; nu folosi create-order, webhook,

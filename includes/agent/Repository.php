@@ -70,16 +70,34 @@ final class Repository implements ReadRepository
         if ($this->db->query('SELECT id FROM ' . $resource . ' WHERE updated_at IS NULL LIMIT 1')->fetchColumn() !== false) {
             throw new RuntimeException('Missing source update timestamp.');
         }
-        $columns = $resource === 'products'
-            ? 'id, slug, status, name_ro, name_en, desc_short_ro, desc_short_en, desc_long_ro, desc_long_en,
-               how_made_ro, how_made_en, material, category, CAST(price_eur AS CHAR) AS price_eur,
-               images, specs, stock, updated_at'
-            : "id, order_number, status, payment_method, created_at, updated_at,
+        if ($resource === 'products') {
+            $sqlite = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite';
+            $minus6 = $sqlite ? "date(UTC_DATE(), '-6 days')" : 'DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)';
+            $minus13 = $sqlite ? "date(UTC_DATE(), '-13 days')" : 'DATE_SUB(UTC_DATE(), INTERVAL 13 DAY)';
+            $columns = 'p.id, p.slug, p.status, p.name_ro, p.name_en, p.desc_short_ro, p.desc_short_en,
+               p.desc_long_ro, p.desc_long_en, p.how_made_ro, p.how_made_en, p.material, p.category,
+               CAST(p.price_eur AS CHAR) AS price_eur, p.images, p.specs, p.stock, p.updated_at,
+               COALESCE(v.views_current_7d, 0) AS views_current_7d,
+               COALESCE(v.views_previous_7d, 0) AS views_previous_7d';
+            $from = "products p LEFT JOIN (
+                SELECT product_id,
+                    SUM(CASE WHEN view_date >= {$minus6} THEN view_count ELSE 0 END) AS views_current_7d,
+                    SUM(CASE WHEN view_date >= {$minus13} AND view_date < {$minus6} THEN view_count ELSE 0 END) AS views_previous_7d
+                FROM product_views_daily WHERE view_date >= {$minus13} GROUP BY product_id
+            ) v ON v.product_id = p.id";
+            $idColumn = 'p.id';
+            $updatedColumn = 'p.updated_at';
+        } else {
+            $columns = "id, order_number, status, payment_method, created_at, updated_at,
                CAST(subtotal_eur AS CHAR) AS subtotal_eur, CAST(shipping_eur AS CHAR) AS shipping_eur,
                CAST(total_eur AS CHAR) AS total_eur, items,
                NULLIF(JSON_UNQUOTE(JSON_EXTRACT(shipping_address, '$.country')), 'null') AS country, tracking_number,
                customer_email";
-        $where = ['updated_at < ?'];
+            $from = 'orders';
+            $idColumn = 'id';
+            $updatedColumn = 'updated_at';
+        }
+        $where = ["{$updatedColumn} < ?"];
         $params = [gmdate('Y-m-d H:i:s', $before)];
         foreach (['updated_from' => 'updated_at >= ?', 'created_from' => 'created_at >= ?', 'created_before' => 'created_at < ?'] as $key => $clause) {
             if (isset($filters[$key])) {
@@ -96,13 +114,13 @@ final class Repository implements ReadRepository
             $params[] = $filters['category'];
         }
         if ($after !== null) {
-            $where[] = '(updated_at > ? OR (updated_at = ? AND id > ?))';
+            $where[] = "({$updatedColumn} > ? OR ({$updatedColumn} = ? AND {$idColumn} > ?))";
             $params[] = $after['updated_at'];
             $params[] = $after['updated_at'];
             $params[] = $after['id'];
         }
-        $sql = 'SELECT ' . $columns . ' FROM ' . $resource . ' WHERE ' . implode(' AND ', $where)
-            . ' ORDER BY updated_at ASC, id ASC LIMIT ' . ($filters['limit'] + 1);
+        $sql = 'SELECT ' . $columns . ' FROM ' . $from . ' WHERE ' . implode(' AND ', $where)
+            . " ORDER BY {$updatedColumn} ASC, {$idColumn} ASC LIMIT " . ($filters['limit'] + 1);
         $statement = $this->db->prepare($sql);
         $statement->execute($params);
         return $statement->fetchAll(PDO::FETCH_ASSOC);

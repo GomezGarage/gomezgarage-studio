@@ -35,6 +35,7 @@ $pdoClass = class_exists('Pdo\\Sqlite') ? 'Pdo\\Sqlite' : PDO::class;
 $db = new $pdoClass('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
 $createFunction = method_exists($db, 'createFunction') ? 'createFunction' : 'sqliteCreateFunction';
 $db->$createFunction('UTC_TIMESTAMP', static function () use (&$dbNow): string { return $dbNow; }, 0);
+$db->$createFunction('UTC_DATE', static function () use (&$dbNow): string { return substr($dbNow, 0, 10); }, 0);
 $db->$createFunction('JSON_UNQUOTE', static fn($value) => $value, 1);
 $db->exec('CREATE TABLE products (id INTEGER PRIMARY KEY, slug TEXT, status TEXT, name_ro TEXT, name_en TEXT,
  desc_short_ro TEXT, desc_short_en TEXT, desc_long_ro TEXT, desc_long_en TEXT, how_made_ro TEXT, how_made_en TEXT,
@@ -42,12 +43,15 @@ $db->exec('CREATE TABLE products (id INTEGER PRIMARY KEY, slug TEXT, status TEXT
 $db->exec('CREATE TABLE orders (id INTEGER PRIMARY KEY, order_number TEXT, status TEXT, payment_method TEXT,
  created_at TEXT, updated_at TEXT, subtotal_eur TEXT, shipping_eur TEXT, total_eur TEXT, items TEXT,
  shipping_address TEXT, tracking_number TEXT, customer_email TEXT, customer_name TEXT, customer_phone TEXT, customer_note TEXT)');
+$db->exec('CREATE TABLE product_views_daily(product_id INTEGER NOT NULL,view_date TEXT NOT NULL,view_count INTEGER NOT NULL,
+ PRIMARY KEY(product_id,view_date))');
 for ($id = 1; $id <= 6; $id++) {
     $stmt = $db->prepare('INSERT INTO products VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute([$id, 'synthetic-' . $id, $id === 6 ? 'draft' : 'published', 'Produs sintetic', 'Synthetic product',
         null, null, 'Descriere sintetică', null, null, null, 'PLA', 'desk', '12.30', '["/synthetic.svg"]',
         '[{"key":"Weight","value":"10g","private":"not exported"}]', 2, '2026-10-21 10:00:00', '2026-10-20 08:00:00']);
 }
+$db->exec("INSERT INTO product_views_daily VALUES(1,'2026-10-21',8),(1,'2026-10-14',3),(2,'2026-10-20',0)");
 foreach (['pending', 'paid', 'shipped'] as $index => $status) {
     $stmt = $db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $email = $index === 0 ? 'repeat@example.invalid'
@@ -59,7 +63,8 @@ foreach (['pending', 'paid', 'shipped'] as $index => $status) {
         $email, 'PRIVATE-NAME', 'PRIVATE-PHONE', 'PRIVATE-NOTE']);
 }
 $db->exec('PRAGMA query_only = ON');
-$baseline = serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll()]);
+$baseline = serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll(),
+    $db->query('SELECT * FROM product_views_daily')->fetchAll()]);
 $repository = new Repository($db);
 $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
 $config = ['enabled' => true, 'cursor_key_hex' => bin2hex(random_bytes(32)), 'credentials' => [
@@ -96,6 +101,10 @@ check(request('orders')['status'] === 403, 'orders requires scope');
 check(request('products', 'status=draft')['status'] === 403, 'draft scope required');
 check(request('products', 'status=all')['status'] === 403, 'all requires draft scope');
 check(count(request()['body']['data']) === 5, 'default published only');
+$syntheticProduct = request()['body']['data'][0];
+check($syntheticProduct['view_stats'] === ['metric' => 'product_detail_view_events', 'current_7d' => 8,
+    'previous_7d' => 3, 'delta_7d' => 5, 'window' => 'current_7_utc_days_vs_previous_7_utc_days'],
+    'product_view_stats_are_aggregate_utc_week_comparison');
 $config['credentials'][0]['scopes'] = Config::SCOPES;
 check(count(request('products', 'status=draft')['body']['data']) === 1, 'draft explicit');
 foreach (['limit=0', 'limit=101', 'limit=-1', 'limit=01', 'limit=1.0', 'limit[]=1', 'limit=1&limit=2',
@@ -147,7 +156,8 @@ check($order['customer_ref'] === $orderResponse['body']['data'][1]['customer_ref
 check($order['customer_ref'] !== $orderResponse['body']['data'][2]['customer_ref'], 'distinct customer reference');
 check(!str_contains(json_encode($orderResponse), 'PRIVATE-') && !str_contains(json_encode($orderResponse), 'private@'), 'PII excluded');
 check(!str_contains(json_encode($orderResponse), 'discard'), 'nested DTO projection');
-check(serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll()]) === $baseline, 'reads preserve every fixture field');
+check(serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll(),
+    $db->query('SELECT * FROM product_views_daily')->fetchAll()]) === $baseline, 'reads preserve every fixture field');
 raises(static fn() => $db->exec('UPDATE products SET stock=0'), 'synthetic database prohibits writes');
 
 // Concurrent update: a row not reached yet moves past the fixed cutoff, then appears in the next overlapping pass.
