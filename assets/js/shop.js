@@ -234,8 +234,12 @@
     const key = `ggs_product_viewed_${productId}`;
     try {
       if (sessionStorage.getItem(key) === '1') return;
+      // Latch before the request so repeated renders or an uncertain network response
+      // cannot count the same product repeatedly in this tab session.
+      sessionStorage.setItem(key, '1');
     } catch (e) {
-      // Continue without persistent browser storage; the metric is aggregate only.
+      // Skip counting when session storage is unavailable; avoid duplicate inflation.
+      return;
     }
     fetch('/studio/api/record-product-view.php', {
       method: 'POST',
@@ -243,9 +247,6 @@
       body: JSON.stringify({ product_id: productId }),
       keepalive: true,
       credentials: 'same-origin',
-    }).then((response) => {
-      if (!response.ok) return;
-      try { sessionStorage.setItem(key, '1'); } catch (e) { /* Storage is optional. */ }
     }).catch(() => {
       // Analytics must never interfere with catalog rendering or checkout.
     });

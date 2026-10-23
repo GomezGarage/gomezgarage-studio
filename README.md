@@ -60,6 +60,8 @@ The separate, disabled-by-default service API is documented in
 contract, synthetic tests, synchronization limits, configuration and deployment/
 rollback gates. It does not load the shop credentials or change checkout behavior.
 
-The API reports privacy-minimal product-detail page-load counts after the
-`product_views_daily` migration is installed. Counts are aggregate UTC-day product-detail view events, deduplicated at most once per product per browser tab session,
-not unique visitors or conversions; the browser stores no visitor identifier.
+The API reports privacy-minimal product-detail view events after the
+`product_views_daily` migration is installed. Counts are aggregate by UTC day and
+deduplicated at most once per product per browser tab session; when session storage is
+unavailable the event is skipped. They are not unique visitors or conversions, and the
+browser stores no visitor identifier.

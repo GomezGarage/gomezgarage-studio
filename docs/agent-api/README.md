@@ -64,7 +64,8 @@ goale. JSON invalid, sume/timestamps invalide sau statusuri necunoscute produc
 503 pentru întreaga pagină, fără eliminarea tăcută a unei comenzi din raport.
 
 `view_stats` numără evenimente de vizualizare a paginii produsului pe zile UTC; browserul
-înregistrează cel mult un eveniment pentru același produs într-o filă/sesiune de tab. Nu sunt
+înregistrează cel mult un eveniment pentru același produs într-o filă/sesiune de tab și
+sare peste contorizare dacă `sessionStorage` nu este disponibil. Nu sunt
 vizitatori unici, sesiuni între dispozitive sau conversii. Nu se stochează cookies, IP-uri,
 conturi ori identificatori de vizitator. Fereastra compară ultimele 7 zile UTC,
 incluzând ziua curentă, cu cele 7 zile UTC anterioare; nu compară cu Etsy și nu pretinde
