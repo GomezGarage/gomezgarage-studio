@@ -222,9 +222,33 @@
         return;
       }
       renderProductDetail(wrap, product);
+      recordProductView(product.id);
       injectProductSchema(product);
       loadRelated(product);
       if (window.GGSLang) window.GGSLang.refresh();
+    });
+  }
+
+  function recordProductView(productId) {
+    if (document.visibilityState !== 'visible' || !Number.isInteger(productId) || productId < 1) return;
+    const key = `ggs_product_viewed_${productId}`;
+    try {
+      if (sessionStorage.getItem(key) === '1') return;
+      // Latch before the request so repeated renders or an uncertain network response
+      // cannot count the same product repeatedly in this tab session.
+      sessionStorage.setItem(key, '1');
+    } catch (e) {
+      // Skip counting when session storage is unavailable; avoid duplicate inflation.
+      return;
+    }
+    fetch('/studio/api/record-product-view.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: productId }),
+      keepalive: true,
+      credentials: 'same-origin',
+    }).catch(() => {
+      // Analytics must never interfere with catalog rendering or checkout.
     });
   }
 

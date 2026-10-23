@@ -1,6 +1,6 @@
 # API read-only al magazinului
 
-Patch local pentru review, 21 octombrie 2026; contract **1.1.0**, OpenAPI **3.1.0**.
+Patch local pentru review, 24 octombrie 2026; contract **1.2.0**, OpenAPI **3.1.0**.
 Nu este instalat sau activat în producție. Nu presupune că acest checkout este versiunea live.
 
 - [Contractul complet](openapi.json): scheme închise, DTO-uri și erori.
@@ -15,7 +15,7 @@ Nu este instalat sau activat în producție. Nu presupune că acest checkout est
 | GET, prefix `/studio/api/agent/v1/` | Scope obligatoriu | Comportament |
 |---|---|---|
 | `health.php` | `agent.health.read` | Liveness autentificat, versiune și oră UTC; nu conectează DB |
-| `products.php` | `products.read` | Produse publicate implicit; `status=draft` sau `all` cere suplimentar `products.drafts.read` |
+| `products.php` | `products.read` | Produse publicate implicit, inclusiv statistici agregate de vizualizări pe produs; `status=draft` sau `all` cere suplimentar `products.drafts.read` |
 | `orders.php` | `orders.read` | Numai comenzile site-ului, toate statusurile implicit |
 
 Numai `GET`; inclusiv `HEAD` și `OPTIONS` primesc 405 cu `Allow: GET`.
@@ -62,6 +62,14 @@ stocului fizic sau a producției la comandă. Acest patch nu schimbă modelul de
 Câmpurile text legacy nullable rămân null; listele images/specs null devin liste
 goale. JSON invalid, sume/timestamps invalide sau statusuri necunoscute produc
 503 pentru întreaga pagină, fără eliminarea tăcută a unei comenzi din raport.
+
+`view_stats` numără evenimente de vizualizare a paginii produsului pe zile UTC; browserul
+înregistrează cel mult un eveniment pentru același produs într-o filă/sesiune de tab și
+sare peste contorizare dacă `sessionStorage` nu este disponibil. Nu sunt
+vizitatori unici, sesiuni între dispozitive sau conversii. Nu se stochează cookies, IP-uri,
+conturi ori identificatori de vizitator. Fereastra compară ultimele 7 zile UTC,
+incluzând ziua curentă, cu cele 7 zile UTC anterioare; nu compară cu Etsy și nu pretinde
+atribuire de trafic.
 
 ## Verificare locală
 

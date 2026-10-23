@@ -7,7 +7,7 @@ use Throwable;
 
 final class Api
 {
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
     private Closure $configuration;
     private Closure $repository;
     private Closure $limiter;

@@ -59,3 +59,9 @@ The separate, disabled-by-default service API is documented in
 [docs/agent-api/README.md](docs/agent-api/README.md), including its OpenAPI 3.1
 contract, synthetic tests, synchronization limits, configuration and deployment/
 rollback gates. It does not load the shop credentials or change checkout behavior.
+
+The API reports privacy-minimal product-detail view events after the
+`product_views_daily` migration is installed. Counts are aggregate by UTC day and
+deduplicated at most once per product per browser tab session; when session storage is
+unavailable the event is skipped. They are not unique visitors or conversions, and the
+browser stores no visitor identifier.
