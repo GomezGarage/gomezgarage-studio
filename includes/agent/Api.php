@@ -7,24 +7,28 @@ use Throwable;
 
 final class Api
 {
-    public const VERSION = '1.2.0';
+    public const VERSION = '1.3.0';
     private Closure $configuration;
     private Closure $repository;
+    private Closure $draftRepository;
     private Closure $limiter;
     private Closure $audit;
     private Closure $clock;
 
     /** Dependencies are injected only by local PHP code, never by HTTP input. */
-    public function __construct(callable $configuration, callable $repository, callable $limiter, callable $audit, ?callable $clock = null)
+    public function __construct(callable $configuration, callable $repository, callable $limiter, callable $audit,
+        ?callable $clock = null, ?callable $draftRepository = null)
     {
         $this->configuration = Closure::fromCallable($configuration);
         $this->repository = Closure::fromCallable($repository);
+        $this->draftRepository = Closure::fromCallable($draftRepository ?? $repository);
         $this->limiter = Closure::fromCallable($limiter);
         $this->audit = Closure::fromCallable($audit);
         $this->clock = Closure::fromCallable($clock ?? 'time');
     }
 
-    public function handle(string $route, string $method, string $authorization, string $query, bool $https): array
+    public function handle(string $route, string $method, string $authorization, string $query, bool $https,
+        string $requestBody = '', string $idempotencyKey = '', string $contentType = ''): array
     {
         $started = microtime(true);
         $now = ($this->clock)();
@@ -34,11 +38,13 @@ final class Api
         $headers = ['Content-Type' => 'application/json; charset=utf-8', 'Cache-Control' => 'no-store',
             'X-Content-Type-Options' => 'nosniff', 'X-Request-ID' => $requestId];
         try {
-            if (!in_array($route, ['health', 'products', 'orders'], true)) {
+            if (!in_array($route, ['health', 'products', 'orders', 'product-drafts'], true)) {
                 throw new ApiError(404, 'not_found', 'Route not found.');
             }
-            if ($method !== 'GET') {
-                throw new ApiError(405, 'method_not_allowed', 'Only GET is supported.');
+            $allowedMethods = $route === 'product-drafts' ? ['POST', 'PATCH'] : ['GET'];
+            if (!in_array($method, $allowedMethods, true)) {
+                throw new ApiError(405, 'method_not_allowed', $route === 'product-drafts'
+                    ? 'Only POST and PATCH are supported.' : 'Only GET is supported.');
             }
             if (!$https) {
                 throw new ApiError(403, 'https_required', 'HTTPS is required.');
@@ -61,71 +67,98 @@ final class Api
             }
             $identity = $credential['id'];
             ($this->limiter)($config, $identity, $now);
-            $scope = $route === 'health' ? 'agent.health.read' : $route . '.read';
+            $scope = match ($route) {
+                'health' => 'agent.health.read',
+                'product-drafts' => 'products.drafts.write',
+                default => $route . '.read',
+            };
             if (!in_array($scope, $credential['scopes'], true)) {
                 throw new ApiError(403, 'forbidden', 'Required scope is missing.');
             }
-            $filters = $this->filters($route, $query);
-            $cursor = $filters['cursor'] ?? null;
-            unset($filters['cursor']);
-            if ($route === 'health') {
-                $data = ['status' => 'ok', 'contract_version' => self::VERSION, 'server_time' => utc($now), 'check' => 'liveness'];
-                $before = null;
-                $next = null;
-            } else {
-                if ($route === 'products' && $filters['status'] !== 'published'
-                    && !in_array('products.drafts.read', $credential['scopes'], true)) {
-                    throw new ApiError(403, 'forbidden', 'Draft product scope is required.');
+            $before = null;
+            $next = null;
+            if ($route === 'product-drafts') {
+                if ($query !== '' || strlen($requestBody) > 32768
+                    || strtolower(trim(explode(';', $contentType, 2)[0])) !== 'application/json'
+                    || !str_starts_with(ltrim($requestBody), '{')) {
+                    invalidDraft();
                 }
-                $codec = new Cursor(hex2bin($config['cursor_key_hex']));
-                $after = null;
-                $expires = $now + 900;
-                $before = null;
-                if ($cursor !== null) {
-                    $state = $codec->decode($cursor);
-                    if (($state['v'] ?? null) !== self::VERSION || ($state['route'] ?? null) !== $route
-                        || ($state['identity'] ?? null) !== $identity || ($state['filters'] ?? null) !== $filters
-                        || !is_int($state['expires'] ?? null) || $state['expires'] <= $now
-                        || !is_int($state['before'] ?? null) || !is_array($state['after'] ?? null)) {
+                try {
+                    $input = json_decode($requestBody, true, 24, JSON_THROW_ON_ERROR);
+                } catch (Throwable $error) {
+                    invalidDraft();
+                }
+                if (!is_array($input) || array_is_list($input)) {
+                    invalidDraft();
+                }
+                ProductDraftRepository::validateRequest($method, $input, $idempotencyKey);
+                /** @var ProductDraftRepository $draftRepository */
+                $draftRepository = ($this->draftRepository)($config);
+                $data = $draftRepository->apply($method, $input, $idempotencyKey);
+                $count = 1;
+                $status = $method === 'POST' && !$data['replayed'] ? 201 : 200;
+            } else {
+                $filters = $this->filters($route, $query);
+                $cursor = $filters['cursor'] ?? null;
+                unset($filters['cursor']);
+                if ($route === 'health') {
+                    $data = ['status' => 'ok', 'contract_version' => self::VERSION, 'server_time' => utc($now), 'check' => 'liveness'];
+                    $before = null;
+                    $next = null;
+                } else {
+                    if ($route === 'products' && $filters['status'] !== 'published'
+                        && !in_array('products.drafts.read', $credential['scopes'], true)) {
+                        throw new ApiError(403, 'forbidden', 'Draft product scope is required.');
+                    }
+                    $codec = new Cursor(hex2bin($config['cursor_key_hex']));
+                    $after = null;
+                    $expires = $now + 900;
+                    if ($cursor !== null) {
+                        $state = $codec->decode($cursor);
+                        if (($state['v'] ?? null) !== self::VERSION || ($state['route'] ?? null) !== $route
+                            || ($state['identity'] ?? null) !== $identity || ($state['filters'] ?? null) !== $filters
+                            || !is_int($state['expires'] ?? null) || $state['expires'] <= $now
+                            || !is_int($state['before'] ?? null) || !is_array($state['after'] ?? null)) {
+                            invalid();
+                        }
+                        $before = $state['before'];
+                        $after = $state['after'];
+                        $expires = $state['expires'];
+                    }
+                    /** @var ReadRepository $repository */
+                    $repository = ($this->repository)($config);
+                    if ($before === null) {
+                        $before = $repository->cutoff();
+                        if (isset($filters['updated_before'])) {
+                            $before = min($before, timestamp($filters['updated_before']));
+                        }
+                    }
+                    if (isset($filters['updated_from']) && timestamp($filters['updated_from']) >= $before) {
                         invalid();
                     }
-                    $before = $state['before'];
-                    $after = $state['after'];
-                    $expires = $state['expires'];
-                }
-                /** @var ReadRepository $repository */
-                $repository = ($this->repository)($config);
-                if ($before === null) {
-                    $before = $repository->cutoff();
-                    if (isset($filters['updated_before'])) {
-                        $before = min($before, timestamp($filters['updated_before']));
+                    $rows = $repository->page($route, $filters, $before, $after);
+                    $hasMore = count($rows) > $filters['limit'];
+                    if ($hasMore) {
+                        array_pop($rows);
+                    }
+                    if ($route === 'products') {
+                        $data = array_map([Dto::class, 'product'], $rows);
+                    } else {
+                        // Purpose-separate a stable pseudonymous customer reference from cursor signing.
+                        $customerRefKey = hash_hmac('sha256', 'studio-customer-ref-key-v1', hex2bin($config['cursor_key_hex']), true);
+                        $data = array_map(static fn(array $row): array => Dto::order($row, $customerRefKey), $rows);
+                    }
+                    $count = count($data);
+                    $next = null;
+                    if ($hasMore) {
+                        $last = end($rows);
+                        $next = $codec->encode(['v' => self::VERSION, 'route' => $route, 'identity' => $identity,
+                            'filters' => $filters, 'before' => $before, 'expires' => $expires,
+                            'after' => ['updated_at' => $last['updated_at'], 'id' => (string) $last['id']]]);
                     }
                 }
-                if (isset($filters['updated_from']) && timestamp($filters['updated_from']) >= $before) {
-                    invalid();
-                }
-                $rows = $repository->page($route, $filters, $before, $after);
-                $hasMore = count($rows) > $filters['limit'];
-                if ($hasMore) {
-                    array_pop($rows);
-                }
-                if ($route === 'products') {
-                    $data = array_map([Dto::class, 'product'], $rows);
-                } else {
-                    // Purpose-separate a stable pseudonymous customer reference from cursor signing.
-                    $customerRefKey = hash_hmac('sha256', 'studio-customer-ref-key-v1', hex2bin($config['cursor_key_hex']), true);
-                    $data = array_map(static fn(array $row): array => Dto::order($row, $customerRefKey), $rows);
-                }
-                $count = count($data);
-                $next = null;
-                if ($hasMore) {
-                    $last = end($rows);
-                    $next = $codec->encode(['v' => self::VERSION, 'route' => $route, 'identity' => $identity,
-                        'filters' => $filters, 'before' => $before, 'expires' => $expires,
-                        'after' => ['updated_at' => $last['updated_at'], 'id' => (string) $last['id']]]);
-                }
             }
-            $status = 200;
+            $status = $status ?? 200;
             $body = ['schema_version' => self::VERSION, 'request_id' => $requestId, 'generated_at' => utc($now),
                 'data' => $data, 'next_cursor' => $next];
             if ($before !== null) {
@@ -144,14 +177,15 @@ final class Api
             if ($status === 401) {
                 $headers['WWW-Authenticate'] = 'Bearer realm="studio-agent"';
             } elseif ($status === 405) {
-                $headers['Allow'] = 'GET';
+                $headers['Allow'] = $route === 'product-drafts' ? 'POST, PATCH' : 'GET';
             } elseif ($status === 429 || $status === 503) {
                 $headers['Retry-After'] = $status === 429 ? (string) (60 - $now % 60) : '5';
             }
         }
         try {
             ($this->audit)(['event' => 'agent_api_access', 'identity' => $identity, 'request_id' => $requestId,
-                'route' => in_array($route, ['health', 'products', 'orders'], true) ? $route : 'unknown',
+                'route' => in_array($route, ['health', 'products', 'orders', 'product-drafts'], true) ? $route : 'unknown',
+                'method' => in_array($method, ['GET', 'POST', 'PATCH'], true) ? $method : 'unknown',
                 'status' => $status, 'result' => $body['error']['code'] ?? 'ok', 'time' => utc($now),
                 'duration_ms' => (int) round((microtime(true) - $started) * 1000), 'record_count' => $count]);
         } catch (Throwable $error) {

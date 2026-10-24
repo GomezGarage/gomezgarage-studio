@@ -26,7 +26,8 @@ with tempfile.TemporaryDirectory(prefix='ggs-contract-') as directory:
     responses = json.loads(export.read_text())
     for response in responses:
         path = '/' + response['route'] + '.php'
-        schema = contract['paths'][path]['get']['responses'][str(response['status'])]['content']['application/json']['schema']
+        method = response.get('method', 'get')
+        schema = contract['paths'][path][method]['responses'][str(response['status'])]['content']['application/json']['schema']
         # Root local refs are resolved against the contract components.
         schema = dict(schema, components=contract['components'])
         Draft202012Validator(schema, format_checker=FormatChecker()).validate(response['body'])
@@ -34,14 +35,25 @@ print(f'PASS: OpenAPI 3.1; {len(responses)} synthetic responses conform to the c
 
 examples = json.loads((root / 'docs/agent-api/examples.json').read_text())
 for name, body in examples.items():
-    schema_name = 'ErrorResponse' if name == 'unauthorized' else name.capitalize() + 'Response'
+    schema_name = 'ErrorResponse' if name == 'unauthorized' else name.title().replace('_', '') + 'Response'
     schema = {'$ref': '#/components/schemas/' + schema_name, 'components': contract['components']}
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(body)
 print(f'PASS: {len(examples)} documented synthetic examples conform to the contract.')
 
+draft_requests = {
+    'ProductDraftCreate': {'slug':'synthetic-product','name_en':'Synthetic product','name_ro':'Produs sintetic',
+        'category':'automotive','price_eur':'19.95','images':[],'specs':[]},
+    'ProductDraftPatch': {'id':'42','expected_revision':'a'*64,'name_en':'Revised synthetic product'},
+}
+for name, body in draft_requests.items():
+    schema = {'$ref':'#/components/schemas/' + name, 'components':contract['components']}
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(body)
+print(f'PASS: {len(draft_requests)} draft write request examples conform to the contract.')
+
 if args.mysql_responses:
     mysql_responses = json.loads(args.mysql_responses.read_text())
     for response in mysql_responses:
-        schema = contract['paths']['/' + response['route'] + '.php']['get']['responses'][str(response['status'])]['content']['application/json']['schema']
+        method = response.get('method', 'get')
+        schema = contract['paths']['/' + response['route'] + '.php'][method]['responses'][str(response['status'])]['content']['application/json']['schema']
         Draft202012Validator(dict(schema, components=contract['components']), format_checker=FormatChecker()).validate(response['body'])
     print(f'PASS: {len(mysql_responses)} real database synthetic responses conform to the contract.')

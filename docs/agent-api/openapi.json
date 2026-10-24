@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Gomez Garage Studio — Service read API",
-    "version": "1.2.0",
-    "description": "Local pilot contract, not deployed. Site orders only; no Etsy, write, customer messaging or payment operations. Orders include a deterministic pseudonymous customer_ref for repeat-purchase analysis; no raw contact fields are returned. Decimal amounts represent order value in EUR, not receipts."
+    "title": "Gomez Garage Studio — Service API",
+    "version": "1.3.0",
+    "description": "Disabled-by-default service API for catalog and order reads plus idempotent draft-only product writes. Publishing, inventory, payments, messages, and file uploads are not supported."
   },
   "servers": [
     {
@@ -836,6 +836,288 @@
           }
         }
       }
+    },
+    "/product-drafts.php": {
+      "post": {
+        "operationId": "createProductDraft",
+        "summary": "Create an unpublished product draft",
+        "description": "Creates a status=draft product only. New drafts have zero stock and are not featured. This operation cannot publish, change inventory, upload files, affect checkout, or send messages.",
+        "x-required-scopes": [
+          "products.drafts.write"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]{16,128}$"
+            },
+            "description": "Opaque per-operation key. Retries with the same key and body return the original result; the key is stored only as SHA-256."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductDraftCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft created.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{32}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDraftResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Absent, invalid, expired or revoked credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing draft write scope or HTTPS.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency mismatch, stale revision, or product conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid body or idempotency key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Disabled API, unavailable writer or audit sink.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotent retry returned the original draft result.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{32}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDraftResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product is not an editable draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProductDraft",
+        "summary": "Update an unpublished product draft",
+        "description": "Updates allow-listed content fields on a draft only. Requires the current content revision. Published products, stock, featured state and publication status cannot be changed.",
+        "x-required-scopes": [
+          "products.drafts.write"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]{16,128}$"
+            },
+            "description": "Opaque per-operation key. Retries with the same key and body return the original result; the key is stored only as SHA-256."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductDraftPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Draft updated or idempotent replay.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{32}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDraftResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Absent, invalid, expired or revoked credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing draft write scope or HTTPS.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency mismatch, stale revision, or product conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid body or idempotency key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Disabled API, unavailable writer or audit sink.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product is not an editable draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -844,7 +1126,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "Dedicated random service token",
-        "description": "Separate from admin/payment credentials. Server-side scopes: agent.health.read, products.read, products.drafts.read, orders.read. SHA-256 digest stored outside web root. No token in URL."
+        "description": "Separate from admin/payment credentials. Server-side scopes: agent.health.read, products.read, products.drafts.read, products.drafts.write, orders.read. SHA-256 digest stored outside web root. No token in URL."
       }
     },
     "schemas": {
@@ -884,7 +1166,8 @@
           "specs",
           "stock",
           "view_stats",
-          "updated_at"
+          "updated_at",
+          "revision"
         ],
         "properties": {
           "source": {
@@ -1064,6 +1347,11 @@
                 "const": "current_7_utc_days_vs_previous_7_utc_days"
               }
             }
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Opaque SHA-256 content revision. Supply as expected_revision when editing a draft; changes to content produce a conflict."
           }
         }
       },
@@ -1222,7 +1510,7 @@
           },
           "contract_version": {
             "type": "string",
-            "const": "1.2.0"
+            "const": "1.3.0"
           },
           "server_time": {
             "$ref": "#/components/schemas/UtcTimestamp"
@@ -1247,7 +1535,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.2.0"
+            "const": "1.3.0"
           },
           "request_id": {
             "type": "string",
@@ -1293,7 +1581,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.2.0"
+            "const": "1.3.0"
           },
           "request_id": {
             "type": "string",
@@ -1338,7 +1626,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.2.0"
+            "const": "1.3.0"
           },
           "request_id": {
             "type": "string",
@@ -1367,7 +1655,7 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "1.2.0"
+            "const": "1.3.0"
           },
           "request_id": {
             "type": "string",
@@ -1394,13 +1682,332 @@
                   "method_not_allowed",
                   "not_found",
                   "rate_limited",
-                  "unavailable"
+                  "unavailable",
+                  "conflict",
+                  "stale_revision",
+                  "idempotency_conflict"
                 ]
               },
               "message": {
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "ProductDraftFields": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 100
+          },
+          "name_en": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "name_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "desc_short_en": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 5000
+          },
+          "desc_short_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 5000
+          },
+          "desc_long_en": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20000
+          },
+          "desc_long_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20000
+          },
+          "how_made_en": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 10000
+          },
+          "how_made_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 10000
+          },
+          "material": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "desk",
+              "display",
+              "automotive",
+              "other"
+            ]
+          },
+          "price_eur": {
+            "$ref": "#/components/schemas/DecimalAmount"
+          },
+          "images": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "pattern": "^/studio/assets/images/products/[A-Za-z0-9][A-Za-z0-9._-]{0,127}\\.(?:jpe?g|png|webp)$"
+            }
+          },
+          "specs": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "key",
+                "value"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProductDraftCreate": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProductDraftFields"
+          }
+        ],
+        "type": "object",
+        "required": [
+          "slug",
+          "name_en",
+          "category",
+          "price_eur"
+        ]
+      },
+      "ProductDraftPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 3,
+        "required": [
+          "id",
+          "expected_revision"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 100
+          },
+          "name_en": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "name_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "desc_short_en": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 5000
+          },
+          "desc_short_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 5000
+          },
+          "desc_long_en": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20000
+          },
+          "desc_long_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20000
+          },
+          "how_made_en": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 10000
+          },
+          "how_made_ro": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 10000
+          },
+          "material": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "desk",
+              "display",
+              "automotive",
+              "other"
+            ]
+          },
+          "price_eur": {
+            "$ref": "#/components/schemas/DecimalAmount"
+          },
+          "images": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "pattern": "^/studio/assets/images/products/[A-Za-z0-9][A-Za-z0-9._-]{0,127}\\.(?:jpe?g|png|webp)$"
+            }
+          },
+          "specs": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "key",
+                "value"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProductDraftResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "product_id",
+          "slug",
+          "status",
+          "revision",
+          "updated_at",
+          "replayed"
+        ],
+        "properties": {
+          "product_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "const": "draft"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "updated_at": {
+            "$ref": "#/components/schemas/UtcTimestamp"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProductDraftResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "request_id",
+          "generated_at",
+          "data",
+          "next_cursor"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.3.0"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{32}$"
+          },
+          "generated_at": {
+            "$ref": "#/components/schemas/UtcTimestamp"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProductDraftResult"
+          },
+          "next_cursor": {
+            "type": "null"
           }
         }
       }

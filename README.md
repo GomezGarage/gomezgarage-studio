@@ -53,12 +53,14 @@ full design decisions, page structure, schema and payment flow.
 - `sitemap.xml` lists product URLs by id manually; update it when products
   are added/removed (see ARCHITECTURE.md section 8).
 
-## Service read-only API
+## Service API
 
 The separate, disabled-by-default service API is documented in
 [docs/agent-api/README.md](docs/agent-api/README.md), including its OpenAPI 3.1
-contract, synthetic tests, synchronization limits, configuration and deployment/
-rollback gates. It does not load the shop credentials or change checkout behavior.
+contract, read-only catalog/order access, draft-only product writes, synthetic tests,
+synchronization limits, configuration and deployment/rollback gates. It does not load
+the shop credentials or change checkout behavior. Draft writes require a separate
+database user and remain unpublished until reviewed in the admin panel.
 
 The API reports privacy-minimal product-detail view events after the
 `product_views_daily` migration is installed. Counts are aggregate by UTC day and

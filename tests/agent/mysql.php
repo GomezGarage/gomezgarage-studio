@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../includes/agent/bootstrap.php';
 
-use Ggs\Agent\{Api, Config, Repository};
+use Ggs\Agent\{Api, Config, ProductDraftRepository, Repository};
 
 $checks = 0;
 function verify(bool $ok, string $label): void
@@ -44,6 +44,8 @@ try {
         verify(preg_match('/CREATE TABLE IF NOT EXISTS ' . $table . ' \(.*?\) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;/s', $schema, $match) === 1, 'source_ddl_' . $table);
         $admin->exec($match[0]);
     }
+    $draftMigration = file_get_contents(__DIR__ . '/../../database/migrations/20261024_agent_product_draft_requests.sql');
+    $admin->exec($draftMigration);
     $admin->exec('CREATE TABLE admin_users (id INT PRIMARY KEY, password_hash TEXT)');
     $admin->exec("SET time_zone = '+03:00'");
     $product = $admin->prepare('INSERT INTO products (id,slug,name_en,name_ro,category,price_eur,stock,images,specs,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
@@ -63,19 +65,34 @@ try {
         (1,UTC_DATE(),8),(1,DATE_SUB(UTC_DATE(),INTERVAL 7 DAY),3)");
     $admin->exec("SET time_zone = '+00:00'");
     $password = bin2hex(random_bytes(32));
+    $writerPassword = bin2hex(random_bytes(32));
     $admin->exec("CREATE USER 'ggs_fixture_reader'@'localhost' IDENTIFIED BY " . $admin->quote($password));
+    $admin->exec("CREATE USER 'ggs_fixture_writer'@'localhost' IDENTIFIED BY " . $admin->quote($writerPassword));
     $productColumns = 'id,slug,status,name_ro,name_en,desc_short_ro,desc_short_en,desc_long_ro,desc_long_en,how_made_ro,how_made_en,material,category,price_eur,images,specs,stock,updated_at,created_at';
     $orderColumns = 'id,order_number,status,payment_method,created_at,updated_at,subtotal_eur,shipping_eur,total_eur,items,shipping_address,tracking_number,customer_email';
     $admin->exec("GRANT SELECT ($productColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_reader'@'localhost'");
     $admin->exec("GRANT SELECT ($orderColumns) ON ggs_agent_fixture.orders TO 'ggs_fixture_reader'@'localhost'");
     $admin->exec("GRANT SELECT (product_id,view_date,view_count) ON ggs_agent_fixture.product_views_daily TO 'ggs_fixture_reader'@'localhost'");
+    $draftReadColumns = 'id,slug,status,name_ro,name_en,desc_short_ro,desc_short_en,desc_long_ro,desc_long_en,how_made_ro,how_made_en,material,category,price_eur,images,specs,updated_at';
+    $draftWriteColumns = 'slug,name_en,name_ro,desc_short_en,desc_short_ro,desc_long_en,desc_long_ro,how_made_en,how_made_ro,material,category,price_eur,images,specs';
+    $admin->exec("GRANT SELECT ($draftReadColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_writer'@'localhost'");
+    $admin->exec("GRANT INSERT ($draftWriteColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_writer'@'localhost'");
+    $admin->exec("GRANT UPDATE ($draftWriteColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_writer'@'localhost'");
+    $admin->exec("GRANT SELECT (idempotency_hash,request_hash,response_json) ON ggs_agent_fixture.agent_product_draft_requests TO 'ggs_fixture_writer'@'localhost'");
+    $admin->exec("GRANT INSERT (idempotency_hash,request_hash,response_json) ON ggs_agent_fixture.agent_product_draft_requests TO 'ggs_fixture_writer'@'localhost'");
     mkdir($private . '/rate', 0700);
     $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-    $config = ['cursor_key_hex' => bin2hex(random_bytes(32)), 'rate_limit_dir' => $private . '/rate',
+    $writerToken = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    $config = ['enabled' => true, 'cursor_key_hex' => bin2hex(random_bytes(32)), 'rate_limit_dir' => $private . '/rate',
         'timestamp_storage_verified' => true,
         'database' => ['engine' => $maria ? 'mariadb' : 'mysql', 'host' => 'localhost', 'name' => 'ggs_agent_fixture', 'user' => 'ggs_fixture_reader', 'password' => $password],
-        'credentials' => [['id' => 'synthetic-mysql', 'active' => true, 'token_sha256' => hash('sha256', $token),
-            'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 3600), 'scopes' => Config::SCOPES]]];
+        'write_database' => ['engine' => $maria ? 'mariadb' : 'mysql', 'host' => 'localhost', 'name' => 'ggs_agent_fixture', 'user' => 'ggs_fixture_writer', 'password' => $writerPassword],
+        'credentials' => [
+            ['id' => 'synthetic-reader', 'active' => true, 'token_sha256' => hash('sha256', $token),
+                'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 3600), 'scopes' => ['agent.health.read','products.read','products.drafts.read','orders.read']],
+            ['id' => 'synthetic-writer', 'active' => true, 'token_sha256' => hash('sha256', $writerToken),
+                'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 3600), 'scopes' => ['products.read','products.drafts.read','products.drafts.write']]
+        ]];
     $configPath = $private . '/config.json';
     file_put_contents($configPath, json_encode($config, JSON_THROW_ON_ERROR));
     chmod($configPath, 0600);
@@ -95,6 +112,18 @@ try {
     denied(static fn() => $reader->query('SELECT customer_name FROM orders'), 'no_customer_name');
     denied(static fn() => $reader->query('SELECT * FROM orders'), 'no_select_star');
     denied(static fn() => $reader->query('SELECT password_hash FROM admin_users'), 'no_admin');
+    $writerRepository = ProductDraftRepository::connect($configuration());
+    $writerProperty = new ReflectionProperty(ProductDraftRepository::class, 'db');
+    if (PHP_VERSION_ID < 80100) { $writerProperty->setAccessible(true); }
+    $writerDb = $writerProperty->getValue($writerRepository);
+    verify($writerDb->query('SELECT @@session.time_zone')->fetchColumn() === '+00:00', 'writer_utc_session');
+    denied(static fn() => $writerDb->query('SELECT stock FROM products'), 'writer_cannot_read_stock');
+    denied(static fn() => $writerDb->exec("UPDATE products SET status='published' WHERE id=5"), 'writer_cannot_publish_column');
+    denied(static fn() => $writerDb->exec('UPDATE products SET stock=999 WHERE id=5'), 'writer_cannot_update_stock');
+    denied(static fn() => $writerDb->exec('UPDATE products SET featured=1 WHERE id=5'), 'writer_cannot_update_featured');
+    denied(static fn() => $writerDb->exec('DELETE FROM products WHERE id=5'), 'writer_cannot_delete_product');
+    denied(static fn() => $writerDb->exec("INSERT INTO orders (order_number) VALUES ('FORBIDDEN')"), 'writer_cannot_write_orders');
+    denied(static fn() => $writerDb->exec('UPDATE agent_product_draft_requests SET request_hash=request_hash'), 'writer_cannot_change_idempotency_ledger');
     try {
         $joins = implode(' CROSS JOIN ', array_map(static fn($i) => 'products p' . $i, range(1, 10)));
         if ($maria) { $reader->exec('SET SESSION max_statement_time = 0.01'); }
@@ -139,6 +168,51 @@ try {
     verify($orders['body']['data'][0]['total'] === '29.60' && $orders['body']['data'][0]['items'][0]['price'] === '12.30', 'order_decimal');
     verify(!str_contains(json_encode($orders), 'PRIVATE-') && !str_contains(json_encode($orders), 'private@'), 'no_pii_export');
     verify($before === $snapshot(), 'no_commercial_mutation');
+    $draftEvents = [];
+    $draftApi = new Api($configuration, [Repository::class, 'connect'], static function (): void {},
+        static function ($event) use (&$draftEvents): void { $draftEvents[] = $event; }, null,
+        [ProductDraftRepository::class, 'connect']);
+    $draftCall = static function (string $method, string $bearer, array $body, string $key) use ($draftApi, &$responses): array {
+        $result = $draftApi->handle('product-drafts', $method, 'Bearer ' . $bearer, '', true,
+            json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), $key, 'application/json');
+        if (in_array($method, ['POST', 'PATCH'], true)) {
+            $responses[] = ['route' => 'product-drafts', 'method' => strtolower($method), 'status' => $result['status'], 'body' => $result['body']];
+        }
+        return $result;
+    };
+    $draftContent = ['slug' => 'mysql-synthetic-draft', 'name_en' => 'MySQL synthetic draft', 'name_ro' => 'Draft MySQL sintetic',
+        'category' => 'display', 'price_eur' => '19.95', 'images' => [], 'specs' => [['key' => 'Material', 'value' => 'PLA']]];
+    $readTokenWrite = $draftCall('POST', $token, $draftContent, 'mysql-draft-read-token-001');
+    verify($readTokenWrite['status'] === 403, 'read_token_cannot_write_draft');
+    verify($draftCall('POST', $writerToken, $draftContent, 'mysql-draft-create-key-001')['status'] === 201, 'mariadb_mysql_draft_insert');
+    $created = end($responses)['body']['data'];
+    verify($created['status'] === 'draft' && preg_match('/^[a-f0-9]{64}$/D', $created['revision']) === 1,
+        'writer_response_is_draft_with_revision');
+    verify($draftCall('POST', $writerToken, $draftContent, 'mysql-draft-create-key-001')['status'] === 200
+        && end($responses)['body']['data']['replayed'] === true, 'mariadb_mysql_idempotent_replay');
+    $storedDraft = $admin->query("SELECT status,stock,featured FROM products WHERE id=" . (int) $created['product_id'])->fetch();
+    verify($storedDraft['status'] === 'draft' && (int) $storedDraft['stock'] === 0 && (int) $storedDraft['featured'] === 0,
+        'mariadb_mysql_draft_safe_defaults');
+    $update = ['id' => $created['product_id'], 'expected_revision' => $created['revision'], 'name_en' => 'MySQL revised draft'];
+    verify($draftCall('PATCH', $writerToken, $update, 'mysql-draft-update-key-001')['status'] === 200,
+        'mariadb_mysql_draft_update');
+    $updatedDraft = end($responses)['body']['data'];
+    verify($updatedDraft['revision'] !== $created['revision'], 'mariadb_mysql_revision_changes');
+    verify($draftCall('PATCH', $writerToken, $update, 'mysql-draft-stale-key-001')['status'] === 409,
+        'mariadb_mysql_stale_revision_rejected');
+    $published = $first['body']['data'][0];
+    verify($published['status'] === 'published' && $draftCall('PATCH', $writerToken,
+        ['id' => $published['id'], 'expected_revision' => $published['revision'], 'name_en' => 'Forbidden'],
+        'mysql-draft-published-key-001')['status'] === 404, 'mariadb_mysql_published_row_not_editable');
+    verify($draftCall('POST', $writerToken, $draftContent, 'mysql-draft-idempotency-conflict-001')['status'] === 409,
+        'mariadb_mysql_duplicate_slug_conflict');
+    verify($draftCall('GET', $writerToken, $draftContent, 'mysql-draft-method-key-001')['status'] === 405,
+        'mariadb_mysql_draft_method_allowlist');
+    verify($draftCall('GET', $writerToken, $draftContent, 'mysql-draft-method-key-001')['headers']['Allow'] === 'POST, PATCH',
+        'mariadb_mysql_draft_allow_header');
+    verify(!str_contains(json_encode($draftEvents), $writerToken) && !str_contains(json_encode($draftEvents), 'MySQL synthetic draft'),
+        'mariadb_mysql_draft_audit_redaction');
+    verify(!str_contains(json_encode($responses), 'MySQL synthetic draft'), 'mariadb_mysql_draft_response_does_not_echo_body');
     // EXPLAIN records the baseline limitation, not a made-up performance guarantee.
     $plan = $reader->query('EXPLAIN SELECT id,updated_at FROM products WHERE updated_at < UTC_TIMESTAMP() ORDER BY updated_at,id LIMIT 51')->fetchAll();
     verify(count($plan) === 1, 'explain_available');
@@ -156,7 +230,7 @@ try {
     verify(!str_contains(json_encode($events), $password) && !str_contains(json_encode($events), $token), 'sanitized_audit');
     echo json_encode(['status' => 'PASS', 'checks' => $checks, 'database_version' => $version, 'php_version' => PHP_VERSION,
         'transport' => 'private Unix socket; no TCP listeners',
-        'tables' => 'products/orders DDL extracted without seeds from local schema.sql',
+        'tables' => 'products/orders/product_views DDL plus draft request ledger from isolated migrations',
         'explain_access' => $plan[0]['type'], 'explain_key' => $plan[0]['key'],
         'responses' => $responses], JSON_THROW_ON_ERROR);
 } catch (Throwable $error) {

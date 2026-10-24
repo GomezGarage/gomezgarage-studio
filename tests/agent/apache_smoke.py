@@ -86,12 +86,16 @@ def main():
                     except OSError:
                         time.sleep(.05)
                 context = ssl.create_default_context(cafile=str(cert))
-                def request(route='health', auth=True, method='GET', query=''):
+                def request(route='health', auth=True, method='GET', query='', body=None, idempotency_key=None):
                     connection = http.client.HTTPSConnection('127.0.0.1', port, timeout=5, context=context)
                     headers = {'Cookie': 'PHPSESSID=synthetic-admin'}
                     if auth:
                         headers['Authorization'] = 'Bearer ' + token
-                    connection.request(method, '/api/agent/v1/' + route + '.php' + query, headers=headers)
+                    if body is not None:
+                        headers['Content-Type'] = 'application/json'
+                    if idempotency_key is not None:
+                        headers['Idempotency-Key'] = idempotency_key
+                    connection.request(method, '/api/agent/v1/' + route + '.php' + query, body=body, headers=headers)
                     result = connection.getresponse()
                     body = result.read()
                     status, returned_headers = result.status, dict(result.getheaders())
@@ -103,6 +107,12 @@ def main():
                 assert headers['Cache-Control'] == 'no-store', 'no caching'
                 assert request(auth=False)[0] == 401, 'no admin session fallback'
                 assert request(method='POST')[0] == 405, 'read-only method'
+                assert request('product-drafts', method='GET')[0] == 405, 'draft route method allowlist'
+                config['credentials'][0]['scopes'].append('products.drafts.write')
+                credential_file.write_text(json.dumps(config))
+                assert request('product-drafts', method='POST', body='{}', idempotency_key='apache-draft-test-key-001') [0] == 422, 'draft validation before writer DB'
+                draft = json.dumps({'slug':'apache-draft','name_en':'Synthetic draft','category':'desk','price_eur':'1.00'})
+                assert request('product-drafts', method='POST', body=draft, idempotency_key='apache-draft-test-key-002')[0] == 503, 'writer DB is not inferred from reader'
                 assert request(query='?limit=1')[0] == 422, 'validation'
                 assert request('orders')[0] == 403, 'scope boundary'
                 assert request('products')[0] == 503, 'DB activation gate'

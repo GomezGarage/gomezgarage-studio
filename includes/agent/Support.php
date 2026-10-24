@@ -19,6 +19,11 @@ function invalid(): void
     throw new ApiError(422, 'invalid_request', 'Invalid filters or cursor.');
 }
 
+function invalidDraft(): void
+{
+    throw new ApiError(422, 'invalid_request', 'Invalid product draft request.');
+}
+
 function utc(int $timestamp): string
 {
     return gmdate('Y-m-d\TH:i:s\Z', $timestamp);
@@ -35,7 +40,7 @@ function timestamp(string $value): int
 
 final class Config
 {
-    public const SCOPES = ['agent.health.read', 'products.read', 'products.drafts.read', 'orders.read'];
+    public const SCOPES = ['agent.health.read', 'products.read', 'products.drafts.read', 'products.drafts.write', 'orders.read'];
 
     /** Default shared-hosting location, next to (never inside) the active web root. */
     public static function defaultPath(string $documentRoot): string
@@ -85,6 +90,21 @@ final class Config
                 throw new RuntimeException('Invalid credential expiry.');
             }
             $ids[$credential['id']] = $hashes[$credential['token_sha256']] = true;
+        }
+        if (isset($config['write_database'])) {
+            $writer = $config['write_database'];
+            if (!is_array($writer) || !in_array($writer['host'] ?? '', ['localhost', '127.0.0.1', '::1'], true)
+                || !preg_match('/^[a-zA-Z0-9_]+$/D', $writer['name'] ?? '')
+                || !is_string($writer['user'] ?? null) || !is_string($writer['password'] ?? null)
+                || !is_array($config['database'] ?? null)
+                || ($writer['host'] ?? null) !== ($config['database']['host'] ?? null)
+                || ($writer['name'] ?? null) !== ($config['database']['name'] ?? null)
+                || !in_array($writer['engine'] ?? '', ['mysql', 'mariadb'], true)
+                || $writer['engine'] !== ($config['database']['engine'] ?? null)
+                || hash_equals((string) ($config['database']['user'] ?? ''), $writer['user'])) {
+                throw new RuntimeException('Invalid isolated write database configuration.');
+            }
+            $config['write_database'] = $writer;
         }
         $dir = realpath($config['rate_limit_dir'] ?? '');
         if (!$dir || !is_dir($dir) || !is_writable($dir) || (fileperms($dir) & 0077) !== 0) {

@@ -3,7 +3,7 @@ declare(strict_types=1);
 // Entirely synthetic. Never includes config.php, vendor, mailer, payments or invoices.
 require_once __DIR__ . '/../../includes/agent/bootstrap.php';
 
-use Ggs\Agent\{Api, ApiError, Config, Dto, FileRateLimiter, Repository};
+use Ggs\Agent\{Api, ApiError, Config, Dto, FileRateLimiter, ProductDraftRepository, Repository};
 use function Ggs\Agent\{timestamp, utc};
 
 $checks = 0;
@@ -105,6 +105,7 @@ $syntheticProduct = request()['body']['data'][0];
 check($syntheticProduct['view_stats'] === ['metric' => 'product_detail_view_events', 'current_7d' => 8,
     'previous_7d' => 3, 'delta_7d' => 5, 'window' => 'current_7_utc_days_vs_previous_7_utc_days'],
     'product_view_stats_are_aggregate_utc_week_comparison');
+check(preg_match('/^[a-f0-9]{64}$/D', $syntheticProduct['revision']) === 1, 'product_revision_is_opaque_hash');
 $config['credentials'][0]['scopes'] = Config::SCOPES;
 check(count(request('products', 'status=draft')['body']['data']) === 1, 'draft explicit');
 foreach (['limit=0', 'limit=101', 'limit=-1', 'limit=01', 'limit=1.0', 'limit[]=1', 'limit=1&limit=2',
@@ -200,6 +201,18 @@ try {
     file_put_contents($path, json_encode($config));
     chmod($path, 0600);
     check(Config::load($path, dirname(__DIR__, 2))['credentials'][0]['id'] === 'synthetic-service', 'private config loads');
+    $config['database'] = ['engine' => 'mariadb', 'host' => 'localhost', 'name' => 'fixture_db', 'user' => 'fixture_reader', 'password' => 'synthetic'];
+    $config['write_database'] = ['engine' => 'mariadb', 'host' => 'localhost', 'name' => 'fixture_db', 'user' => 'fixture_reader', 'password' => 'synthetic'];
+    file_put_contents($path, json_encode($config));
+    raises(static fn() => Config::load($path, dirname(__DIR__, 2)), 'reader identity cannot be reused for writes');
+    $config['write_database']['user'] = 'fixture_writer';
+    file_put_contents($path, json_encode($config));
+    check(Config::load($path, dirname(__DIR__, 2))['write_database']['user'] === 'fixture_writer', 'separate same-database writer config accepted');
+    $config['write_database']['name'] = 'other_db';
+    file_put_contents($path, json_encode($config));
+    raises(static fn() => Config::load($path, dirname(__DIR__, 2)), 'writer cannot target a different database');
+    unset($config['database'], $config['write_database']);
+    file_put_contents($path, json_encode($config));
     $webRoot = $dir . '/public_html';
     mkdir($webRoot, 0700);
     check(Config::defaultPath($webRoot) === dirname(realpath($webRoot)) . '/private/studio-agent/config.json', 'cPanel config is outside active document root');
@@ -248,6 +261,91 @@ $report = 'Sursă: studio. Ultima sincronizare: ' . $orderResponse['body']['gene
     . '. 3 comenzi sintetice; valoarea comenzilor: ' . intdiv($totalCents, 100) . ',' . sprintf('%02d', $totalCents % 100)
     . ' EUR. Încasări: necunoscute. Limba clientului: neînregistrată.';
 check(str_contains($report, '88,80 EUR'), 'Romanian report from API DTOs');
+
+// Draft writes use an isolated synthetic database and a credential with a separate scope.
+$draftDb = new $pdoClass('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_STRINGIFY_FETCHES => true]);
+$draftDb->$createFunction('UTC_TIMESTAMP', static fn(): string => '2026-10-21 12:00:00', 0);
+$draftDb->exec("CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT UNIQUE, status TEXT NOT NULL DEFAULT 'draft',
+    name_ro TEXT, name_en TEXT, desc_short_ro TEXT, desc_short_en TEXT, desc_long_ro TEXT, desc_long_en TEXT,
+    how_made_ro TEXT, how_made_en TEXT, material TEXT, category TEXT, price_eur TEXT, images TEXT, specs TEXT,
+    stock INTEGER NOT NULL DEFAULT 0, featured INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+$draftDb->exec('CREATE TABLE agent_product_draft_requests (idempotency_hash TEXT PRIMARY KEY, request_hash TEXT NOT NULL, response_json TEXT NOT NULL)');
+$draftDb->exec("INSERT INTO products (slug,status,name_en,category,price_eur,images,specs) VALUES
+    ('published-fixture','published','Published fixture','desk','10.00','[]','[]')");
+$draftConfig = ['credentials' => [['id' => 'synthetic-draft-writer', 'token_sha256' => hash('sha256', $token),
+    'active' => true, 'expires_at' => '2026-10-22T00:00:00Z', 'scopes' => ['products.read', 'products.drafts.read', 'products.drafts.write']]]];
+$draftFactoryCalls = 0;
+$draftEvents = [];
+$draftApi = new Api(static function () use (&$draftConfig): array { return $draftConfig; }, static fn() => $repository, static function (): void {},
+    static function ($event) use (&$draftEvents): void { $draftEvents[] = $event; },
+    static fn() => $now,
+    static function () use (&$draftFactoryCalls, $draftDb): ProductDraftRepository { $draftFactoryCalls++; return new ProductDraftRepository($draftDb); });
+$draftCall = static function (string $method, array $input, string $key, array $scopes = ['products.drafts.write'], string $contentType = 'application/json') use ($draftApi, $token, &$draftConfig, &$responses): array {
+    $draftConfig['credentials'][0]['scopes'] = $scopes;
+    $response = $draftApi->handle('product-drafts', $method, 'Bearer ' . $token, '', true,
+        json_encode($input, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), $key, $contentType);
+    $responses[] = ['route' => 'product-drafts', 'method' => strtolower($method), 'status' => $response['status'], 'body' => $response['body']];
+    return $response;
+};
+$draftInput = ['slug' => 'synthetic-draft', 'name_en' => 'Synthetic draft', 'name_ro' => 'Draft sintetic',
+    'category' => 'desk', 'price_eur' => '12.30', 'images' => ['/studio/assets/images/products/fixture.webp'],
+    'specs' => [['key' => 'Material', 'value' => 'PLA']]];
+$draftDenied = $draftCall('POST', $draftInput, 'draft-key-no-scope-0001', ['products.read']);
+check($draftDenied['status'] === 403 && $draftFactoryCalls === 0, 'draft_write_requires_separate_scope_before_db');
+$invalidDraft = $draftCall('POST', $draftInput + ['status' => 'published'], 'draft-key-invalid-0001');
+check($invalidDraft['status'] === 422 && $draftFactoryCalls === 0, 'draft_write_rejects_publication_field_before_db');
+$createdDraft = $draftCall('POST', $draftInput, 'draft-key-create-0001');
+check($createdDraft['status'] === 201 && $createdDraft['body']['data']['status'] === 'draft', 'draft_create_returns_unpublished');
+$draftRow = $draftDb->query("SELECT status,stock,featured FROM products WHERE slug='synthetic-draft'")->fetch();
+check($draftRow['status'] === 'draft' && (int) $draftRow['stock'] === 0 && (int) $draftRow['featured'] === 0,
+    'draft_create_has_safe_defaults');
+check((bool) preg_match('/^[a-f0-9]{64}$/D', $draftDb->query('SELECT idempotency_hash FROM agent_product_draft_requests LIMIT 1')->fetchColumn()),
+    'idempotency_ledger_stores_only_hash');
+$draftReplay = $draftCall('POST', $draftInput, 'draft-key-create-0001');
+check($draftReplay['status'] === 200 && $draftReplay['body']['data']['replayed'] === true
+    && (int) $draftDb->query("SELECT COUNT(*) FROM products WHERE slug='synthetic-draft'")->fetchColumn() === 1,
+    'draft_create_is_idempotent');
+$draftKeyConflict = $draftCall('POST', array_merge($draftInput, ['name_en' => 'Changed body']), 'draft-key-create-0001');
+check($draftKeyConflict['status'] === 409, 'draft_idempotency_key_cannot_change_payload');
+$draftId = $createdDraft['body']['data']['product_id'];
+$draftRevision = $createdDraft['body']['data']['revision'];
+$updateInput = ['id' => $draftId, 'expected_revision' => $draftRevision, 'name_en' => 'Revised synthetic draft'];
+$updatedDraft = $draftCall('PATCH', $updateInput, 'draft-key-update-0001');
+check($updatedDraft['status'] === 200 && $updatedDraft['body']['data']['revision'] !== $draftRevision,
+    'draft_update_uses_revision');
+$staleDraft = $draftCall('PATCH', $updateInput, 'draft-key-stale-0001');
+check($staleDraft['status'] === 409 && $staleDraft['body']['error']['code'] === 'stale_revision', 'stale_draft_update_rejected');
+$updateReplay = $draftCall('PATCH', $updateInput = ['id' => $draftId, 'expected_revision' => $updatedDraft['body']['data']['revision'],
+    'desc_short_en' => 'Reviewed later'], 'draft-key-update-0002');
+$updateRetry = $draftCall('PATCH', $updateInput, 'draft-key-update-0002');
+check($updateReplay['status'] === 200 && $updateRetry['body']['data']['replayed'] === true, 'draft_patch_is_idempotent');
+$published = $draftDb->query("SELECT id, slug, status, name_ro, name_en, desc_short_ro, desc_short_en, desc_long_ro, desc_long_en,
+    how_made_ro, how_made_en, material, category, CAST(price_eur AS CHAR) AS price_eur, images, specs, stock, updated_at,
+    0 AS views_current_7d, 0 AS views_previous_7d FROM products WHERE slug='published-fixture'")->fetch();
+$publishedUpdate = $draftCall('PATCH', ['id' => (string) $published['id'], 'expected_revision' => Dto::product($published)['revision'],
+    'name_en' => 'Try to edit published'], 'draft-key-published-0001');
+check($publishedUpdate['status'] === 404, 'published_product_cannot_be_edited_via_draft_route');
+foreach ([
+    ['id' => '2'], ['expected_revision' => str_repeat('a', 64)], ['status' => 'published'], ['stock' => 5], ['featured' => true], ['price_eur' => '1.234'],
+    ['images' => ['https://example.invalid/image.jpg']], ['name_en' => '<script>alert(1)</script>'],
+] as $badField) {
+    $bad = array_merge(['slug' => 'another-fixture', 'name_en' => 'Name', 'category' => 'desk', 'price_eur' => '1.00'], $badField);
+    check($draftCall('POST', $bad, 'draft-key-negative-' . str_pad((string) $checks, 4, '0', STR_PAD_LEFT))['status'] === 422,
+        'draft_field_rejected_' . array_key_first($badField));
+}
+$missingIdempotency = $draftApi->handle('product-drafts', 'POST', 'Bearer ' . $token, '', true,
+    json_encode($draftInput, JSON_THROW_ON_ERROR), '', 'application/json');
+check($missingIdempotency['status'] === 422, 'draft_write_requires_idempotency_key');
+$wrongContentType = $draftCall('POST', $draftInput, 'draft-key-content-type-001', ['products.drafts.write'], 'text/plain');
+check($wrongContentType['status'] === 422, 'draft_write_requires_json_content_type');
+$whitespaceBody = $draftApi->handle('product-drafts', 'POST', 'Bearer ' . $token, '', true,
+    '   ', 'draft-key-whitespace-001', 'application/json');
+check($whitespaceBody['status'] === 422, 'draft_write_rejects_whitespace_only_body');
+$wrongMethod = $draftApi->handle('product-drafts', 'DELETE', 'Bearer ' . $token, '', true);
+check($wrongMethod['status'] === 405 && $wrongMethod['headers']['Allow'] === 'POST, PATCH', 'draft_route_rejects_delete');
+check(!str_contains(json_encode($draftEvents), $token) && !str_contains(json_encode($draftEvents), 'Synthetic draft'), 'draft_audit_excludes_secret_and_body');
 if (isset($argv[1])) {
     // Optional temporary export: synthetic DTOs and cursors, never credential/key values.
     file_put_contents($argv[1], json_encode($responses, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));

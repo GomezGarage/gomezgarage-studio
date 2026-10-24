@@ -37,7 +37,7 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
     php_root = str(root).replace('\\', '\\\\').replace("'", "\\'")
     router.write_text("<?php\n"
         "$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);\n"
-        "if (!preg_match('~^/(secure|insecure)/(health|products|orders)\\.php$~D', $path, $parts)) { http_response_code(404); exit; }\n"
+        "if (!preg_match('~^/(secure|insecure)/(health|products|orders|product-drafts)\\.php$~D', $path, $parts)) { http_response_code(404); exit; }\n"
         "if ($parts[1] === 'secure') { $_SERVER['HTTPS'] = 'on'; }\n"
         f"require '{php_root}/api/agent/v1/' . $parts[2] . '.php';\n")
     with socket.socket() as probe:
@@ -57,11 +57,15 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
                 try:
                     with socket.create_connection(('127.0.0.1',port), timeout=.1): break
                 except OSError: time.sleep(.03)
-            def request(path='health', auth=True, method='GET', secure=True, query=''):
+            def request(path='health', auth=True, method='GET', secure=True, query='', body=None, idempotency_key=None):
                 connection = http.client.HTTPConnection('127.0.0.1',port,timeout=3)
                 headers={'X-Forwarded-Proto':'https','Cookie':'PHPSESSID=synthetic-admin'}
                 if auth: headers['Authorization']='Bearer '+token
-                connection.request(method, f"/{'secure' if secure else 'insecure'}/{path}.php{query}",headers=headers)
+                if body is not None:
+                    headers['Content-Type']='application/json'
+                if idempotency_key is not None:
+                    headers['Idempotency-Key']=idempotency_key
+                connection.request(method, f"/{'secure' if secure else 'insecure'}/{path}.php{query}",body=body,headers=headers)
                 result=connection.getresponse()
                 body=result.read()
                 status=result.status
@@ -79,6 +83,12 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
             assert headers['Cache-Control']=='no-store' and headers['X-Request-ID']==body['request_id'], 'HTTP headers'
             assert request('orders',auth=False)[0]==401, 'No session fallback'
             assert request('orders',method='POST')[0]==405, 'Method rejection'
+            assert request('product-drafts',method='GET')[0]==405, 'Draft route rejects reads'
+            config['credentials'][0]['scopes'].append('products.drafts.write')
+            config_file.write_text(json.dumps(config))
+            assert request('product-drafts',method='POST',body='{}',idempotency_key='draft-http-test-key-0001')[0]==422, 'Draft body validation before DB'
+            draft_body=json.dumps({'slug':'http-draft','name_en':'Synthetic HTTP draft','category':'desk','price_eur':'1.00'})
+            assert request('product-drafts',method='POST',body=draft_body,idempotency_key='draft-http-test-key-0002')[0]==503, 'No writer DB fallback'
             assert request(secure=False)[0]==403, 'Forwarded HTTPS not trusted'
             assert request(query='?limit=1')[0]==422, 'Health query validation'
             assert request('products')[0]==503, 'Database gate before connection'

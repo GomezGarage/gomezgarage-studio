@@ -1,8 +1,26 @@
 # Verificare locală — 21 octombrie 2026
 
-## Extensia view_stats — 24 octombrie 2026
+## Draft-only product writes — 24 octombrie 2026
 
-Codul local propune contractul 1.2.0 și nu este publicat. Verificări pe această schimbare:
+Extensia locală propune contractul 1.3.0. Nu este publicată, migrată sau activată.
+
+| Verificare | Rezultat |
+|---|---|
+| PHP lint pentru entrypoints, repository și teste agent | PASS |
+| `php tests/agent/run.php` | PASS, 116 verificări SQLite sintetice, inclusiv scriere de draft, replay idempotent, revision conflict și refuzul publicării/stocului |
+| `python3 tests/agent/http_smoke.py` | PASS, loopback auth/method/body/scope și refuzul fallbackului writer la reader |
+| OpenAPI 3.1 / JSON Schema 2020-12 | PASS, 76 răspunsuri sintetice și 5 exemple |
+| MariaDB 10.6.28 / MySQL 8.4.13 cu granturi column-level | Codul probei a fost extins; **nu a fost rulat**, binarele izolate nu sunt disponibile în acest mediu |
+| Apache + PHP HTTPS | **Nerulat** pentru extensia nouă; binarele mod_php izolate nu sunt disponibile în acest mediu |
+
+Nu s-a conectat la o bază existentă și nu s-a rulat migrarea pe hosting. Înainte de deploy
+trebuie rulate `mysql_smoke.py` pe ambele motoare/versiuni documentate și `apache_smoke.py`,
+apoi verificate schema și permisiunile reale în staging separat.
+
+## Extensia view_stats — status la 24 octombrie 2026
+
+Verificările de mai jos sunt istorice pentru extensia `view_stats` din contractul 1.2.0;
+extensia curentă 1.3.0 este raportată separat mai sus.
 
 | Verificare | Rezultat |
 |---|---|
