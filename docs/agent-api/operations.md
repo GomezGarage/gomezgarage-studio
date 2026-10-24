@@ -45,14 +45,17 @@ review; aprobarea și provisioningul efectiv preced activarea.
    granturile în staging. Nu se folosește contul existent al checkoutului.
 6. Pentru operațiile de draft creează un al doilea user DB, diferit de cel read-only,
    cu acces numai la aceeași bază locală. Rulează separat migrarea
-   `20261024_agent_product_draft_requests.sql`, apoi acordă-i numai SELECT/INSERT/UPDATE
-   pe coloanele `slug`, câmpurile bilingve de text, `material`, `category`, `price_eur`,
-   `images` și `specs` din `products`; status, featured și stock nu primesc write grant.
-   Pe `agent_product_draft_requests` acordă SELECT pe `idempotency_hash`, `request_hash`,
-   `response_json` și INSERT pe aceleași trei coloane. Nu acorda UPDATE, DELETE, DDL sau
-   acces la alte tabele. Adaugă datele writerului separat în `write_database`, păstrând
-   `database` pentru reader. Credentialul Business de scriere este o identitate separată
-   cu scope `products.drafts.write` și nu se acordă tokenului read-only existent.
+   `20261024_agent_product_draft_requests.sql`. Pe `products`, acordă SELECT numai pe
+   `id`, `slug`, `status`, câmpurile bilingve de text, `material`, `category`, `price_eur`,
+   `images`, `specs` și `updated_at`. Acordă INSERT și UPDATE numai pe `slug`, câmpurile
+   bilingve de text, `material`, `category`, `price_eur`, `images` și `specs`. `id`,
+   `status` și `updated_at` sunt doar pentru SELECT; `created_at`, `featured` și `stock`
+   nu primesc niciun grant. Pe `agent_product_draft_requests` acordă SELECT și INSERT
+   numai pe `idempotency_hash`, `request_hash` și `response_json`. Nu acorda UPDATE,
+   DELETE, DDL sau acces la alte tabele. Adaugă datele writerului separat în
+   `write_database`, păstrând `database` pentru reader. Credentialul Business de scriere
+   este o identitate separată cu scope `products.drafts.write` și nu se acordă tokenului
+   read-only existent.
 
 Coloane products: id, slug, status, name_ro/en, desc_short_ro/en, desc_long_ro/en,
 how_made_ro/en, material, category, price_eur, images, specs, stock, updated_at,
