@@ -112,7 +112,7 @@ def main():
                 credential_file.write_text(json.dumps(config))
                 assert request('product-drafts', method='POST', body='{}', idempotency_key='apache-draft-test-key-001') [0] == 422, 'draft validation before writer DB'
                 draft = json.dumps({'slug':'apache-draft','name_en':'Synthetic draft','category':'desk','price_eur':'1.00'})
-                assert request('product-drafts', method='POST', body=draft, idempotency_key='apache-draft-test-key-002')[0] == 503, 'writer DB is not inferred from reader'
+                assert request('product-drafts', method='POST', body=draft, idempotency_key='apache-draft-test-key-002')[0] == 503, 'draft DB config absent is unavailable'
                 assert request(query='?limit=1')[0] == 422, 'validation'
                 assert request('orders')[0] == 403, 'scope boundary'
                 assert request('products')[0] == 503, 'DB activation gate'

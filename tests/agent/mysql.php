@@ -65,28 +65,25 @@ try {
         (1,UTC_DATE(),8),(1,DATE_SUB(UTC_DATE(),INTERVAL 7 DAY),3)");
     $admin->exec("SET time_zone = '+00:00'");
     $password = bin2hex(random_bytes(32));
-    $writerPassword = bin2hex(random_bytes(32));
-    $admin->exec("CREATE USER 'ggs_fixture_reader'@'localhost' IDENTIFIED BY " . $admin->quote($password));
-    $admin->exec("CREATE USER 'ggs_fixture_writer'@'localhost' IDENTIFIED BY " . $admin->quote($writerPassword));
+    $admin->exec("CREATE USER 'ggs_fixture_agent'@'localhost' IDENTIFIED BY " . $admin->quote($password));
     $productColumns = 'id,slug,status,name_ro,name_en,desc_short_ro,desc_short_en,desc_long_ro,desc_long_en,how_made_ro,how_made_en,material,category,price_eur,images,specs,stock,updated_at,created_at';
     $orderColumns = 'id,order_number,status,payment_method,created_at,updated_at,subtotal_eur,shipping_eur,total_eur,items,shipping_address,tracking_number,customer_email';
-    $admin->exec("GRANT SELECT ($productColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_reader'@'localhost'");
-    $admin->exec("GRANT SELECT ($orderColumns) ON ggs_agent_fixture.orders TO 'ggs_fixture_reader'@'localhost'");
-    $admin->exec("GRANT SELECT (product_id,view_date,view_count) ON ggs_agent_fixture.product_views_daily TO 'ggs_fixture_reader'@'localhost'");
+    $admin->exec("GRANT SELECT ($productColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_agent'@'localhost'");
+    $admin->exec("GRANT SELECT ($orderColumns) ON ggs_agent_fixture.orders TO 'ggs_fixture_agent'@'localhost'");
+    $admin->exec("GRANT SELECT (product_id,view_date,view_count) ON ggs_agent_fixture.product_views_daily TO 'ggs_fixture_agent'@'localhost'");
     $draftReadColumns = 'id,slug,status,name_ro,name_en,desc_short_ro,desc_short_en,desc_long_ro,desc_long_en,how_made_ro,how_made_en,material,category,price_eur,images,specs,updated_at';
     $draftWriteColumns = 'slug,name_en,name_ro,desc_short_en,desc_short_ro,desc_long_en,desc_long_ro,how_made_en,how_made_ro,material,category,price_eur,images,specs';
-    $admin->exec("GRANT SELECT ($draftReadColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_writer'@'localhost'");
-    $admin->exec("GRANT INSERT ($draftWriteColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_writer'@'localhost'");
-    $admin->exec("GRANT UPDATE ($draftWriteColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_writer'@'localhost'");
-    $admin->exec("GRANT SELECT (idempotency_hash,request_hash,response_json) ON ggs_agent_fixture.agent_product_draft_requests TO 'ggs_fixture_writer'@'localhost'");
-    $admin->exec("GRANT INSERT (idempotency_hash,request_hash,response_json) ON ggs_agent_fixture.agent_product_draft_requests TO 'ggs_fixture_writer'@'localhost'");
+    $admin->exec("GRANT SELECT ($draftReadColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_agent'@'localhost'");
+    $admin->exec("GRANT INSERT ($draftWriteColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_agent'@'localhost'");
+    $admin->exec("GRANT UPDATE ($draftWriteColumns) ON ggs_agent_fixture.products TO 'ggs_fixture_agent'@'localhost'");
+    $admin->exec("GRANT SELECT (idempotency_hash,request_hash,response_json) ON ggs_agent_fixture.agent_product_draft_requests TO 'ggs_fixture_agent'@'localhost'");
+    $admin->exec("GRANT INSERT (idempotency_hash,request_hash,response_json) ON ggs_agent_fixture.agent_product_draft_requests TO 'ggs_fixture_agent'@'localhost'");
     mkdir($private . '/rate', 0700);
     $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     $writerToken = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     $config = ['enabled' => true, 'cursor_key_hex' => bin2hex(random_bytes(32)), 'rate_limit_dir' => $private . '/rate',
         'timestamp_storage_verified' => true,
-        'database' => ['engine' => $maria ? 'mariadb' : 'mysql', 'host' => 'localhost', 'name' => 'ggs_agent_fixture', 'user' => 'ggs_fixture_reader', 'password' => $password],
-        'write_database' => ['engine' => $maria ? 'mariadb' : 'mysql', 'host' => 'localhost', 'name' => 'ggs_agent_fixture', 'user' => 'ggs_fixture_writer', 'password' => $writerPassword],
+        'database' => ['engine' => $maria ? 'mariadb' : 'mysql', 'host' => 'localhost', 'name' => 'ggs_agent_fixture', 'user' => 'ggs_fixture_agent', 'password' => $password],
         'credentials' => [
             ['id' => 'synthetic-reader', 'active' => true, 'token_sha256' => hash('sha256', $token),
                 'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 3600), 'scopes' => ['agent.health.read','products.read','products.drafts.read','orders.read']],
@@ -106,6 +103,7 @@ try {
     verify($maria ? (float) $reader->query('SELECT @@session.max_statement_time')->fetchColumn() === 3.0
         : $reader->query('SELECT @@session.max_execution_time')->fetchColumn() === '3000', 'query_timeout_setting');
     denied(static fn() => $reader->exec('UPDATE products SET stock=0'), 'no_dml');
+    denied(static fn() => $reader->exec("UPDATE products SET name_en='Denied read session write' WHERE id=1"), 'read_session_is_read_only_even_for_draft_writer_account');
     denied(static fn() => $reader->exec('UPDATE product_views_daily SET view_count=0'), 'no_view_dml');
     denied(static fn() => $reader->exec('CREATE TABLE forbidden (id INT)'), 'no_ddl');
     denied(static fn() => $reader->query('SELECT customer_phone FROM orders'), 'no_customer_phone');
@@ -117,7 +115,6 @@ try {
     if (PHP_VERSION_ID < 80100) { $writerProperty->setAccessible(true); }
     $writerDb = $writerProperty->getValue($writerRepository);
     verify($writerDb->query('SELECT @@session.time_zone')->fetchColumn() === '+00:00', 'writer_utc_session');
-    denied(static fn() => $writerDb->query('SELECT stock FROM products'), 'writer_cannot_read_stock');
     denied(static fn() => $writerDb->exec("UPDATE products SET status='published' WHERE id=5"), 'writer_cannot_publish_column');
     denied(static fn() => $writerDb->exec('UPDATE products SET stock=999 WHERE id=5'), 'writer_cannot_update_stock');
     denied(static fn() => $writerDb->exec('UPDATE products SET featured=1 WHERE id=5'), 'writer_cannot_update_featured');

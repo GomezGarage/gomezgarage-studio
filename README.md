@@ -60,7 +60,9 @@ The separate, disabled-by-default service API is documented in
 contract, read-only catalog/order access, draft-only product writes, synthetic tests,
 synchronization limits, configuration and deployment/rollback gates. It does not load
 the shop credentials or change checkout behavior. Draft writes require a separate
-database user and remain unpublished until reviewed in the admin panel.
+database connection and remain unpublished until reviewed in the admin panel. The
+default connection reuses the configured service DB user; a separate writer user is
+optional when the hosting setup needs one.
 
 The API reports privacy-minimal product-detail view events after the
 `product_views_daily` migration is installed. Counts are aggregate by UTC day and

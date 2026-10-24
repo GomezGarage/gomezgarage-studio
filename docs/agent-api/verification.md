@@ -1,5 +1,26 @@
 # Verificare locală — 21 octombrie 2026
 
+## Reutilizarea contului DB existent pentru drafturi — 24 octombrie 2026
+
+Implementarea admite acum același utilizator DB pentru feedurile read-only și conexiunea
+de draft; `write_database` rămâne un override opțional. Testele MariaDB folosesc un singur
+principal cu granturi SELECT pe DTO-urile necesare și INSERT/UPDATE numai pe câmpurile de
+conținut. Sesiunea reader refuză DML chiar pentru același cont, iar conexiunea de draft
+refuză publicarea, stock/featured, DELETE, comenzi și schimbarea jurnalului de idempotency.
+
+| Verificare | Rezultat |
+|---|---|
+| PHP 8.1.34 lint | PASS, fișiere API, implementare, teste |
+| `php tests/agent/run.php` | PASS, 122 verificări sintetice SQLite |
+| `python3 tests/agent/http_smoke.py` | PASS, PHP 8.1.34 și PHP 8.5.9 |
+| OpenAPI 3.1 / JSON Schema | PASS, 78 răspunsuri SQLite, 15 MariaDB, 5 exemple, 2 cereri draft |
+| PHP 8.1.34 + MariaDB 10.6.28 | PASS, 61 verificări cu un singur user DB și granturi limitate |
+| Apache 2.4.69 + mod_php 8.1.34 / HTTPS | PASS, smoke local loopback |
+
+Testele folosesc instanță MariaDB efemeră fără TCP și date sintetice. Nu au citit
+config.php, nu au accesat baza sau endpointurile comerciale, nu au creat produse reale
+și nu au deployat codul pe hosting. Contul DB cPanel și granturile sale rămân neverificate.
+
 ## Draft-only product writes — 24 octombrie 2026
 
 Extensia locală propune contractul 1.3.0. Nu este publicată, migrată sau activată.
@@ -8,10 +29,10 @@ Extensia locală propune contractul 1.3.0. Nu este publicată, migrată sau acti
 |---|---|
 | PHP lint pentru entrypoints, repository și teste agent | PASS |
 | `php tests/agent/run.php` | PASS, 116 verificări SQLite sintetice, inclusiv scriere de draft, replay idempotent, revision conflict și refuzul publicării/stocului |
-| `python3 tests/agent/http_smoke.py` | PASS, loopback auth/method/body/scope și refuzul fallbackului writer la reader |
+| `python3 tests/agent/http_smoke.py` | PASS, loopback auth/method/body/scope și refuz închis când lipsește configul DB de draft |
 | OpenAPI 3.1 / JSON Schema 2020-12 | PASS, 76 răspunsuri sintetice și 5 exemple |
-| MariaDB 10.6.28 / MySQL 8.4.13 cu granturi column-level | Codul probei a fost extins; **nu a fost rulat**, binarele izolate nu sunt disponibile în acest mediu |
-| Apache + PHP HTTPS | **Nerulat** pentru extensia nouă; binarele mod_php izolate nu sunt disponibile în acest mediu |
+| MariaDB 10.6.28 / MySQL 8.4.13 cu granturi column-level | Istoric: codul probei a fost extins; rezultatele curente sunt în secțiunea de mai sus |
+| Apache + PHP HTTPS | Istoric: la raportare nu era rulat; rezultatul curent este în secțiunea de mai sus |
 
 Nu s-a conectat la o bază existentă și nu s-a rulat migrarea pe hosting. Înainte de deploy
 trebuie rulate `mysql_smoke.py` pe ambele motoare/versiuni documentate și `apache_smoke.py`,

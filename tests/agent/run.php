@@ -204,7 +204,7 @@ try {
     $config['database'] = ['engine' => 'mariadb', 'host' => 'localhost', 'name' => 'fixture_db', 'user' => 'fixture_reader', 'password' => 'synthetic'];
     $config['write_database'] = ['engine' => 'mariadb', 'host' => 'localhost', 'name' => 'fixture_db', 'user' => 'fixture_reader', 'password' => 'synthetic'];
     file_put_contents($path, json_encode($config));
-    raises(static fn() => Config::load($path, dirname(__DIR__, 2)), 'reader identity cannot be reused for writes');
+    check(Config::load($path, dirname(__DIR__, 2))['write_database']['user'] === 'fixture_reader', 'same service DB identity accepted for writes');
     $config['write_database']['user'] = 'fixture_writer';
     file_put_contents($path, json_encode($config));
     check(Config::load($path, dirname(__DIR__, 2))['write_database']['user'] === 'fixture_writer', 'separate same-database writer config accepted');

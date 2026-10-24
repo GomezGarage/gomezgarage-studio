@@ -39,23 +39,26 @@ review; aprobarea și provisioningul efectiv preced activarea.
    în codul de producție. Fișierul Apache `api/agent/.htaccess` folosește CGIPassAuth;
    verifică suportul/AllowOverride înainte de publicare. Pe Nginx/FastCGI configurează
    echivalentul pentru Authorization și HTTPS și refuză accesul la includes/tests/docs.
-5. Contul DB de citire al API-ului este separat, cu **SELECT numai pe coloanele necesare din
-   products, orders și product_views_daily**, fără grant option, DML, DDL, FILE, proceduri
-   sau acces la admin_users/settings. Acest cont și SQL-ul nu sunt oferite clientului API. DBA verifică
-   granturile în staging. Nu se folosește contul existent al checkoutului.
-6. Pentru operațiile de draft creează un al doilea user DB, diferit de cel read-only,
-   cu acces numai la aceeași bază locală. Rulează separat migrarea
+5. Contul DB al API-ului are **SELECT numai pe coloanele necesare din products, orders și
+   product_views_daily**, fără grant option, DDL, FILE, proceduri sau acces la admin_users/settings.
+   Acest cont și SQL-ul nu sunt oferite clientului API. DBA verifică granturile în staging.
+   Nu se folosește contul existent al checkoutului. Pentru citire, aplicația setează
+   `READ ONLY` pe sesiunea PDO chiar dacă același cont DB primește ulterior granturile de
+   draft descrise la pasul următor.
+6. Pentru drafturi, configurația reutilizează implicit același cont DB al serviciului; poți
+   seta opțional `write_database` pentru o identitate separată pe aceeași bază locală.
+   În ambele variante, contul folosit la scriere are nevoie de INSERT/UPDATE numai pe
+   coloanele de conținut de mai jos; sesiunea reader rămâne `READ ONLY`. Rulează separat migrarea
    `20261024_agent_product_draft_requests.sql`. Pe `products`, acordă SELECT numai pe
    `id`, `slug`, `status`, câmpurile bilingve de text, `material`, `category`, `price_eur`,
    `images`, `specs` și `updated_at`. Acordă INSERT și UPDATE numai pe `slug`, câmpurile
    bilingve de text, `material`, `category`, `price_eur`, `images` și `specs`. `id`,
    `status` și `updated_at` sunt doar pentru SELECT; `created_at`, `featured` și `stock`
-   nu primesc niciun grant. Pe `agent_product_draft_requests` acordă SELECT și INSERT
+   nu primesc grant de scriere. Pe `agent_product_draft_requests` acordă SELECT și INSERT
    numai pe `idempotency_hash`, `request_hash` și `response_json`. Nu acorda UPDATE,
-   DELETE, DDL sau acces la alte tabele. Adaugă datele writerului separat în
-   `write_database`, păstrând `database` pentru reader. Credentialul Business de scriere
-   este o identitate separată cu scope `products.drafts.write` și nu se acordă tokenului
-   read-only existent.
+   DELETE, DDL sau acces la alte tabele. Dacă folosești un writer separat, adaugă-l în
+   `write_database`; dacă nu, nu adăuga acel bloc. Scope-urile API controlează separat
+   citirea și scrierea drafturilor.
 
 Coloane products: id, slug, status, name_ro/en, desc_short_ro/en, desc_long_ro/en,
 how_made_ro/en, material, category, price_eur, images, specs, stock, updated_at,
@@ -76,7 +79,8 @@ DSN-ului. Declară engine `mysql` sau `mariadb` după verificare. Tipurile de ti
 verificate la conectare; `timestamp_storage_verified=true` se setează numai după
 verificarea semanticii descrise în [sincronizare](synchronization.md). Sesiunea nouă
 de citire folosește UTC și `SET SESSION TRANSACTION READ ONLY`; conexiunea draft folosește
-un user separat și granturile de coloană de mai sus, fără afectarea sesiunilor checkoutului. Consultă
+același cont sau contul opțional separat, cu granturile de coloană de mai sus, fără afectarea
+sesiunilor checkoutului. Consultă
 [MySQL SET TRANSACTION](https://dev.mysql.com/doc/refman/8.4/en/set-transaction.html).
 
 Health verifică credentialul, scope-ul și disponibilitatea contorului; este **liveness**,
@@ -110,10 +114,11 @@ SELECT pe cele trei coloane indicate mai sus. Endpointul de colectare folosește
 website-ului; browserul nu primește credential DB.
 
 Extensia draft din contractul 1.3.0 necesită o singură dată migrarea izolată
-`database/migrations/20261024_agent_product_draft_requests.sql` și un al doilea user DB
-cu granturi de coloană verificate. Nu o rula pe live până nu există backup și review;
-configurația rămâne dezactivată implicit. Fără tabelă/user/config writer, rutele de
-scriere nu pot funcționa, iar rutele read-only rămân independente.
+`database/migrations/20261024_agent_product_draft_requests.sql` și granturile de coloană
+de mai sus verificate pentru userul serviciului sau pentru un writer separat. Nu o rula pe live până nu există backup și review;
+configurația rămâne dezactivată implicit. Fără tabelă, scope și granturile DB de draft,
+rutele de scriere nu pot funcționa, iar rutele read-only rămân independente.
+`write_database` nu este obligatoriu.
 
 Nu rerula `database/schema.sql`: include seeduri/setări/admin și nu este migrator. Schema live poate fi diferită:
 verifică explicit existența payment_method, items, timestamps/defaulturi/ON UPDATE și
@@ -140,7 +145,8 @@ a ascunde lipsa unui index. Nu se schimbă modelul de stoc/plată/limbă în ace
    compatibil, fișierele `includes/agent/*.php`, `api/record-product-view.php`,
    `includes/product-views.php` și frontendul `assets/js/shop.js`. Păstrează protecția
    existentă pe includes. **Nu publica tests, docs, fișiere temporare sau configul privat.**
-6. După aprobarea activării, provisionează credentialele/granturile reader și writer și activează prefixul.
+6. După aprobarea activării, configurează credentialul/scopes și granturile DB ale contului
+   serviciului sau ale writerului opțional și activează prefixul.
    Probele live de citire au autorizare separată; nu folosi create-order, webhook,
    custom-order sau download-invoice pentru smoke test. Monitorizează răspunsuri/audit,
    performanță și continuitatea site-ului. Clientul API primește numai credentialul scoped.
