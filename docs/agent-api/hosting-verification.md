@@ -1,24 +1,20 @@
 # Compatibilitate hosting — actualizare 24 octombrie 2026
 
-Extensia draft-only din contractul 1.3.0 are probe SQLite/HTTP/OpenAPI documentate în
-[verification.md](verification.md), dar nu a fost verificată încă pe MariaDB 10.6.28,
-MySQL 8.4.13 sau Apache/PHP HTTPS. Rezultatele istorice de mai jos privesc versiuni
-anterioare și nu atestă compatibilitatea scrierilor draft.
-
-Pentru extensia `view_stats` adăugată local la 24 octombrie, proba SQL pe
-MariaDB 10.6.28/MySQL 8.4.13 și Apache/PHP din cPanel încă nu a fost rerulată.
-Rezultatele istorice de mai jos se referă la contractele 1.1.0–1.2.0 și nu dovedesc
-instalarea sau compatibilitatea completă a contractului 1.3.0.
+Extensia draft-only din contractul 1.3.0 și `view_stats` au trecut probe izolate locale
+pe MariaDB 10.6.28, PHP 8.1.34 și Apache 2.4.69. Testele folosesc o instanță MariaDB
+temporară fără TCP, TLS local și numai date sintetice. Ele nu verifică runtime-ul specific
+cPanel/CloudLinux, granturile sau schema bazei live și nu reprezintă deploy.
 
 Matrice testată: **Apache 2.4.69, PHP 8.1.34 și MariaDB 10.6.28**.
 Acest raport descrie exclusiv probe locale, fără acces la producție.
 
 | Probă locală, macOS arm64 | Rezultat |
 |---|---|
-| PHP 8.1.34, lint toate cele 10 fișiere PHP ale patchului/testelor | PASS |
-| PHP 8.1.34, suită sintetică SQLite | PASS, 88 verificări |
-| PHP 8.1.34 + MariaDB 10.6.28, instanță temporară fără TCP | PASS, 35 verificări |
-| OpenAPI 3.1 / JSON Schema 2020-12 | PASS, 58 răspunsuri SQLite + 8 MariaDB + 4 exemple |
+| PHP 8.1.34, lint toate fișierele PHP din repository | PASS |
+| PHP 8.1.34, suită sintetică SQLite | PASS, 122 verificări |
+| Product views, fixture SQLite | PASS, 14 verificări |
+| PHP 8.1.34 + MariaDB 10.6.28, instanță temporară fără TCP | PASS, 61 verificări, inclusiv granturi de coloană draft |
+| OpenAPI 3.1 / JSON Schema 2020-12 | PASS, 78 răspunsuri SQLite + 15 MariaDB + 5 exemple + 2 cereri draft |
 | PHP CLI HTTP, entry points reale | PASS |
 | Apache 2.4.69 + mod_php 8.1.34, HTTPS pe loopback | PASS, certificat temporar verificat de client |
 
@@ -26,16 +22,18 @@ Binarele au fost extrase din bottles Homebrew, fără instalare/serviciu persist
 SHA-256 bottles: MariaDB `0d5e51f96ba103c2a3d4a44d890481c073843477efed517fa7cfc3b2b1a95b75`,
 PHP `d9a81735163dc0a89d8c702ef5b181f2b0054bd4b786fda4e48a5d5a77f5cec1`.
 
-MariaDB a trecut aceleași verificări descrise în [proba MySQL](mysql-verification.md),
+MariaDB a trecut verificările descrise în [proba MySQL](mysql-verification.md),
 cu `tx_read_only`, `max_statement_time=3` și eroarea 1969 la întreruperea efectivă a
-unei interogări de test. Sesiunea este UTC, granturile refuză scrieri și coloane PII,
-paginarea și JSON projection funcționează prin PDO cu prepared statements native.
+unei interogări de test. Sesiunea este UTC; granturile reader refuză scrieri și coloane
+PII, iar granturile writer permit doar câmpurile de conținut și jurnalul de idempotency.
+Testele confirmă că writerul nu poate publica, modifica stocul/featured, șterge produse
+sau scrie comenzi. Paginarea și proiecția JSON funcționează prin PDO cu prepared statements.
 EXPLAIN rămâne `ALL`, fără index: datele reduse de test nu probează performanța la volum.
 
 Proba Apache copiază numai codul agentului într-un document root temporar. Folosește
 TLS real pe 127.0.0.1, certificat efemer și fișier privat cu credentiale aleatoare.
 Verifică health, Bearer, lipsa fallbackului admin, scopes, GET-only, validare,
-revocare, no-store și refuzul citirii DB fără configurare. Nu încarcă config.php și
+revocare, no-store, audit redactat și refuzul citirii DB fără configurare. Nu încarcă config.php și
 nu pornește rute comerciale. Procesul și fișierele temporare sunt eliminate la final.
 
 ## Corecție găsită pe PHP 8.1

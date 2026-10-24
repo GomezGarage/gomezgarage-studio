@@ -83,7 +83,7 @@ try {
     mkdir($private . '/rate', 0700);
     $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     $writerToken = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-    $config = ['cursor_key_hex' => bin2hex(random_bytes(32)), 'rate_limit_dir' => $private . '/rate',
+    $config = ['enabled' => true, 'cursor_key_hex' => bin2hex(random_bytes(32)), 'rate_limit_dir' => $private . '/rate',
         'timestamp_storage_verified' => true,
         'database' => ['engine' => $maria ? 'mariadb' : 'mysql', 'host' => 'localhost', 'name' => 'ggs_agent_fixture', 'user' => 'ggs_fixture_reader', 'password' => $password],
         'write_database' => ['engine' => $maria ? 'mariadb' : 'mysql', 'host' => 'localhost', 'name' => 'ggs_agent_fixture', 'user' => 'ggs_fixture_writer', 'password' => $writerPassword],
