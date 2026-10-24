@@ -29,8 +29,9 @@ prețul și textele rămân într-un draft până la review. API-ul nu poate pub
 statusul, stocul sau featured, șterge produse ori încărca fișiere. Cheia idempotentă
 este păstrată ca SHA-256 într-un tabel tehnic separat; body-ul, tokenul și cheia nu
 ajung în audit. Un revision hash din DTO protejează editările concurente.
-Writerul DB este un user separat față de userul read-only și primește granturi la
-nivel de coloană pentru conținutul produselor și tabela de idempotency.
+Scrierea drafturilor folosește implicit contul DB al serviciului printr-o conexiune
+PDO separată și are nevoie de granturi limitate la coloanele de conținut și tabela
+de idempotency; se poate configura opțional un user DB separat în `write_database`.
 Un fișier privat valid cu `enabled: true` este necesar pentru activare. Pe cPanel,
 configurația implicită este `private/studio-agent/config.json` în directorul părinte al
 document root-ului activ (de exemplu, `/home/<cpanel-user>/private/...` când web root-ul

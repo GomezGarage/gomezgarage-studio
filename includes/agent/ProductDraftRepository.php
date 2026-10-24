@@ -23,7 +23,9 @@ final class ProductDraftRepository
 
     public static function connect(array $config): self
     {
-        $db = $config['write_database'] ?? [];
+        // Reuse the configured service DB account by default. Hosting may provide
+        // an optional write_database identity when it wants a separate principal.
+        $db = $config['write_database'] ?? $config['database'] ?? [];
         if (!in_array($db['host'] ?? '', ['localhost', '127.0.0.1', '::1'], true)
             || !preg_match('/^[a-zA-Z0-9_]+$/D', $db['name'] ?? '')
             || !is_string($db['user'] ?? null) || !is_string($db['password'] ?? null)) {

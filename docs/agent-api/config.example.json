@@ -7,14 +7,7 @@
     "engine": "mariadb",
     "host": "localhost",
     "name": "REPLACE_WITH_VERIFIED_DATABASE_NAME",
-    "user": "REPLACE_WITH_SELECT_ONLY_SERVICE_USER",
-    "password": "REPLACE_PRIVATELY"
-  },
-  "write_database": {
-    "engine": "mariadb",
-    "host": "localhost",
-    "name": "REPLACE_WITH_SAME_VERIFIED_DATABASE_NAME",
-    "user": "REPLACE_WITH_SEPARATE_DRAFT_WRITER_USER",
+    "user": "REPLACE_WITH_SERVICE_DB_USER",
     "password": "REPLACE_PRIVATELY"
   },
   "credentials": [

@@ -100,8 +100,7 @@ final class Config
                 || ($writer['host'] ?? null) !== ($config['database']['host'] ?? null)
                 || ($writer['name'] ?? null) !== ($config['database']['name'] ?? null)
                 || !in_array($writer['engine'] ?? '', ['mysql', 'mariadb'], true)
-                || $writer['engine'] !== ($config['database']['engine'] ?? null)
-                || hash_equals((string) ($config['database']['user'] ?? ''), $writer['user'])) {
+                || $writer['engine'] !== ($config['database']['engine'] ?? null)) {
                 throw new RuntimeException('Invalid isolated write database configuration.');
             }
             $config['write_database'] = $writer;

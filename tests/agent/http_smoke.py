@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
             config_file.write_text(json.dumps(config))
             assert request('product-drafts',method='POST',body='{}',idempotency_key='draft-http-test-key-0001')[0]==422, 'Draft body validation before DB'
             draft_body=json.dumps({'slug':'http-draft','name_en':'Synthetic HTTP draft','category':'desk','price_eur':'1.00'})
-            assert request('product-drafts',method='POST',body=draft_body,idempotency_key='draft-http-test-key-0002')[0]==503, 'No writer DB fallback'
+            assert request('product-drafts',method='POST',body=draft_body,idempotency_key='draft-http-test-key-0002')[0]==503, 'Draft DB config absent is unavailable'
             assert request(secure=False)[0]==403, 'Forwarded HTTPS not trusted'
             assert request(query='?limit=1')[0]==422, 'Health query validation'
             assert request('products')[0]==503, 'Database gate before connection'
