@@ -203,7 +203,7 @@
             }
           },
           "503": {
-            "description": "Disabled, invalid configuration, unavailable database/limiter, or invalid legacy data.",
+            "description": "Disabled or invalid configuration, unavailable rate limiter or audit sink.",
             "headers": {
               "X-Request-ID": {
                 "description": "Server-generated correlation ID",
@@ -225,6 +225,19 @@
                   "pattern": "^[0-9]+$"
                 },
                 "description": "Seconds to wait."
+              },
+              "X-Agent-Failure-Stage": {
+                "description": "Fixed sanitized label for the failed API stage; never exposes exception or configuration details.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "configuration",
+                    "rate_limiter",
+                    "database",
+                    "response_encoding",
+                    "audit"
+                  ]
+                }
               }
             },
             "content": {
@@ -519,6 +532,19 @@
                   "pattern": "^[0-9]+$"
                 },
                 "description": "Seconds to wait."
+              },
+              "X-Agent-Failure-Stage": {
+                "description": "Fixed sanitized label for the failed API stage; never exposes exception or configuration details.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "configuration",
+                    "rate_limiter",
+                    "database",
+                    "response_encoding",
+                    "audit"
+                  ]
+                }
               }
             },
             "content": {
@@ -824,6 +850,19 @@
                   "pattern": "^[0-9]+$"
                 },
                 "description": "Seconds to wait."
+              },
+              "X-Agent-Failure-Stage": {
+                "description": "Fixed sanitized label for the failed API stage; never exposes exception or configuration details.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "configuration",
+                    "rate_limiter",
+                    "database",
+                    "response_encoding",
+                    "audit"
+                  ]
+                }
               }
             },
             "content": {
@@ -950,6 +989,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Agent-Failure-Stage": {
+                "description": "Fixed sanitized label for the failed API stage; never exposes exception or configuration details.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "configuration",
+                    "rate_limiter",
+                    "database",
+                    "response_encoding",
+                    "audit"
+                  ]
                 }
               }
             }
@@ -1102,6 +1156,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Agent-Failure-Stage": {
+                "description": "Fixed sanitized label for the failed API stage; never exposes exception or configuration details.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "configuration",
+                    "rate_limiter",
+                    "database",
+                    "response_encoding",
+                    "audit"
+                  ]
                 }
               }
             }

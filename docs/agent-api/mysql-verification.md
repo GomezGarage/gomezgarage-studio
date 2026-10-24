@@ -19,6 +19,8 @@ un socket Unix în directorul temporar. Înainte de DDL verifică datadir, lipsa
 absența bazei fixture. Nu acceptă DSN/host pentru un server existent. Root fără parolă
 este exclusiv bootstrapul acestei instanțe efemere, inaccesibilă prin rețea; citirile
 API folosesc un user nou cu parolă aleatoare și granturi SELECT pe coloane enumerate.
+Aceste permisiuni minime aparțin exclusiv fixture-ului sintetic de test și nu sunt o
+cerință pentru userul DB live al serviciului.
 Instanța este oprită, iar datele/credențialele/logurile temporare sunt șterse la final.
 
 DDL-ul products/orders este extras din schema.sql local, fără seeduri, setări sau
