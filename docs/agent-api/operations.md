@@ -39,39 +39,27 @@ review; aprobarea și provisioningul efectiv preced activarea.
    în codul de producție. Fișierul Apache `api/agent/.htaccess` folosește CGIPassAuth;
    verifică suportul/AllowOverride înainte de publicare. Pe Nginx/FastCGI configurează
    echivalentul pentru Authorization și HTTPS și refuză accesul la includes/tests/docs.
-5. Contul DB al API-ului are **SELECT numai pe coloanele necesare din products, orders și
-   product_views_daily**, fără grant option, DDL, FILE, proceduri sau acces la admin_users/settings.
-   Acest cont și SQL-ul nu sunt oferite clientului API. DBA verifică granturile în staging.
-   Nu se folosește contul existent al checkoutului. Pentru citire, aplicația setează
-   `READ ONLY` pe sesiunea PDO chiar dacă același cont DB primește ulterior granturile de
-   draft descrise la pasul următor.
-6. Pentru drafturi, configurația reutilizează implicit același cont DB al serviciului; poți
-   seta opțional `write_database` pentru o identitate separată pe aceeași bază locală.
-   În ambele variante, contul folosit la scriere are nevoie de INSERT/UPDATE numai pe
-   coloanele de conținut de mai jos; sesiunea reader rămâne `READ ONLY`. Rulează separat migrarea
-   `20261024_agent_product_draft_requests.sql`. Pe `products`, acordă SELECT numai pe
-   `id`, `slug`, `status`, câmpurile bilingve de text, `material`, `category`, `price_eur`,
-   `images`, `specs` și `updated_at`. Acordă INSERT și UPDATE numai pe `slug`, câmpurile
-   bilingve de text, `material`, `category`, `price_eur`, `images` și `specs`. `id`,
-   `status` și `updated_at` sunt doar pentru SELECT; `created_at`, `featured` și `stock`
-   nu primesc grant de scriere. Pe `agent_product_draft_requests` acordă SELECT și INSERT
-   numai pe `idempotency_hash`, `request_hash` și `response_json`. Nu acorda UPDATE,
-   DELETE, DDL sau acces la alte tabele. Dacă folosești un writer separat, adaugă-l în
-   `write_database`; dacă nu, nu adăuga acel bloc. Scope-urile API controlează separat
-   citirea și scrierea drafturilor.
+5. Pune în `database` credențialele contului de serviciu deja creat pentru API. Aplicația
+   nu rulează GRANT/REVOKE și nu schimbă permisiunile acelui cont. Citirile folosesc o
+   sesiune PDO read-only; scrierile de draft folosesc implicit o conexiune separată cu
+   același cont. Astfel se păstrează accesul DB existent, iar API-ul oferă numai funcțiile
+   comerciale definite explicit. Nu este nevoie de SQL pentru permisiuni; tabela tehnică
+   de idempotency se creează doar dacă lipsește.
+6. `write_database` este opțional numai dacă alegi tu ulterior un cont separat. Pentru
+   deploy-ul funcțiilor draft trebuie să existe migrarea
+   `20261024_agent_product_draft_requests.sql`. Câmpurile și operațiile expuse de API
+   rămân limitate la drafturi de conținut; asta nu restrânge drepturile contului DB.
 
-Coloane products: id, slug, status, name_ro/en, desc_short_ro/en, desc_long_ro/en,
+Coloane citite de Repository: products — id, slug, status, name_ro/en, desc_short_ro/en, desc_long_ro/en,
 how_made_ro/en, material, category, price_eur, images, specs, stock, updated_at,
-created_at. Pentru `view_stats`, contul serviciului primește SELECT numai pe
-`product_views_daily(product_id, view_date, view_count)`; nu primește scriere pe analytics.
-Coloane orders: id, order_number, status, payment_method, created_at,
+created_at; orders — id, order_number, status, payment_method, created_at,
 updated_at, subtotal_eur, shipping_eur, total_eur, items, shipping_address,
-tracking_number și customer_email. customer_email este citit intern numai pentru
-generarea HMAC a lui customer_ref; coloanele customer_name/customer_phone/customer_note
-rămân fără grant. Metadata information_schema.COLUMNS trebuie să fie vizibilă pentru
-cele patru coloane de timp. Accesul la shipping_address permite proiecția țării în
-SQL; API-ul nu exportă restul adresei. Pentru izolare și mai strictă poate fi evaluat
-ulterior un view, separat de primul patch.
+tracking_number și customer_email; product_views_daily — product_id, view_date și
+view_count. Acestea sunt cerințele de schemă ale funcțiilor API, nu o cerere de schimbare
+a permisiunilor contului. `customer_email` este folosit intern numai pentru HMAC-ul
+`customer_ref`; răspunsul nu expune email, telefon sau adresa completă. API-ul nu schimbă
+granturile DB. Cu contul existent al serviciului, folosește drepturile pe care acesta le
+are deja.
 
 Conexiunile DB sunt permise doar prin localhost/loopback pe același hosting. Hostingul
 cu DB remote necesită verificarea TLS și un patch dedicat, nu extinderea implicită a
@@ -79,18 +67,22 @@ DSN-ului. Declară engine `mysql` sau `mariadb` după verificare. Tipurile de ti
 verificate la conectare; `timestamp_storage_verified=true` se setează numai după
 verificarea semanticii descrise în [sincronizare](synchronization.md). Sesiunea nouă
 de citire folosește UTC și `SET SESSION TRANSACTION READ ONLY`; conexiunea draft folosește
-același cont sau contul opțional separat, cu granturile de coloană de mai sus, fără afectarea
-sesiunilor checkoutului. Consultă
+același cont sau contul opțional separat, fără să modifice granturile DB ori sesiunile
+checkoutului. Consultă
 [MySQL SET TRANSACTION](https://dev.mysql.com/doc/refman/8.4/en/set-transaction.html).
 
 Health verifică credentialul, scope-ul și disponibilitatea contorului; este **liveness**,
-nu dovada disponibilității DB sau a corectitudinii granturilor. Readiness se probează
+nu dovada disponibilității DB. Readiness se probează
 în staging cu date sintetice pe products/orders.
 
 ## Audit și limite de găzduire
 
 Audit JSON în error_log configurat al PHP: identity sau null, request_id, rută și metodă
-fixe, status/rezultat, timp UTC, durată ms, număr rânduri. Nu se loghează token/hash/cursor,
+fixe, status/rezultat, timp UTC, durată ms, număr rânduri. Pentru 5xx se loghează un
+`failure_stage` fix (`configuration`, `rate_limiter`, `database` sau `response_encoding`)
+și răspunsul include headerul `X-Agent-Failure-Stage` (include și `audit` dacă sinkul
+însuși e indisponibil). Nu se loghează textul excepției. `health.php` nu deschide conexiune
+DB, astfel că etapa `database` nu se aplică acelei rute. Nu se loghează token/hash/cursor,
 query string, body, date client, configurație sau mesajele driverului. Nu activa
 logging de Authorization, Cookie, request body ori dump-uri PHP/SQL la web server,
 proxy, APM sau client. Configurează logurile în afara web root cu acces minim și
@@ -109,15 +101,16 @@ acoperit de contorul local cu flock.
 
 Contractul 1.2.0 necesită tabela agregată `product_views_daily`. Pentru o bază existentă,
 rulează o singură dată migrarea izolată `database/migrations/20261024_product_views_daily.sql`
-în phpMyAdmin/cPanel înainte de publicarea versiunii API 1.2.0 și acordă userului API numai
-SELECT pe cele trei coloane indicate mai sus. Endpointul de colectare folosește conexiunea
-website-ului; browserul nu primește credential DB.
+în phpMyAdmin/cPanel dacă tabela lipsește. Nu sunt necesare GRANT-uri noi dacă userul API
+existent are deja acces complet. Endpointul de colectare folosește conexiunea website-ului;
+browserul nu primește credential DB.
 
-Extensia draft din contractul 1.3.0 necesită o singură dată migrarea izolată
-`database/migrations/20261024_agent_product_draft_requests.sql` și granturile de coloană
-de mai sus verificate pentru userul serviciului sau pentru un writer separat. Nu o rula pe live până nu există backup și review;
-configurația rămâne dezactivată implicit. Fără tabelă, scope și granturile DB de draft,
-rutele de scriere nu pot funcționa, iar rutele read-only rămân independente.
+Extensia draft din contractul 1.3.0 necesită tabela tehnică
+`agent_product_draft_requests`, creată o singură dată prin migrarea izolată
+`database/migrations/20261024_agent_product_draft_requests.sql` dacă lipsește. Contul DB
+existent este folosit cu drepturile lui actuale; API-ul nu cere GRANT nou. Fără tabelă,
+scope API sau funcțiile de draft din cod, rutele de scriere nu pot funcționa, iar rutele
+read-only rămân independente.
 `write_database` nu este obligatoriu.
 
 Nu rerula `database/schema.sql`: include seeduri/setări/admin și nu este migrator. Schema live poate fi diferită:
@@ -134,19 +127,19 @@ a ascunde lipsa unui index. Nu se schimbă modelul de stoc/plată/limbă în ace
 
 1. Review al patchului, contractului și regulilor de credential; confirmare scope.
 2. Identificare versiune instalată/PHP/DB/Apache sau Nginx. Verificare diferențe checkout–live,
-   schema/timp/granturi/TLS/loguri și posibilitatea izolării configului. PHP 8.0+ și
+   schema/timp/TLS/loguri și posibilitatea izolării configului. PHP 8.0+ și
    extensiile PDO MySQL, JSON, hash sunt necesare; nu sunt necesare pachete Composer noi.
 3. Staging separat cu schema reprezentativă și numai date sintetice, fără credențiale
-   de plăți/SMTP/curier. Probe pe motorul efectiv, inclusiv granturile SELECT și draft
-   column-level, timeoutul, JSON și refuzul metodelor pe web serverul efectiv. Testează rotația/revocarea.
+   de plăți/SMTP/curier. Probe pe motorul efectiv, inclusiv accesul DB al contului existent,
+   timeoutul, JSON și refuzul metodelor pe web serverul efectiv. Testează rotația/revocarea.
 4. Backup al versiunii instalate, configurației private și bazei prin mecanismul aprobat;
    restaurare verificată. Nu aplica migrarea înainte de aprobare/deploy. Păstrează prefixul API blocat/dezactivat.
 5. Publică numai endpointurile `api/agent/v1/*.php`, `api/agent/.htaccess` dacă este
    compatibil, fișierele `includes/agent/*.php`, `api/record-product-view.php`,
    `includes/product-views.php` și frontendul `assets/js/shop.js`. Păstrează protecția
    existentă pe includes. **Nu publica tests, docs, fișiere temporare sau configul privat.**
-6. După aprobarea activării, configurează credentialul/scopes și granturile DB ale contului
-   serviciului sau ale writerului opțional și activează prefixul.
+6. După aprobarea activării, configurează credentialul/scopes și contul DB existent în
+   fișierul privat, apoi activează prefixul.
    Probele live de citire au autorizare separată; nu folosi create-order, webhook,
    custom-order sau download-invoice pentru smoke test. Monitorizează răspunsuri/audit,
    performanță și continuitatea site-ului. Clientul API primește numai credentialul scoped.
@@ -173,4 +166,4 @@ EXPLAIN pe schema locală confirmă lipsa unui index potrivit pentru sincronizar
 
 Pentru MariaDB folosește `database.engine = "mariadb"`; pentru MySQL,
 `database.engine = "mysql"`. [Matricea testată local](hosting-verification.md) nu
-înlocuiește verificarea configurației, schemei și granturilor mediului de deploy.
+înlocuiește verificarea configurației conexiunii și schemei mediului de deploy.

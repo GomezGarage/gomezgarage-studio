@@ -24,9 +24,10 @@ PHP `d9a81735163dc0a89d8c702ef5b181f2b0054bd4b786fda4e48a5d5a77f5cec1`.
 
 MariaDB a trecut verificările descrise în [proba MySQL](mysql-verification.md),
 cu `tx_read_only`, `max_statement_time=3` și eroarea 1969 la întreruperea efectivă a
-unei interogări de test. Sesiunea este UTC. Aceeași identitate DB poate citi DTO-urile,
-iar o conexiune read-only refuză DML; granturile limitate pentru scrierea drafturilor
-permit numai câmpurile de conținut și jurnalul de idempotency. Testele confirmă că ruta
+unei interogări de test. Sesiunea este UTC. Proba folosește o identitate sintetică cu
+permisiuni minime doar pentru test; în hosting se folosește contul DB existent cu
+drepturile lui actuale. Sesiunea read-only refuză DML în cod, iar conexiunea de draft
+folosește același cont implicit. Testele confirmă că ruta
 draft nu poate publica, modifica stocul/featured, șterge produse sau scrie comenzi.
 Paginarea și proiecția JSON funcționează prin PDO cu prepared statements.
 EXPLAIN rămâne `ALL`, fără index: datele reduse de test nu probează performanța la volum.

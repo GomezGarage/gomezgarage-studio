@@ -107,7 +107,8 @@ with tempfile.TemporaryDirectory(prefix='ggs-http-') as directory:
                 if last[0]==429: break
             assert last[0]==429 and 'Retry-After' in last[2], 'HTTP rate limit'
             config_file.write_text('{invalid')
-            assert request()[0]==503, 'Malformed private config sanitized'
+            status, body, headers = request()
+            assert status==503 and headers.get('X-Agent-Failure-Stage')=='configuration', 'Malformed config stage is visible without details'
         finally:
             process.terminate()
             process.wait(timeout=5)

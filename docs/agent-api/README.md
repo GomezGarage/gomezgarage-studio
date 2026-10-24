@@ -30,8 +30,9 @@ statusul, stocul sau featured, șterge produse ori încărca fișiere. Cheia ide
 este păstrată ca SHA-256 într-un tabel tehnic separat; body-ul, tokenul și cheia nu
 ajung în audit. Un revision hash din DTO protejează editările concurente.
 Scrierea drafturilor folosește implicit contul DB al serviciului printr-o conexiune
-PDO separată și are nevoie de granturi limitate la coloanele de conținut și tabela
-de idempotency; se poate configura opțional un user DB separat în `write_database`.
+PDO separată; dacă acest cont are deja drepturile necesare, nu trebuie schimbate
+permisiunile bazei de date. Se poate configura opțional un user DB separat în
+`write_database`.
 Un fișier privat valid cu `enabled: true` este necesar pentru activare. Pe cPanel,
 configurația implicită este `private/studio-agent/config.json` în directorul părinte al
 document root-ului activ (de exemplu, `/home/<cpanel-user>/private/...` când web root-ul
@@ -44,7 +45,8 @@ dezactivată.
 DTO-urile sunt proiecții validate server-side. Fiecare răspuns are
 `schema_version`, `request_id` generat de server și `generated_at`. Succesul are
 `data` și `next_cursor`; listele au și `sync_before`. Eroarea are `error.code` și
-`error.message`. Erorile sursei nu expun SQL, excepții sau configurația.
+`error.message`. Răspunsurile 5xx au și headerul diagnostic `X-Agent-Failure-Stage`
+cu o etichetă fixă; nu expun SQL, excepții sau configurația.
 
 ## Semantica comercială
 

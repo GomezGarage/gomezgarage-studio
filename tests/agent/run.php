@@ -238,10 +238,26 @@ foreach (get_included_files() as $file) {
 $config['credentials'][0]['active'] = true;
 $failureConfig = static function () use (&$config): array { return $config; };
 $failureAudit = static function ($event) use (&$events): void { $events[] = $event; };
+$api = new Api(static function (): array { throw new RuntimeException('PRIVATE-CONFIG'); },
+    static fn() => $repository, static function (): void {}, $failureAudit,
+    static function () use (&$now): int { return $now; });
+$failure = request('health');
+check($failure['status'] === 503 && $failure['headers']['X-Agent-Failure-Stage'] === 'configuration'
+    && end($events)['failure_stage'] === 'configuration'
+    && !str_contains(json_encode($events), 'PRIVATE-CONFIG'), 'configuration failure stage is logged without exception details');
+$api = new Api($failureConfig, static fn() => $repository,
+    static function (): void { throw new RuntimeException('PRIVATE-LIMITER'); }, $failureAudit,
+    static function () use (&$now): int { return $now; });
+$failure = request('health');
+check($failure['status'] === 503 && $failure['headers']['X-Agent-Failure-Stage'] === 'rate_limiter'
+    && end($events)['failure_stage'] === 'rate_limiter'
+    && !str_contains(json_encode($events), 'PRIVATE-LIMITER'), 'rate limiter failure stage is logged without exception details');
 $api = new Api($failureConfig, static function () use ($token): void { throw new RuntimeException('PRIVATE-DB ' . $token); },
     static function (): void {}, $failureAudit, static function () use (&$now): int { return $now; });
 $failure = request('orders');
-check($failure['status'] === 503 && !str_contains(json_encode($failure), $token) && !str_contains(json_encode($failure), 'PRIVATE-DB'), 'driver errors sanitized');
+check($failure['status'] === 503 && $failure['headers']['X-Agent-Failure-Stage'] === 'database'
+    && end($events)['failure_stage'] === 'database'
+    && !str_contains(json_encode($failure), $token) && !str_contains(json_encode($failure), 'PRIVATE-DB'), 'driver errors sanitized and failure stage logged');
 $api = new Api($failureConfig, static fn() => $repository,
     static function (): void { throw new ApiError(429, 'rate_limited', 'Request limit reached. Retry later.'); },
     $failureAudit, static function () use (&$now): int { return $now; });
@@ -250,7 +266,8 @@ $api = new Api($failureConfig, static fn() => $repository, static function (): v
     static function (): void { throw new RuntimeException('PRIVATE-AUDIT'); },
     static function () use (&$now): int { return $now; });
 $failure = request('health');
-check($failure['status'] === 503 && !str_contains(json_encode($failure), 'PRIVATE-AUDIT'), 'audit failure withholds data');
+check($failure['status'] === 503 && $failure['headers']['X-Agent-Failure-Stage'] === 'audit'
+    && !str_contains(json_encode($failure), 'PRIVATE-AUDIT'), 'audit failure stage is visible without disclosing audit details');
 
 // An offline Romanian report proof, no delivery or consumer installation.
 $totalCents = array_sum(array_map(static function (array $order): int {

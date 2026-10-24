@@ -35,6 +35,8 @@ final class Api
         $requestId = bin2hex(random_bytes(16));
         $identity = null;
         $count = 0;
+        // Fixed labels only; never log exception text, configuration, SQL or PII.
+        $failureStage = 'request';
         $headers = ['Content-Type' => 'application/json; charset=utf-8', 'Cache-Control' => 'no-store',
             'X-Content-Type-Options' => 'nosniff', 'X-Request-ID' => $requestId];
         try {
@@ -53,6 +55,7 @@ final class Api
             if (strlen($authorization) > 256 || !preg_match('/^Bearer ([A-Za-z0-9_-]{43,128})$/Di', $authorization, $match)) {
                 throw new ApiError(401, 'unauthorized', 'Service credential required.');
             }
+            $failureStage = 'configuration';
             $config = ($this->configuration)();
             $credential = null;
             $digest = hash('sha256', $match[1]);
@@ -66,6 +69,7 @@ final class Api
                 throw new ApiError(401, 'unauthorized', 'Service credential required.');
             }
             $identity = $credential['id'];
+            $failureStage = 'rate_limiter';
             ($this->limiter)($config, $identity, $now);
             $scope = match ($route) {
                 'health' => 'agent.health.read',
@@ -93,6 +97,7 @@ final class Api
                 }
                 ProductDraftRepository::validateRequest($method, $input, $idempotencyKey);
                 /** @var ProductDraftRepository $draftRepository */
+                $failureStage = 'database';
                 $draftRepository = ($this->draftRepository)($config);
                 $data = $draftRepository->apply($method, $input, $idempotencyKey);
                 $count = 1;
@@ -126,6 +131,7 @@ final class Api
                         $expires = $state['expires'];
                     }
                     /** @var ReadRepository $repository */
+                    $failureStage = 'database';
                     $repository = ($this->repository)($config);
                     if ($before === null) {
                         $before = $repository->cutoff();
@@ -165,6 +171,7 @@ final class Api
                 $body['sync_before'] = utc($before);
             }
             // Verify serializability before recording success or sending headers.
+            $failureStage = 'response_encoding';
             if (strlen(json_encode($body, JSON_THROW_ON_ERROR)) > 2 * 1024 * 1024) {
                 throw new \RuntimeException('Response size limit exceeded.');
             }
@@ -174,6 +181,9 @@ final class Api
                 'error' => ['code' => $error instanceof ApiError ? $error->errorCode : 'unavailable',
                     'message' => $error instanceof ApiError ? $error->getMessage() : 'Service temporarily unavailable.']];
             $count = 0;
+            if ($status >= 500) {
+                $headers['X-Agent-Failure-Stage'] = $failureStage;
+            }
             if ($status === 401) {
                 $headers['WWW-Authenticate'] = 'Bearer realm="studio-agent"';
             } elseif ($status === 405) {
@@ -183,15 +193,20 @@ final class Api
             }
         }
         try {
-            ($this->audit)(['event' => 'agent_api_access', 'identity' => $identity, 'request_id' => $requestId,
+            $auditEvent = ['event' => 'agent_api_access', 'identity' => $identity, 'request_id' => $requestId,
                 'route' => in_array($route, ['health', 'products', 'orders', 'product-drafts'], true) ? $route : 'unknown',
                 'method' => in_array($method, ['GET', 'POST', 'PATCH'], true) ? $method : 'unknown',
                 'status' => $status, 'result' => $body['error']['code'] ?? 'ok', 'time' => utc($now),
-                'duration_ms' => (int) round((microtime(true) - $started) * 1000), 'record_count' => $count]);
+                'duration_ms' => (int) round((microtime(true) - $started) * 1000), 'record_count' => $count];
+            if ($status >= 500) {
+                $auditEvent['failure_stage'] = $failureStage;
+            }
+            ($this->audit)($auditEvent);
         } catch (Throwable $error) {
             // Do not return commercial data if the audit sink cannot accept an event.
             $status = 503;
             $headers['Retry-After'] = '5';
+            $headers['X-Agent-Failure-Stage'] = 'audit';
             $body = ['schema_version' => self::VERSION, 'request_id' => $requestId, 'generated_at' => utc($now),
                 'error' => ['code' => 'unavailable', 'message' => 'Service temporarily unavailable.']];
         }

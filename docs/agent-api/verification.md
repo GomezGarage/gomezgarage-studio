@@ -2,10 +2,11 @@
 
 ## Reutilizarea contului DB existent pentru drafturi — 24 octombrie 2026
 
-Implementarea admite acum același utilizator DB pentru feedurile read-only și conexiunea
-de draft; `write_database` rămâne un override opțional. Testele MariaDB folosesc un singur
-principal cu granturi SELECT pe DTO-urile necesare și INSERT/UPDATE numai pe câmpurile de
-conținut. Sesiunea reader refuză DML chiar pentru același cont, iar conexiunea de draft
+Implementarea admite același utilizator DB pentru feedurile read-only și conexiunea
+de draft; `write_database` rămâne un override opțional. Testele MariaDB folosesc un principal
+sintetic cu granturi minime doar pentru a proba comportamentul conexiunilor; aceasta nu este
+o cerință pentru contul live. Pe cPanel se folosește contul de serviciu existent cu drepturile
+lui actuale. Sesiunea reader refuză DML chiar pentru același cont, iar conexiunea de draft
 refuză publicarea, stock/featured, DELETE, comenzi și schimbarea jurnalului de idempotency.
 
 | Verificare | Rezultat |
