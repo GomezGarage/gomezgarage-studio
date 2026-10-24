@@ -115,6 +115,16 @@ final class Dto
             'delta_7d' => $currentViews - $previousViews,
             'window' => 'current_7_utc_days_vs_previous_7_utc_days',
         ];
+        $revision = [];
+        foreach (['slug', 'name_ro', 'name_en', 'desc_short_ro', 'desc_short_en', 'desc_long_ro', 'desc_long_en',
+            'how_made_ro', 'how_made_en', 'material', 'category'] as $field) {
+            $revision[$field] = $result[$field];
+        }
+        $revision['price_eur'] = $result['price']['value'];
+        $revision['images'] = $result['images'];
+        $revision['specs'] = $result['specs'];
+        $result['revision'] = hash('sha256', json_encode($revision,
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $result['updated_at'] = self::date($row['updated_at']);
         return $result;
     }

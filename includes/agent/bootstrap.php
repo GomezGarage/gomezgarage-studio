@@ -5,6 +5,7 @@ namespace Ggs\Agent;
 require_once __DIR__ . '/Support.php';
 require_once __DIR__ . '/Dto.php';
 require_once __DIR__ . '/Repository.php';
+require_once __DIR__ . '/ProductDraftRepository.php';
 require_once __DIR__ . '/Api.php';
 
 function serve(string $route): void
@@ -39,13 +40,17 @@ function serve(string $route): void
             if (!error_log(json_encode($event, JSON_THROW_ON_ERROR))) {
                 throw new \RuntimeException('Audit unavailable.');
             }
-        }
+        },
+        null,
+        [ProductDraftRepository::class, 'connect']
     );
     $https = in_array(strtolower((string) ($_SERVER['HTTPS'] ?? '')), ['on', '1'], true);
     // Forwarded headers are intentionally ignored; configure the trusted server's HTTPS flag.
     $result = $api->handle($route, $_SERVER['REQUEST_METHOD'] ?? '',
         $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '',
-        $_SERVER['QUERY_STRING'] ?? '', $https);
+        $_SERVER['QUERY_STRING'] ?? '', $https,
+        $route === 'product-drafts' ? (string) file_get_contents('php://input', false, null, 0, 32769) : '',
+        $_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? '', $_SERVER['CONTENT_TYPE'] ?? '');
     http_response_code($result['status']);
     foreach ($result['headers'] as $name => $value) {
         header($name . ': ' . $value);

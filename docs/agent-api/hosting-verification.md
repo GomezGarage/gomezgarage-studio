@@ -1,9 +1,14 @@
-# Compatibilitate hosting — actualizare 21 octombrie 2026
+# Compatibilitate hosting — actualizare 24 octombrie 2026
+
+Extensia draft-only din contractul 1.3.0 are probe SQLite/HTTP/OpenAPI documentate în
+[verification.md](verification.md), dar nu a fost verificată încă pe MariaDB 10.6.28,
+MySQL 8.4.13 sau Apache/PHP HTTPS. Rezultatele istorice de mai jos privesc versiuni
+anterioare și nu atestă compatibilitatea scrierilor draft.
 
 Pentru extensia `view_stats` adăugată local la 24 octombrie, proba SQL pe
 MariaDB 10.6.28/MySQL 8.4.13 și Apache/PHP din cPanel încă nu a fost rerulată.
-Rezultatele istorice de mai jos se referă la contractul 1.1.0 și nu dovedesc
-compatibilitatea sau instalarea contractului 1.2.0.
+Rezultatele istorice de mai jos se referă la contractele 1.1.0–1.2.0 și nu dovedesc
+instalarea sau compatibilitatea completă a contractului 1.3.0.
 
 Matrice testată: **Apache 2.4.69, PHP 8.1.34 și MariaDB 10.6.28**.
 Acest raport descrie exclusiv probe locale, fără acces la producție.

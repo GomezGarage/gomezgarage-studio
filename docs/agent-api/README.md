@@ -1,6 +1,6 @@
-# API read-only al magazinului
+# API de serviciu al magazinului
 
-Patch local pentru review, 24 octombrie 2026; contract **1.2.0**, OpenAPI **3.1.0**.
+Patch local pentru review, 24 octombrie 2026; contract **1.3.0**, OpenAPI **3.1.0**.
 Nu este instalat sau activat în producție. Nu presupune că acest checkout este versiunea live.
 
 - [Contractul complet](openapi.json): scheme închise, DTO-uri și erori.
@@ -17,11 +17,20 @@ Nu este instalat sau activat în producție. Nu presupune că acest checkout est
 | `health.php` | `agent.health.read` | Liveness autentificat, versiune și oră UTC; nu conectează DB |
 | `products.php` | `products.read` | Produse publicate implicit, inclusiv statistici agregate de vizualizări pe produs; `status=draft` sau `all` cere suplimentar `products.drafts.read` |
 | `orders.php` | `orders.read` | Numai comenzile site-ului, toate statusurile implicit |
+| `product-drafts.php` | `products.drafts.write` | POST creează un draft; PATCH modifică un draft existent cu revision optimistă și Idempotency-Key |
 
-Numai `GET`; inclusiv `HEAD` și `OPTIONS` primesc 405 cu `Allow: GET`.
+Rutele de citire acceptă numai `GET`; ruta draft acceptă numai `POST` și `PATCH`.
+`HEAD`, `OPTIONS`, `PUT` și `DELETE` sunt refuzate.
 HTTPS obligatoriu; `Authorization: Bearer …` cu credential aleator dedicat. Fără
 sesiune admin, CORS browser, SQL primit de la client sau fallback la feedul public.
 API-ul nu include `config.php`, helpers, mailer, facturi, vendor sau plăți.
+Scrierea poate crea sau modifica numai conținutul unui produs cu `status=draft`;
+prețul și textele rămân într-un draft până la review. API-ul nu poate publica, schimba
+statusul, stocul sau featured, șterge produse ori încărca fișiere. Cheia idempotentă
+este păstrată ca SHA-256 într-un tabel tehnic separat; body-ul, tokenul și cheia nu
+ajung în audit. Un revision hash din DTO protejează editările concurente.
+Writerul DB este un user separat față de userul read-only și primește granturi la
+nivel de coloană pentru conținutul produselor și tabela de idempotency.
 Un fișier privat valid cu `enabled: true` este necesar pentru activare. Pe cPanel,
 configurația implicită este `private/studio-agent/config.json` în directorul părinte al
 document root-ului activ (de exemplu, `/home/<cpanel-user>/private/...` când web root-ul
