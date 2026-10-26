@@ -60,4 +60,15 @@ $row = $db->query("SELECT * FROM products WHERE slug='media-dock-organizer'")->f
 dbCheck($row['status'] === 'published' && $row['price_eur'] === '42.50' && (int) $row['stock'] === 9 && str_contains($row['images'], 'synthetic.webp'), 'replay_preserves_admin_edits');
 dbCheck($db->query("SELECT status FROM products WHERE slug='later-product'")->fetchColumn() === 'published', 'replay_preserves_future_catalog');
 dbCheck((int) $db->query('SELECT COUNT(*) FROM products')->fetchColumn() === 8, 'no_duplicates');
+// Readable strings must also round-trip when backslash escaping is disabled.
+$db->exec("SET SESSION sql_mode = CONCAT_WS(',', @@sql_mode, 'NO_BACKSLASH_ESCAPES')");
+$db->exec('CREATE DATABASE ggs_catalog_no_backslash_fixture CHARACTER SET utf8mb4');
+$db->exec('USE ggs_catalog_no_backslash_fixture');
+$db->exec(file_get_contents($root . '/database/schema.sql'));
+foreach ($source as $expected) {
+    $stmt = $db->prepare('SELECT * FROM products WHERE slug=?');
+    $stmt->execute([$expected['slug']]); $row = $stmt->fetch();
+    dbCheck($row['desc_long_en'] === $expected['desc_long_en'] && $row['desc_long_ro'] === $expected['desc_long_ro']
+        && json_decode($row['specs'], true) === $expected['specs'], 'readable_sql_no_backslash_' . $expected['slug']);
+}
 echo json_encode(['catalog_checks' => $checks, 'status' => 'PASS']) . "\n";
