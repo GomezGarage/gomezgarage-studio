@@ -13,12 +13,12 @@ current production schema, hosting configuration or a live Revolut payment.
 | `php tests/agent/run.php` | PASS, 124 synthetic SQLite checks |
 | `python3 tests/agent/http_smoke.py` | PASS, loopback entry points and service boundaries |
 | `python3 tests/agent/validate_contract.py` | PASS, OpenAPI 3.1, 80 response samples, 5 documented response examples and 2 draft requests |
-| `python3 tests/agent/mysql_smoke.py --engine mariadb --catalog-checks ...` | PASS, 61 existing checks + 29 catalog checks; MariaDB 10.6.28 / PHP 8.1.34, private Unix socket, no TCP |
+| `python3 tests/agent/mysql_smoke.py --engine mariadb --catalog-checks ...` | PASS, 61 existing checks + 35 catalog checks; MariaDB 10.6.28 / PHP 8.1.34, private Unix socket, no TCP |
 | `python3 tests/agent/apache_smoke.py --catalog-checks ...` | PASS, Apache 2.4.69 / mod_php 8.1.34 / loopback HTTPS |
 | Payment/order/invoice/mail/auth/DB implementation compared to pre-change Git content | Identical |
 
 The catalog checks cover exact bilingual SQL copy round trips, materials/categories,
-six unique drafts, rainbow quantity one, preservation of historical product IDs and
+six unique drafts, readable SQL under default mode and NO_BACKSLASH_ESCAPES, rainbow quantity one, preservation of historical product IDs and
 paid-order item snapshots, and repeat imports preserving admin edits and later products.
 
 Apache checks use a fixture-only SQLite catalog in a temporary document root. They

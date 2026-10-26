@@ -16,12 +16,16 @@ def sql_value(value):
         return str(value)
     if isinstance(value, list):
         value = json.dumps(value, ensure_ascii=False, separators=(',', ':'))
-    # Independent of MySQL's backslash-escape SQL mode, including embedded JSON/newlines.
-    return 'CONVERT(0x' + value.encode().hex() + ' USING utf8mb4)' if value else "''"
+    # Plain SQL strings keep the reviewed catalog readable. Doubling apostrophes
+    # works with and without NO_BACKSLASH_ESCAPES; literal newlines are preserved.
+    # Reserve hex for future values with backslashes/NUL, where SQL modes differ.
+    if '\\' in value or '\0' in value:
+        return 'CONVERT(0x' + value.encode().hex() + ' USING utf8mb4)'
+    return "'" + value.replace("'", "''") + "'"
 
 
 insert = ('INSERT INTO products\n  (' + ', '.join(columns) + ')\nVALUES\n'
-          + ',\n'.join('(' + ', '.join(sql_value(p[c]) for c in columns) + ')' for p in products)
+          + ',\n'.join('(\n  ' + ',\n  '.join(sql_value(p[c]) for c in columns) + '\n)' for p in products)
           + '\nON DUPLICATE KEY UPDATE slug = products.slug;\n')
 schema_path = root / 'database/schema.sql'
 marker = '-- Initial real catalog:'
@@ -34,7 +38,9 @@ slugs = ', '.join("'" + p['slug'] + "'" for p in products)
 migration = '''-- Owner-authorized replacement of the old public catalog. Run AFTER home_category.sql.
 -- Archive existing listings without deleting order history or product identifiers.
 -- Replay does not reset completed products, prices, images, stock or publication status.
--- Text and JSON use UTF-8 hex literals; readable source: database/catalog-products.json.
+-- Readable UTF-8 text; apostrophes use standard SQL quoting (two apostrophes).
+-- Source: database/catalog-products.json. Product data and import effects are unchanged.
+SET NAMES utf8mb4;
 START TRANSACTION;
 SET @ggs_catalog_installed = (SELECT COUNT(*) FROM settings WHERE key_name = 'catalog_release_20261026');
 UPDATE products SET status = 'draft', featured = 0

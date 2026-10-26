@@ -17,6 +17,8 @@ Textele complete sunt prezentate in [product-copy.md](product-copy.md). Sursa, i
 descrierile lungi si procesul de fabricatie, este
 [catalog-products.json](../../database/catalog-products.json). SQL-ul este generat
 din acest fisier cu `python3 scripts/build-catalog-sql.py`; `--check` verifica sincronizarea.
+SQL-ul de import afiseaza numele si descrierile direct ca text lizibil; apostrofurile
+sunt escapate prin dublare, conform sintaxei SQL.
 
 Preturile nu au fost confirmate: valoarea interna 0 inseamna pret necompletat pentru
 aceste drafturi. Editorul il afiseaza gol si refuza publicarea fara pret pozitiv si
