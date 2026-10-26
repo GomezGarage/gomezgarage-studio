@@ -24,7 +24,7 @@ paid-order item snapshots, and repeat imports preserving admin edits and later p
 Apache checks use a fixture-only SQLite catalog in a temporary document root. They
 verify the actual root rewrite rules, content/links in initial HTML, canonical slug
 URLs, legacy IDs, Product JSON-LD, Open Graph, draft/missing/malformed URLs returning
-404/noindex, published-only sitemap, blocked includes, and DB errors returning 503.
+404/noindex, published-only sitemap, blocked includes/Git/developer folders, and DB errors returning 503.
 
 Unchanged implementation files include `assets/js/checkout.js`, `api/create-order.php`,
 `api/webhook.php`, `includes/helpers.php`, `includes/invoice.php`, `includes/mailer.php`,

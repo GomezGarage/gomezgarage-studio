@@ -46,48 +46,49 @@ Implementarea urmeaza indrumarile Google pentru
 [legaturi accesibile crawlerelor](https://developers.google.com/search/docs/specialty/ecommerce/help-google-understand-your-ecommerce-site-structure)
 si [date Product in HTML-ul initial](https://developers.google.com/search/docs/appearance/structured-data/product-snippet).
 
-## Ordinea pentru upload
+## Publicare prin GitHub si pull din cPanel
 
-1. Exporta baza existenta si salveaza copiile fisierelor pe care le inlocuiesti,
-   inclusiv `.htaccess`. Nu rula `database/schema.sql` peste instalarea existenta.
-2. In phpMyAdmin, pe baza magazinului, importa **doar**
-   [20261026_home_category.sql](../../database/migrations/20261026_home_category.sql).
-   Aceasta extinde enum-ul existent, fara a modifica produsele sau comenzile.
-   Verifica mai intai `SHOW COLUMNS FROM products LIKE 'category';`: migratia este
-   pentru enum-ul `desk, display, automotive, other` din schema acestui proiect,
-   coloana nullable cu default NULL. Daca live are alta definitie, adapteaza migrarea
-   la acea definitie inainte de import.
-3. Incarca fisierele din pachetul `studio-upload.zip`, in folderul `/studio/`,
-   pastrand structura directoarelor. Lista este in `runtime-files.txt` din pachet.
-   Daca `.htaccess` live contine reguli adaugate pe server, pastreaza-le si adauga
-   doar cele trei reguli de catalog de mai jos dupa regulile de protectie existente.
-4. Importa [20261026_initial_catalog.sql](../../database/migrations/20261026_initial_catalog.sql)
-   **cand esti pregatit sa retragi catalogul vechi**. Prima rulare trece toate
-   produsele vechi in draft si le scoate din homepage; adauga cele sase produse noi ca draft.
-   Magazinul va afisa temporar mesajul "Produse in curand" pana publici produsele noi.
-   Comenzile, facturile, setarile de plata, ID-urile si stocurile istorice sunt pastrate.
-   Importul poate fi repetat fara sa reseteze editarile ulterioare.
-5. In `admin/products.php`, deschide cele sase produse reale, incarca fotografiile,
-   alege poza principala, completeaza preturile, stocurile si specificatiile. Salveaza
-   fiecare produs ca Published cand este gata. MagSafe, Media Dock si Zippo sunt propuse
-   pentru homepage, dar optiunea Featured poate fi schimbata.
-6. Verifica un produs publicat, filtrele, galeria si sitemap-ul. Poti verifica adaugarea
-   in cos fara sa plasezi o comanda. Publicarea in GitHub nu publica automat pe server.
+Fluxul existent al proiectului este **GitHub main -> pull din cPanel**, facut de
+proprietar. Fisierele se publica prin Git; nu este nevoie de upload manual din ZIP.
 
-Regulile noi Apache:
+1. Modificarile verificate se integreaza in `main` pe GitHub.
+2. Proprietarul face pull/update din cPanel pe checkout-ul existent. Configuratia
+   privata si imaginile incarcate din backend raman in afara versiunilor Git.
+   Pull-ul include regulile Apache pentru randarea catalogului si protectia
+   directoarelor de dezvoltare; nu executa migrari SQL.
+3. Separat, inainte de folosirea categoriei noi sau de importul catalogului, se
+   exporta baza existenta si se verifica `SHOW COLUMNS FROM products LIKE 'category';`.
+   Migrarea este pentru enum-ul `desk, display, automotive, other` din schema
+   proiectului, coloana nullable cu default NULL. Daca live are alta definitie,
+   se adapteaza migrarea la acea definitie inainte de import.
+4. In phpMyAdmin, pe baza magazinului, se importa in ordine:
+   - [20261026_home_category.sql](../../database/migrations/20261026_home_category.sql)
+   - [20261026_initial_catalog.sql](../../database/migrations/20261026_initial_catalog.sql)
 
-```apache
-RewriteRule ^product\.html$ product.php [L]
-RewriteRule ^products\.html$ products.php [L]
-RewriteRule ^sitemap\.xml$ sitemap.php [L]
-```
+   Al doilea import se face **cand esti pregatit sa retragi catalogul vechi**.
+   Prima rulare trece vechile produse in draft si le scoate din homepage, apoi
+   adauga cele sase produse reale ca draft. Magazinul afiseaza temporar mesajul
+   "Produse in curand" pana la publicarea noilor produse. Comenzile, facturile,
+   setarile de plata, ID-urile si stocurile istorice sunt pastrate. Repetarea
+   importului nu reseteaza editarile ulterioare. Nu se ruleaza schema completa
+   `database/schema.sql` peste instalarea existenta.
+5. In `admin/products.php`, deschizi cele sase produse reale, incarci fotografiile,
+   alegi poza principala, completezi preturile, stocurile si specificatiile. Salvezi
+   fiecare produs ca Published cand este gata. MagSafe, Media Dock si Zippo sunt
+   propuse pentru homepage; optiunea Featured poate fi schimbata.
+6. Verifici un produs publicat, filtrele, galeria si sitemap-ul. Adaugarea in cos
+   poate fi verificata fara plasarea unei comenzi.
 
-### Fisiere pentru server
+### Continutul repository-ului pe server
 
-Lista exacta se afla in [runtime-files.txt](runtime-files.txt). Nu se incarca
-`config.php`, `.env`, `vendor/`, `tests/`, `scripts/`, `database/`, `docs/` sau fotografiile
-RAW din calculator. SQL-urile se importa din phpMyAdmin; fotografiile WebP se incarca
-din administrare. Pachetul de runtime nu contine configuratii sau imagini existente de produs.
+Lista [runtime-files.txt](runtime-files.txt) identifica fisierele de runtime modificate,
+pentru audit. Nu este o lista de upload manual. `.htaccess` blocheaza accesul HTTP
+la `.git/`, `includes/`, `database/`, `scripts/`, `invoices/`, `tests/` si `docs/`.
+Fotografiile din `docs/catalog-release/photos/` sunt surse pentru incarcarea din
+administrare; galeria publica foloseste fisierele din `assets/images/products/`.
+Configuratia privata, credentialele si fisierele existente de produs nu se publica
+prin Git. Arhiva generata anterior ramane doar o copie optionala; fluxul standard
+este pull-ul din cPanel.
 
 ### Revenire
 

@@ -48,6 +48,9 @@ def main():
                 shutil.copy2(root / name, studio / name)
             for name in ['catalog.php', 'catalog-view.php']:
                 shutil.copy2(root / 'includes' / name, studio / 'includes' / name)
+            for name in ['docs', 'tests', '.git']:
+                (studio / name).mkdir()
+                (studio / name / 'synthetic.txt').write_text('Fixture only')
             fixture = private / 'catalog.sqlite'
             rows = json.loads((root / 'database/catalog-products.json').read_text())
             with sqlite3.connect(fixture) as db:
@@ -168,6 +171,8 @@ def main():
                     status, text = page('sitemap.xml')
                     assert status == 200 and text.count('<loc>') == 10 and 'synthetic-draft' not in text and 'product.html?id=' not in text, 'live published sitemap'
                     assert page('includes/catalog.php')[0] == 403, 'includes blocked by root htaccess'
+                    for folder in ['docs', 'tests', '.git']:
+                        assert page(folder + '/synthetic.txt')[0] == 403, 'repository internals blocked after cPanel Git pull'
                     fixture.unlink()
                     assert page('product.html?slug=magsafe-apple-watch-dock')[0] == 503, 'DB failure is not a false 404'
                     assert page('sitemap.xml')[0] == 503, 'sitemap DB failure signals retry'
