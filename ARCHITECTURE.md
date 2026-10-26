@@ -109,7 +109,7 @@ gomezgarage.eu/studio/
 2. **HERO**
    - Full-width, dark
    - Tagline mare: *"Precision made. Built to last."*
-   - Sub-tagline: *"Premium 3D-printed objects designed from scratch. No downloads. No copies."*
+   - Sub-tagline: *"Premium 3D-printed objects with original designs, made in-house."*
    - CTA primar: "Shop Now" → /products
    - CTA secundar: "See how it's made" → scroll la sectiunea process
    - Background: fotografie produs flagship sau carbon texture
@@ -145,7 +145,8 @@ gomezgarage.eu/studio/
 
 - Grid responsive: 3 coloane desktop, 2 tablet, 1 mobile
 - Fiecare card: imagine principala, hover → imagine secundara, nume, material badge, pret (RON sau EUR), buton "View" + "Add to Cart" direct
-- Filter bar simplu: All / Desk / Display / Automotive (categorii setate in admin)
+- Filter bar: All / Desk & Tech / Display & Collectibles / Home & Decor.
+- Valorile legacy Automotive / Other raman valide in DB, admin si service API.
 - Sort: Newest / Price low-high / Price high-low
 - Produsele vin din API (get-products.php → MySQL)
 
@@ -239,8 +240,8 @@ gomezgarage.eu/studio/
 - Descriere scurta (EN + RO)
 - Descriere lunga / "How it's made" (EN + RO)
 - Material (text liber + badge color)
-- Categorie (dropdown: Desk / Display / Automotive / Other)
-- Pret EUR (conversia RON se face automat)
+- Categorie (dropdown: Desk & Tech / Display & Collectibles / Home & Decor; legacy Automotive / Other)
+- Pret EUR (conversia RON se face automat); poate lipsi intr-un draft, dar trebuie sa fie pozitiv pentru publicare.
 - Stoc curent (numar)
 - Prag stoc minim (sub care apare alerta)
 - Imagini (upload multiple, prima = principala)
@@ -300,7 +301,7 @@ CREATE TABLE products (
   how_made_en TEXT,
   how_made_ro TEXT,
   material VARCHAR(100),
-  category ENUM('desk','display','automotive','other'),
+  category ENUM('desk','display','automotive','other','home'),
   price_eur DECIMAL(10,2),
   stock INT DEFAULT 0,
   stock_threshold INT DEFAULT 3,
@@ -400,6 +401,7 @@ CREATE TABLE settings (
 
 - **Default: Engleza** — toate textele scrise primar in EN
 - **Toggle RO** — data-ro attribute pe fiecare element de text, JS schimba la toggle
+- **Texte RO fara diacritice** — regula de brand; formularea despre originalitate pune accent pe designul original.
 - **Moneda default:** detectata geo (RON pentru Romania, EUR pentru restul)
 - **Toggle manual** moneda in nav — persistat in localStorage
 
@@ -410,7 +412,11 @@ CREATE TABLE settings (
 - Meta title + description per pagina
 - Open Graph tags (og:title, og:description, og:image, og:url)
 - Canonical URLs
-- sitemap.xml (actualizat cand adaugi produse noi — manual sau script)
+- sitemap.xml este randat de sitemap.php din produsele publicate, prin rewrite Apache.
+- product.html si products.html sunt randate initial prin product.php / products.php;
+  JavaScript continua sa ofere galeria, filtrele, moneda si cosul existente.
+- Canonical, titlu, descriere, Open Graph si Product/Offer JSON-LD provin din produsul publicat.
+- Linkurile canonice folosesc product.html?slug=...; linkurile istorice cu id raman valide.
 - robots.txt — permite indexare, exclude /admin/ si /api/
 - Schema.org markup pe paginile de produs (Product schema)
 - Imagini: WebP unde posibil, lazy loading

@@ -159,7 +159,7 @@ final class ProductDraftRepository
                     invalidDraft();
                 }
             } elseif ($field === 'category') {
-                if (!in_array($value, ['desk', 'display', 'automotive', 'other'], true)) {
+                if (!in_array($value, ['desk', 'display', 'automotive', 'other', 'home'], true)) {
                     invalidDraft();
                 }
             } elseif ($field === 'price_eur') {

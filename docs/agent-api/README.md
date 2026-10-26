@@ -1,6 +1,6 @@
 # API de serviciu al magazinului
 
-Patch local pentru review, 24 octombrie 2026; contract **1.3.0**, OpenAPI **3.1.0**.
+Patch local pentru review, 26 octombrie 2026; contract **1.3.0**, OpenAPI **3.1.0**.
 Nu este instalat sau activat în producție. Nu presupune că acest checkout este versiunea live.
 
 - [Contractul complet](openapi.json): scheme închise, DTO-uri și erori.
@@ -100,3 +100,11 @@ PDO MySQL. Validatorul Python este doar dependență de dezvoltare. Nu se schimb
 Composer și nu se citește `config.php`. Testele nu folosesc date sau credențiale
 reale și nu contactează servicii comerciale. Testul HTTP deschide temporar numai
 un port loopback și distruge fișierele private la final.
+
+## Catalog category update (26 October 2026)
+
+The product read filter and draft-write category enum now also accept `home`
+(Home & Decor). Existing `desk`, `display`, `automotive` and `other` values remain
+valid. Install `database/migrations/20261026_home_category.sql` before using `home`
+on an existing database. The OpenAPI contract includes this additive enum value.
+Initial catalog imports are separate from service API activation and remain drafts.

@@ -328,7 +328,8 @@
                 "desk",
                 "display",
                 "automotive",
-                "other"
+                "other",
+                "home"
               ]
             }
           }
@@ -1839,7 +1840,8 @@
               "desk",
               "display",
               "automotive",
-              "other"
+              "other",
+              "home"
             ]
           },
           "price_eur": {
@@ -1978,7 +1980,8 @@
               "desk",
               "display",
               "automotive",
-              "other"
+              "other",
+              "home"
             ]
           },
           "price_eur": {

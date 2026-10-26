@@ -4,5 +4,10 @@ Disallow: /admin/
 Disallow: /api/
 Disallow: /includes/
 Disallow: /database/
+Disallow: /studio/admin/
+Disallow: /studio/api/
+Disallow: /studio/includes/
+Disallow: /studio/database/
+Disallow: /studio/docs/
 
 Sitemap: https://gomezgarage.eu/studio/sitemap.xml

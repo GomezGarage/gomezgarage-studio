@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/catalog.php';
 
 ggs_require_admin();
 
@@ -46,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
   $product['how_made_en'] = trim($_POST['how_made_en'] ?? '');
   $product['how_made_ro'] = trim($_POST['how_made_ro'] ?? '');
   $product['material'] = trim($_POST['material'] ?? '');
-  $product['category'] = in_array($_POST['category'] ?? '', ['desk','display','automotive','other'], true) ? $_POST['category'] : 'desk';
+  $product['category'] = in_array($_POST['category'] ?? '', ['desk','display','automotive','other','home'], true) ? $_POST['category'] : 'desk';
   $product['price_eur'] = (float) ($_POST['price_eur'] ?? 0);
   $product['stock'] = max(0, (int) ($_POST['stock'] ?? 0));
   $product['stock_threshold'] = max(0, (int) ($_POST['stock_threshold'] ?? 3));
@@ -54,7 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
   $product['featured'] = !empty($_POST['featured']) ? 1 : 0;
 
   if ($product['name_en'] === '') $errors[] = 'English name is required.';
-  if ($product['price_eur'] <= 0) $errors[] = 'Price must be greater than 0.';
+  if (!is_finite($product['price_eur']) || $product['price_eur'] < 0) $errors[] = 'Enter a valid price.';
+  if ($product['status'] === 'published' && $product['price_eur'] <= 0) $errors[] = 'Set a price greater than 0 before publishing.';
 
   // ---- Specs (key/value repeatable rows) ----
   $specs = [];
@@ -93,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
     }
   }
   $product['images'] = array_merge($kept, $newImages);
+  if ($product['status'] === 'published' && !$product['images']) $errors[] = 'Add a product photograph before publishing.';
 
   if (!$errors) {
     if (!$id) {
@@ -196,15 +199,15 @@ require __DIR__ . '/../includes/admin-header.php';
       <div class="form-group">
         <label>Category</label>
         <select name="category">
-          <?php foreach (['desk','display','automotive','other'] as $c): ?>
-            <option value="<?= $c ?>" <?= $product['category'] === $c ? 'selected' : '' ?>><?= ucfirst($c) ?></option>
+          <?php foreach (ggs_categories() as $c => $label): ?>
+            <option value="<?= $c ?>" <?= $product['category'] === $c ? 'selected' : '' ?>><?= htmlspecialchars($label['en']) ?></option>
           <?php endforeach; ?>
         </select>
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Price (EUR)</label><input type="number" step="0.01" min="0" name="price_eur" value="<?= htmlspecialchars((string) $product['price_eur']) ?>" required></div>
-      <div class="form-group"></div>
+      <div class="form-group"><label>Price (EUR)</label><input type="number" step="0.01" min="0.01" name="price_eur" value="<?= htmlspecialchars((string) ($product['price_eur'] > 0 ? $product['price_eur'] : '')) ?>"></div>
+      <div class="form-group"><p class="form-hint">Price can stay empty while this product is a draft. Set the final price before publishing.</p></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Stock</label><input type="number" min="0" name="stock" value="<?= (int) $product['stock'] ?>"></div>

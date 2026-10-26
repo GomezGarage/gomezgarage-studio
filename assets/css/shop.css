@@ -144,6 +144,9 @@
   margin-bottom: 20px;
 }
 .product-desc { color: var(--text-secondary); margin-bottom: 24px; }
+.product-long-desc { margin: 28px 0; }
+.product-long-desc h2 { font-size: 20px; margin-bottom: 12px; }
+.product-long-desc p { color: var(--text-secondary); white-space: pre-line; }
 .stock-indicator { margin-bottom: 24px; font-family: var(--font-mono); font-size: 13px; }
 .stock-indicator.in { color: var(--success); }
 .stock-indicator.low { color: var(--warning); }
