@@ -8,7 +8,7 @@
  *   id        int    — single product by id
  *   slug      string — single product by slug
  *   featured  0|1    — only featured products
- *   category  string — desk|display|automotive|other
+ *   category  string — desk|display|automotive|other|home
  */
 
 require_once __DIR__ . '/../includes/helpers.php';
@@ -36,7 +36,7 @@ if (isset($_GET['featured']) && $_GET['featured'] === '1') {
   $where[] = 'featured = 1';
 }
 
-$allowedCategories = ['desk', 'display', 'automotive', 'other'];
+$allowedCategories = ['desk', 'display', 'automotive', 'other', 'home'];
 if (!empty($_GET['category']) && in_array($_GET['category'], $allowedCategories, true)) {
   $where[] = 'category = ?';
   $params[] = $_GET['category'];

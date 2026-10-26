@@ -8,6 +8,10 @@ Preserve pre-existing work and the existing design. Keep checkout, payments,
 invoices and inventory changes separate from integration-only work unless explicitly
 requested. Never assume the local schema or checkout matches production.
 
+Storefront copy: Romanian text must use no diacritics. Preserve the existing copy
+and visual direction unless a change is requested. Describe the original design
+positively; do not use the ambiguous Romanian phrase "Fara copii".
+
 This repository is public. Do not commit config.php, .env, credentials, invoices,
 customer data, private infrastructure details or internal project/security reviews.
 Use only synthetic fixtures. Do not invoke real mail, payment or courier services

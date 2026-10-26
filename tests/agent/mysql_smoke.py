@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--php', default='php', help='PHP CLI executable for the target version')
     parser.add_argument('--library-path', help='Optional macOS bottle library directories')
     parser.add_argument('--responses', type=Path, help='Optional synthetic response export for schema validation')
+    parser.add_argument('--catalog-checks', action='store_true', help='Also verify the catalog migration on this disposable server')
     args = parser.parse_args()
     basedir = args.mysql_basedir.resolve(strict=True)
     binary = basedir / 'bin/mysqld'
@@ -81,6 +82,13 @@ def main():
                 else:
                     report.pop('responses')
                 print(json.dumps(report, indent=2))
+                if args.catalog_checks:
+                    catalog = subprocess.run([args.php, '-n', '-d', 'display_errors=0',
+                        str(root / 'tests/catalog/mysql.php')], input=json.dumps(request),
+                        env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                    if catalog.returncode:
+                        raise RuntimeError('Isolated catalog migration checks failed: ' + catalog.stdout[:300])
+                    print(catalog.stdout.strip())
             finally:
                 if server.poll() is None:
                     server.terminate()

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/catalog.php';
 
 ggs_require_admin();
 
@@ -49,9 +50,9 @@ require __DIR__ . '/../includes/admin-header.php';
         <tr>
           <td><img class="thumb" src="<?= htmlspecialchars($thumb) ?>" alt=""></td>
           <td><?= htmlspecialchars($p['name_en']) ?></td>
-          <td class="mono"><?= htmlspecialchars($p['category']) ?></td>
+          <td class="mono"><?= htmlspecialchars(ggs_categories()[$p['category']]['en'] ?? $p['category']) ?></td>
           <td><?= htmlspecialchars($p['material']) ?></td>
-          <td class="mono"><?= number_format((float) $p['price_eur'], 2) ?> EUR</td>
+          <td class="mono"><?= $p['price_eur'] > 0 ? number_format((float) $p['price_eur'], 2) . ' EUR' : 'Not set' ?></td>
           <td class="mono <?= $lowStock ? 'badge-danger' : '' ?>"><?= (int) $p['stock'] ?></td>
           <td><span class="status-pill status-<?= $p['status'] === 'published' ? 'paid' : 'pending' ?>"><?= htmlspecialchars($p['status']) ?></span></td>
           <td><?= $p['featured'] ? '★' : '—' ?></td>

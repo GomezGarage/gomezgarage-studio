@@ -48,10 +48,14 @@ full design decisions, page structure, schema and payment flow.
 
 ## Notes
 
-- Seed products in `database/schema.sql` use placeholder SVG imagery in
-  `assets/images/products/` — replace via the admin product editor.
-- `sitemap.xml` lists product URLs by id manually; update it when products
-  are added/removed (see ARCHITECTURE.md section 8).
+- A fresh `database/schema.sql` installs the six real catalog listings as drafts.
+  Complete photographs, prices, stock and specifications in the admin editor.
+  For an existing installation, follow [the catalog release guide](docs/catalog-release/README.md)
+  and import only its two migration files; do not re-run the full schema.
+- Apache renders `product.html`, `products.html` and `sitemap.xml` through their PHP
+  counterparts. Product copy/metadata and published catalog links are available in
+  initial HTML; the sitemap follows published products automatically. Existing product
+  ID URLs still work; canonical links use descriptive slugs.
 
 ## Service API
 

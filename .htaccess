@@ -16,3 +16,8 @@ ServerSignature Off
 # api/download-invoice.php instead).
 RewriteEngine On
 RewriteRule ^(includes|database|scripts|invoices)/ - [F,L]
+
+# Keep the public .html URLs while rendering live catalog content and metadata.
+RewriteRule ^product\.html$ product.php [L]
+RewriteRule ^products\.html$ products.php [L]
+RewriteRule ^sitemap\.xml$ sitemap.php [L]

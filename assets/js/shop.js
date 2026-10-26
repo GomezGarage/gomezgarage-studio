@@ -102,22 +102,26 @@
     return '<span class="badge badge-success" data-en="In stock" data-ro="In stoc">In stock</span>';
   }
 
+  function productPath(p) {
+    return '/studio/product.html?' + (p.slug ? `slug=${encodeURIComponent(p.slug)}` : `id=${p.id}`);
+  }
+
   function productCardHtml(p) {
     const img1 = (p.images && p.images[0]) || '/studio/assets/images/products/placeholder.svg';
     const img2 = (p.images && p.images[1]) || img1;
     return `
       <article class="product-card" data-category="${p.category}" data-price="${p.price_eur}" data-created="${p.created_at}">
-        <a href="/studio/product.html?id=${p.id}" class="product-card-media">
+        <a href="${productPath(p)}" class="product-card-media">
           <span class="stock-flag">${stockBadge(p)}</span>
-          <img class="img-primary" src="${img1}" alt="${window.GGSUtil.escapeHtml(p.name_en)}" loading="lazy">
-          <img class="img-secondary" src="${img2}" alt="" loading="lazy">
+          <img class="img-primary" src="${window.GGSUtil.escapeHtml(img1)}" alt="${window.GGSUtil.escapeHtml(p.name_en)}" loading="lazy">
+          <img class="img-secondary" src="${window.GGSUtil.escapeHtml(img2)}" alt="" loading="lazy">
         </a>
         <div class="product-card-body">
           <span class="badge mono material-badge">${window.GGSUtil.escapeHtml(p.material)}</span>
-          <h3><a href="/studio/product.html?id=${p.id}" data-en="${window.GGSUtil.escapeHtml(p.name_en)}" data-ro="${window.GGSUtil.escapeHtml(p.name_ro)}">${window.GGSUtil.escapeHtml(p.name_en)}</a></h3>
+          <h3><a href="${productPath(p)}" data-en="${window.GGSUtil.escapeHtml(p.name_en)}" data-ro="${window.GGSUtil.escapeHtml(p.name_ro)}">${window.GGSUtil.escapeHtml(p.name_en)}</a></h3>
           <div class="product-card-price mono">${money(p.price_eur)}</div>
           <div class="product-card-actions">
-            <a href="/studio/product.html?id=${p.id}" class="btn btn-outline btn-sm" data-en="View" data-ro="Vezi">View</a>
+            <a href="${productPath(p)}" class="btn btn-outline btn-sm" data-en="View" data-ro="Vezi">View</a>
             <button class="btn btn-primary btn-sm" data-add-to-cart="${p.id}" ${p.stock <= 0 ? 'disabled' : ''} data-en="Add to Cart" data-ro="Adauga in cos">Add to Cart</button>
           </div>
         </div>
@@ -212,10 +216,11 @@
   function initProductDetailPage() {
     const wrap = document.querySelector('[data-product-detail]');
     if (!wrap) return;
+    const slug = window.GGSUtil.qs('slug');
     const id = window.GGSUtil.qs('id');
-    if (!id) return;
+    if (slug ? !/^[a-z0-9][a-z0-9-]{0,99}$/.test(slug) : !/^[1-9][0-9]*$/.test(id || '')) return;
 
-    fetchProducts({ id }).then((products) => {
+    fetchProducts(slug ? { slug } : { id }).then((products) => {
       const product = products[0];
       if (!product) {
         wrap.innerHTML = '<div class="empty-state"><h3>Product not found</h3></div>';
@@ -253,14 +258,14 @@
   }
 
   function renderProductDetail(wrap, p) {
-    document.title = `${p.name_en} — Gomez Garage Studio`;
+    updateProductMetadata(p);
     const images = (p.images && p.images.length) ? p.images : ['/studio/assets/images/products/placeholder.svg'];
     const specs = p.specs || [];
 
     wrap.innerHTML = `
       <div class="gallery">
-        <div class="gallery-main"><img id="gallery-main-img" src="${images[0]}" alt="${window.GGSUtil.escapeHtml(p.name_en)}"></div>
-        ${images.length > 1 ? `<div class="gallery-thumbs">${images.map((img, i) => `<img src="${img}" class="${i === 0 ? 'active' : ''}" data-thumb>`).join('')}</div>` : ''}
+        <div class="gallery-main"><img id="gallery-main-img" src="${window.GGSUtil.escapeHtml(images[0])}" alt="${window.GGSUtil.escapeHtml(p.name_en)}"></div>
+        ${images.length > 1 ? `<div class="gallery-thumbs">${images.map((img, i) => `<img src="${window.GGSUtil.escapeHtml(img)}" class="${i === 0 ? 'active' : ''}" data-thumb>`).join('')}</div>` : ''}
       </div>
       <div class="product-info">
         <span class="badge mono badge-accent">${window.GGSUtil.escapeHtml(p.material)}</span>
@@ -277,6 +282,10 @@
           <button class="btn btn-outline" id="add-to-cart-detail" ${p.stock <= 0 ? 'disabled' : ''} data-en="Add to Cart" data-ro="Adauga in cos">Add to Cart</button>
           <button class="btn btn-primary" id="buy-now-detail" ${p.stock <= 0 ? 'disabled' : ''} data-en="Buy Now" data-ro="Cumpara acum">Buy Now</button>
         </div>
+        ${(p.desc_long_en || p.desc_long_ro) ? `<div class="product-long-desc">
+          <h2 data-en="About this piece" data-ro="Despre acest produs">About this piece</h2>
+          <p data-en="${window.GGSUtil.escapeHtml(p.desc_long_en)}" data-ro="${window.GGSUtil.escapeHtml(p.desc_long_ro)}">${window.GGSUtil.escapeHtml(p.desc_long_en)}</p>
+        </div>` : ''}
         ${specs.length ? `<table class="specs-table">${specs.map((s) => `<tr><td>${window.GGSUtil.escapeHtml(s.key)}</td><td>${window.GGSUtil.escapeHtml(s.value)}</td></tr>`).join('')}</table>` : ''}
         <div class="how-made-block">
           <h3 data-en="How it's made" data-ro="Cum este fabricat">How it's made</h3>
@@ -310,24 +319,54 @@
     });
   }
 
-  /* Schema.org Product markup (ARCHITECTURE.md section 8). */
+  function updateProductMetadata(p) {
+    document.title = `${p.name_en} | Gomez Garage Studio`;
+    const url = `https://gomezgarage.eu${productPath(p)}`;
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.href = url;
+    const setMeta = (selector, attribute, key, content) => {
+      let tag = document.querySelector(selector);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute(attribute, key);
+        document.head.appendChild(tag);
+      }
+      tag.content = content || '';
+    };
+    setMeta('meta[name="description"]', 'name', 'description', p.desc_short_en);
+    setMeta('meta[property="og:title"]', 'property', 'og:title', document.title);
+    setMeta('meta[property="og:description"]', 'property', 'og:description', p.desc_short_en);
+    setMeta('meta[property="og:url"]', 'property', 'og:url', url);
+    if (p.images && p.images[0]) {
+      setMeta('meta[property="og:image"]', 'property', 'og:image', new URL(p.images[0], 'https://gomezgarage.eu').href);
+      setMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', p.name_en);
+    }
+  }
+
+  /* Schema.org Product markup (same canonical/data as the server renderer). */
   function injectProductSchema(p) {
-    const images = (p.images && p.images.length) ? p.images : ['/studio/assets/images/products/placeholder.svg'];
+    const images = p.images || [];
+    const url = `https://gomezgarage.eu${productPath(p)}`;
     const schema = {
       '@context': 'https://schema.org/',
       '@type': 'Product',
+      '@id': `${url}#product`,
+      url,
+      brand: { '@type': 'Brand', name: 'Gomez Garage Studio' },
       name: p.name_en,
       description: p.desc_short_en,
-      image: images.map((img) => `https://gomezgarage.eu${img}`),
+      ...(images.length ? { image: images.map((img) => new URL(img, 'https://gomezgarage.eu').href) } : {}),
       sku: String(p.id),
       material: p.material,
-      offers: {
+      ...(Number(p.price_eur) > 0 ? { offers: {
         '@type': 'Offer',
-        url: `https://gomezgarage.eu/studio/product.html?id=${p.id}`,
+        url,
         priceCurrency: 'EUR',
-        price: p.price_eur,
+        price: Number(p.price_eur).toFixed(2),
+        itemCondition: 'https://schema.org/NewCondition',
+        seller: { '@type': 'Organization', name: 'Gomez Garage Studio' },
         availability: p.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      },
+      } } : {}),
     };
     let tag = document.getElementById('product-schema');
     if (!tag) {

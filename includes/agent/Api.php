@@ -242,7 +242,7 @@ final class Api
         $statuses = $route === 'products' ? ['published', 'draft', 'all'] : ['all', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
         $input['status'] = $input['status'] ?? $statuses[0];
         if (!in_array($input['status'], $statuses, true)
-            || (isset($input['category']) && !in_array($input['category'], ['desk', 'display', 'automotive', 'other'], true))) {
+            || (isset($input['category']) && !in_array($input['category'], ['desk', 'display', 'automotive', 'other', 'home'], true))) {
             invalid();
         }
         foreach (['updated_from', 'updated_before', 'created_from', 'created_before'] as $key) {
