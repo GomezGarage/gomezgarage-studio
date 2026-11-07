@@ -39,8 +39,15 @@ si fisierele adaugate ulterior. Nu sterge markerul pentru a reimporta.
 | Set tealight Rainbow | Casa si decor | PLA rainbow | 34 |
 
 Walnut are o piesa gata, intr-o serie de maximum patru. Rainbow are un singur set
-complet de trei suporturi. Stocurile celorlalte produse sunt neconfirmate si pornesc
-de la 0; se completeaza in admin inainte de publicare.
+complet de trei suporturi. MagSafe, Media Dock, Cheia Sol, Zippo negru si setul
+tealight negru au fiecare stoc 3, confirmat de proprietar.
+
+Daca ai importat deja resetul anterior cu stocuri 0, dupa pull importa doar
+`database/migrations/20261107_catalog_stock_confirmed.sql`. Acest SQL actualizeaza
+stocul celor cinci produse la 3, o singura data, fara sa refaca produsele sau sa
+modifice fotografiile, videoclipurile, preturile ori descrierile. Walnut si Rainbow
+raman nemodificate. Daca folosesti resetul actualizat, stocurile sunt deja corecte
+si acest pas suplimentar nu este necesar.
 
 Fiecare produs primeste nume EN/RO, descrieri scurte si lungi, proces de fabricatie,
 mentiune vizibila a designului original Gomez Garage Studio, specificatii EN/RO,
