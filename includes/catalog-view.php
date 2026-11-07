@@ -18,7 +18,7 @@ function ggs_product_schema(array $p): array
         '@context' => 'https://schema.org', '@type' => 'Product',
         '@id' => $url . '#product', 'url' => $url,
         'name' => $p['name_en'], 'description' => $p['desc_short_en'],
-        'sku' => (string) $p['id'], 'material' => $p['material'],
+        'sku' => ($p['sku'] ?? '') ?: (string) $p['id'], 'material' => $p['material'],
         'brand' => ['@type' => 'Brand', 'name' => 'Gomez Garage Studio'],
     ];
     if ($p['images']) {
@@ -42,8 +42,8 @@ function ggs_product_head(array $p): string
 {
     $e = 'ggs_catalog_escape';
     $url = 'https://gomezgarage.eu' . ggs_product_path($p);
-    $title = $p['name_en'] . ' | Gomez Garage Studio';
-    $description = $p['desc_short_en'] ?? '';
+    $title = ($p['seo_title_en'] ?? '') ?: $p['name_en'] . ' | Gomez Garage Studio';
+    $description = ($p['seo_description_en'] ?? '') ?: ($p['desc_short_en'] ?? '');
     $html = '<title>' . $e($title) . '</title>' . "\n"
         . '<meta name="description" content="' . $e($description) . '">' . "\n"
         . '<link rel="canonical" href="' . $e($url) . '">' . "\n"
@@ -56,7 +56,7 @@ function ggs_product_head(array $p): string
         $image = $p['images'][0];
         if (str_starts_with($image, '/')) $image = 'https://gomezgarage.eu' . $image;
         $html .= '<meta property="og:image" content="' . $e($image) . '">' . "\n"
-            . '<meta property="og:image:alt" content="' . $e($p['name_en']) . '">' . "\n";
+            . '<meta property="og:image:alt" content="' . $e(($p['image_alt'][$p['images'][0]]['en'] ?? '') ?: $p['name_en']) . '">' . "\n";
     }
     // HEX flags prevent source content from closing the JSON-LD script element.
     $html .= '<script type="application/ld+json" id="product-schema">'
@@ -69,9 +69,19 @@ function ggs_product_body(array $p): string
 {
     $e = 'ggs_catalog_escape';
     $image = $p['images'][0] ?? '/studio/assets/images/products/placeholder.svg';
+    $videoFallback = '';
+    foreach ($p['videos'] ?? [] as $video) {
+        if (!preg_match('~^/studio/assets/videos/products/[a-f0-9]{32}\.mp4$~D', $video['src'] ?? '')) continue;
+        $videoFallback .= '<video controls playsinline preload="none" poster="' . $e($video['poster'] ?: $image)
+            . '" aria-label="' . $e($video['title_en'] ?: 'Product video') . '" style="width:100%"><source src="'
+            . $e($video['src']) . '" type="video/mp4"></video>';
+    }
+    $alt = $p['image_alt'][$image]['en'] ?? $p['name_en'];
     $html = '<div class="gallery"><div class="gallery-main"><img id="gallery-main-img" src="'
-        . $e($image) . '" alt="' . $e($p['name_en']) . '"></div></div><div class="product-info">'
+        . $e($image) . '" alt="' . $e($alt ?: $p['name_en']) . '"></div>'
+        . ($videoFallback ? '<noscript>' . $videoFallback . '</noscript>' : '') . '</div><div class="product-info">'
         . '<span class="badge mono badge-accent">' . $e($p['material']) . '</span>'
+        . (!empty($p['sku']) ? '<p class="mono product-sku">SKU: ' . $e($p['sku']) . '</p>' : '')
         . '<h1 data-en="' . $e($p['name_en']) . '" data-ro="' . $e($p['name_ro']) . '">' . $e($p['name_en']) . '</h1>'
         . '<div class="product-price-block mono">€' . number_format((float) $p['price_eur'], 2) . '</div>'
         . '<p class="product-desc" data-en="' . $e($p['desc_short_en']) . '" data-ro="' . $e($p['desc_short_ro']) . '">'
@@ -83,12 +93,16 @@ function ggs_product_body(array $p): string
     }
     if ($p['specs']) {
         $html .= '<table class="specs-table">';
-        foreach ($p['specs'] as $spec) {
-            $html .= '<tr><td>' . $e($spec['key']) . '</td><td>' . $e($spec['value']) . '</td></tr>';
+        foreach ($p['specs'] as $i => $spec) {
+            $ro = $p['specs_ro'][$i] ?? [];
+            $html .= '<tr><td data-en="' . $e($spec['key']) . '" data-ro="' . $e(($ro['key'] ?? '') ?: $spec['key']) . '">'
+                . $e($spec['key']) . '</td><td data-en="' . $e($spec['value']) . '" data-ro="' . $e(($ro['value'] ?? '') ?: $spec['value']) . '">'
+                . $e($spec['value']) . '</td></tr>';
         }
         $html .= '</table>';
     }
-    return $html . '<div class="how-made-block"><h3 data-en="How it is made" data-ro="Cum este fabricat">How it is made</h3>'
+    return $html . '<div class="how-made-block"><h3 data-en="Original design by Gomez Garage Studio" data-ro="Design original Gomez Garage Studio">Original design by Gomez Garage Studio</h3>'
+        . '<p data-en="Designed from scratch in CAD and 3D printed by Gomez Garage Studio in Romania." data-ro="Proiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.">Designed from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.</p>'
         . '<p data-en="' . $e($p['how_made_en']) . '" data-ro="' . $e($p['how_made_ro']) . '">'
         . $e($p['how_made_en']) . '</p></div></div>';
 }

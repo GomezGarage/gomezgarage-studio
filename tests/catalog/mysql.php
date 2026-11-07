@@ -71,4 +71,36 @@ foreach ($source as $expected) {
     dbCheck($row['desc_long_en'] === $expected['desc_long_en'] && $row['desc_long_ro'] === $expected['desc_long_ro']
         && json_decode($row['specs'], true) === $expected['specs'], 'readable_sql_no_backslash_' . $expected['slug']);
 }
+// Current owner-authorized reset: published guard, all seven drafts, metadata and replay.
+require_once $root . '/includes/product-content.php';
+$db->exec('USE ggs_catalog_fixture');
+$reset = static function () use ($db, $root): void {
+    $stmt = $db->query(file_get_contents($root . '/database/migrations/20261107_catalog_reset.sql'));
+    do { $stmt->fetchAll(); } while ($stmt->nextRowset());
+    $stmt->closeCursor();
+};
+$reset();
+dbCheck((int) $db->query('SELECT COUNT(*) FROM products')->fetchColumn() === 8, 'reset_refuses_published_catalog');
+$db->exec("UPDATE products SET status='draft'");
+$reset();
+dbCheck((int) $db->query('SELECT COUNT(*) FROM products')->fetchColumn() === 7, 'reset_seven_products');
+dbCheck((int) $db->query("SELECT COUNT(*) FROM products WHERE status='published'")->fetchColumn() === 0, 'reset_all_draft');
+dbCheck((int) $db->query('SELECT MIN(id) FROM products')->fetchColumn() > $oldId, 'reset_does_not_reuse_historical_ids');
+dbCheck($db->query("SELECT items FROM orders WHERE order_number='SYNTHETIC-CATALOG'")->fetchColumn() === $items, 'reset_keeps_order_snapshots');
+$current = json_decode(file_get_contents($root . '/database/catalog-products-20261107.json'), true);
+foreach ($current as $expected) {
+    $q = $db->prepare('SELECT * FROM products WHERE slug=?'); $q->execute([$expected['slug']]);
+    $p = ggs_with_product_content($db, [$q->fetch()])[0];
+    dbCheck($p['desc_long_en'] === $expected['desc_long_en'] && $p['desc_long_ro'] === $expected['desc_long_ro'], 'new_bilingual_copy_' . $expected['slug']);
+    dbCheck($p['sku'] === $expected['presentation']['sku'], 'new_sku_' . $expected['slug']);
+    dbCheck((float) $p['price_eur'] === (float) $expected['price_eur'], 'new_price_' . $expected['slug']);
+}
+$id = (int) $db->query("SELECT id FROM products WHERE slug='media-dock-organizer'")->fetchColumn();
+ggs_save_product_content($db, $id, array_merge(ggs_content_defaults(), ['sku'=>'ADMIN-EDIT','videos'=>[['src'=>'/studio/assets/videos/products/' . str_repeat('a',32) . '.mp4']]]));
+$db->exec("UPDATE products SET price_eur=99, stock=9 WHERE id=$id");
+$reset();
+$p = ggs_with_product_content($db, [$db->query("SELECT * FROM products WHERE id=$id")->fetch()])[0];
+dbCheck($p['sku'] === 'ADMIN-EDIT' && count($p['videos']) === 1 && (float)$p['price_eur'] === 99.0 && (int)$p['stock'] === 9, 'reset_replay_keeps_admin_edits_and_media');
+require __DIR__ . '/admin-http.php';
+testProductAdmin($db, $root, $private, $socket);
 echo json_encode(['catalog_checks' => $checks, 'status' => 'PASS']) . "\n";

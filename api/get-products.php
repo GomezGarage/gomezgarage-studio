@@ -12,6 +12,7 @@
  */
 
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/product-content.php';
 
 ggs_cors_headers();
 
@@ -49,7 +50,7 @@ $sql = 'SELECT id, slug, name_en, name_ro, desc_short_en, desc_short_ro, desc_lo
 
 $stmt = ggs_db()->prepare($sql);
 $stmt->execute($params);
-$rows = $stmt->fetchAll();
+$rows = ggs_with_product_content(ggs_db(), $stmt->fetchAll());
 
 $products = array_map(function ($row) {
   $row['price_eur'] = (float) $row['price_eur'];

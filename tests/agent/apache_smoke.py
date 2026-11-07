@@ -46,11 +46,13 @@ def main():
             (studio / 'includes').mkdir(parents=True)
             for name in ['.htaccess', 'product.php', 'products.php', 'sitemap.php', 'product.html', 'products.html', 'sitemap.xml']:
                 shutil.copy2(root / name, studio / name)
-            for name in ['catalog.php', 'catalog-view.php']:
+            for name in ['catalog.php', 'catalog-view.php', 'product-content.php']:
                 shutil.copy2(root / 'includes' / name, studio / 'includes' / name)
             for name in ['docs', 'tests', '.git']:
                 (studio / name).mkdir()
                 (studio / name / 'synthetic.txt').write_text('Fixture only')
+            (studio / 'admin').mkdir()
+            shutil.copy2(root / 'admin/.user.ini', studio / 'admin/.user.ini')
             fixture = private / 'catalog.sqlite'
             rows = json.loads((root / 'database/catalog-products.json').read_text())
             with sqlite3.connect(fixture) as db:
@@ -173,6 +175,7 @@ def main():
                     assert page('includes/catalog.php')[0] == 403, 'includes blocked by root htaccess'
                     for folder in ['docs', 'tests', '.git']:
                         assert page(folder + '/synthetic.txt')[0] == 403, 'repository internals blocked after cPanel Git pull'
+                    assert page('admin/.user.ini')[0] == 403, 'PHP upload configuration is not public'
                     fixture.unlink()
                     assert page('product.html?slug=magsafe-apple-watch-dock')[0] == 503, 'DB failure is not a false 404'
                     assert page('sitemap.xml')[0] == 503, 'sitemap DB failure signals retry'

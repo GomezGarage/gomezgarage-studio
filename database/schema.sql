@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS products (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Privacy-minimal public product-detail page-load counts. No visitor identifiers are stored.
+-- Optional presentation metadata, isolated from checkout and inventory columns.
+CREATE TABLE IF NOT EXISTS product_content (
+  product_id INT NOT NULL PRIMARY KEY,
+  content JSON NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Privacy-minimal public product-detail page-load counts. No visitor identifiers are stored.
 CREATE TABLE IF NOT EXISTS product_views_daily (
   product_id INT NOT NULL,
   view_date DATE NOT NULL,

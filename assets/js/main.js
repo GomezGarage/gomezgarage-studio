@@ -23,6 +23,7 @@
     document.querySelectorAll('[data-lang-btn]').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === lang);
     });
+    document.dispatchEvent(new CustomEvent('ggs:language-changed', { detail: { lang } }));
   }
 
   function initLangToggle() {
