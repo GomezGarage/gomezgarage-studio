@@ -299,8 +299,8 @@ section { position: relative; }
 
 /* ---------- Hero ---------- */
 .hero {
-  min-height: clamp(600px, calc(100vh - var(--header-height)), 880px);
-  min-height: clamp(600px, calc(100svh - var(--header-height)), 880px);
+  min-height: clamp(600px, calc(100vh - var(--header-height)), 980px);
+  min-height: clamp(600px, calc(100svh - var(--header-height)), 980px);
   display: flex;
   align-items: center;
   position: relative;
