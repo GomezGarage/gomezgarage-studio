@@ -167,12 +167,12 @@ gomezgarage.eu/studio/
 
 - Hero scurt: "Built to your spec."
 - Galerie selectiva de proiecte custom reale, cu imagini si descrieri bilingve; nu se afiseaza carduri demo generice
-- Sectiune "What I can make": materiale disponibile, tipuri de produse, limitari (dimensiuni max printer etc)
+- Sectiune "What we can make": materiale disponibile (PLA, PETG, ABS, ASA, PLA-CF, ABS-CF, ABS-GF, ASA-CF, ASA-GF, PA6-CF), tipuri de produse custom si volum maxim de printare 390 x 390 x 340 mm per piesa
 - Formular contact:
   - Nume
   - Email
   - Ce ai nevoie (textarea)
-  - Buget aproximativ (optional, dropdown: <50 EUR / 50-150 EUR / 150+ EUR)
+  - Buget aproximativ (optional, dropdown: <150 EUR / 150-250 EUR / 250-500 EUR / >500 EUR)
   - Fisiere de referinta (optional): JPG, PNG, STL, SolidWorks (SLDPRT, SLDASM, SLDDRW) sau PDF; maximum 5 fisiere, 5 MB fiecare si 8 MB in total. Fisierele sunt validate si atasate emailului, fara stocare publica.
   - Submit → trimite email la contact@gomezgarage.eu
 - Timeline asteptat: "Custom orders typically ship in 7-14 days"
