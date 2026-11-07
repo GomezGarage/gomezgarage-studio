@@ -59,10 +59,12 @@ $allowedTypes = [
   'jpg' => ['image/jpeg'],
   'jpeg' => ['image/jpeg'],
   'png' => ['image/png'],
-  'webp' => ['image/webp'],
-  'heic' => ['image/heic', 'image/heic-sequence'],
-  'heif' => ['image/heif', 'image/heif-sequence'],
   'pdf' => ['application/pdf'],
+  // STL and native SolidWorks files may be detected as generic binary data.
+  'stl' => ['application/octet-stream', 'application/sla', 'application/vnd.ms-pki.stl', 'model/stl', 'text/plain'],
+  'sldprt' => ['application/octet-stream', 'application/CDFV2', 'application/x-ole-storage'],
+  'sldasm' => ['application/octet-stream', 'application/CDFV2', 'application/x-ole-storage'],
+  'slddrw' => ['application/octet-stream', 'application/CDFV2', 'application/x-ole-storage'],
 ];
 $attachments = [];
 $totalBytes = 0;
@@ -104,7 +106,7 @@ if (isset($_FILES['attachments'])) {
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
     if (!is_uploaded_file($tmpPath) || !isset($allowedTypes[$extension])) {
-      ggs_custom_order_error('Use JPG, PNG, WebP, HEIC, HEIF or PDF reference files.', 'invalid_file_type', 422);
+      ggs_custom_order_error('Use JPG, PNG, STL, SolidWorks or PDF reference files.', 'invalid_file_type', 422);
     }
     if ($fileSize <= 0 || $fileSize > $maxFileBytes) {
       ggs_custom_order_error('Each file must be no larger than 5 MB.', 'file_too_large', 422);
@@ -112,7 +114,7 @@ if (isset($_FILES['attachments'])) {
 
     $mimeType = $finfo->file($tmpPath);
     if (!is_string($mimeType) || !in_array($mimeType, $allowedTypes[$extension], true)) {
-      ggs_custom_order_error('A file type could not be verified. Please use JPG, PNG, WebP, HEIC, HEIF or PDF.', 'invalid_file_type', 422);
+      ggs_custom_order_error('A file type could not be verified. Please use JPG, PNG, STL, SolidWorks or PDF.', 'invalid_file_type', 422);
     }
 
     $totalBytes += $fileSize;

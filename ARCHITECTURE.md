@@ -173,7 +173,7 @@ gomezgarage.eu/studio/
   - Email
   - Ce ai nevoie (textarea)
   - Buget aproximativ (optional, dropdown: <50 EUR / 50-150 EUR / 150+ EUR)
-  - Fisiere de referinta (optional): JPG, PNG, WebP, HEIC/HEIF sau PDF; maximum 5 fisiere, 5 MB fiecare si 8 MB in total. Fisierele sunt validate si atasate emailului, fara stocare publica.
+  - Fisiere de referinta (optional): JPG, PNG, STL, SolidWorks (SLDPRT, SLDASM, SLDDRW) sau PDF; maximum 5 fisiere, 5 MB fiecare si 8 MB in total. Fisierele sunt validate si atasate emailului, fara stocare publica.
   - Submit → trimite email la contact@gomezgarage.eu
 - Timeline asteptat: "Custom orders typically ship in 7-14 days"
 

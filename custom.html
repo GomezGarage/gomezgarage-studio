@@ -104,8 +104,8 @@
         <div class="form-group custom-attachments-group">
           <label for="custom-order-attachments" data-en="Reference files (optional)" data-ro="Fisiere de referinta (optional)">Reference files (optional)</label>
           <div class="custom-file-picker">
-            <input id="custom-order-attachments" type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" aria-describedby="custom-order-files-hint">
-            <p id="custom-order-files-hint" class="form-hint" data-en="Attach photos, sketches or drawings (JPG, PNG, WebP, HEIC/HEIF or PDF). Up to 5 files, 5 MB each and 8 MB total." data-ro="Ataseaza fotografii, schite sau desene (JPG, PNG, WebP, HEIC/HEIF sau PDF). Maximum 5 fisiere, 5 MB fiecare si 8 MB in total.">Attach photos, sketches or drawings (JPG, PNG, WebP, HEIC/HEIF or PDF). Up to 5 files, 5 MB each and 8 MB total.</p>
+            <input id="custom-order-attachments" type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.stl,.sldprt,.sldasm,.slddrw,.pdf,image/jpeg,image/png,application/pdf" aria-describedby="custom-order-files-hint">
+            <p id="custom-order-files-hint" class="form-hint" data-en="Attach photos, sketches or 3D files (JPG, PNG, STL, SolidWorks or PDF). Up to 5 files, 5 MB each and 8 MB total." data-ro="Ataseaza fotografii, schite sau fisiere 3D (JPG, PNG, STL, SolidWorks sau PDF). Maximum 5 fisiere, 5 MB fiecare si 8 MB in total.">Attach photos, sketches or 3D files (JPG, PNG, STL, SolidWorks or PDF). Up to 5 files, 5 MB each and 8 MB total.</p>
           </div>
           <p id="custom-order-files" class="custom-file-list" aria-live="polite"></p>
         </div>
@@ -224,7 +224,7 @@ customOrderForm.addEventListener('submit', function (e) {
           too_many_files: isRomanian ? 'Poti atasa maximum 5 fisiere.' : 'You can attach up to 5 files.',
           file_too_large: isRomanian ? 'Fiecare fisier trebuie sa aiba maximum 5 MB.' : 'Each file must be no larger than 5 MB.',
           files_too_large: isRomanian ? 'Dimensiunea totala a fisierelor trebuie sa fie de maximum 8 MB.' : 'The combined file size must be no larger than 8 MB.',
-          invalid_file_type: isRomanian ? 'Foloseste fisiere JPG, PNG, WebP, HEIC/HEIF sau PDF.' : 'Use JPG, PNG, WebP, HEIC/HEIF or PDF files.',
+          invalid_file_type: isRomanian ? 'Foloseste fisiere JPG, PNG, STL, SolidWorks sau PDF.' : 'Use JPG, PNG, STL, SolidWorks or PDF files.',
           invalid_upload: isRomanian ? 'Alege fisierele folosind selectorul de fisiere.' : 'Please upload reference files using the file picker.',
           upload_failed: isRomanian ? 'Un fisier nu a putut fi incarcat. Incearca din nou.' : 'A file could not be uploaded. Please try again.',
         };
