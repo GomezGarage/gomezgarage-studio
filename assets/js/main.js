@@ -79,19 +79,85 @@
     });
   }
 
-  function initCustomerAccountLinks() {
-    document.querySelectorAll('.nav-links').forEach((nav) => {
-      if (nav.querySelector('a[href="/studio/account/"]')) return;
-      const link = document.createElement('a');
-      link.href = '/studio/account/';
-      link.setAttribute('data-en', 'Account');
-      link.setAttribute('data-ro', 'Cont');
-      link.textContent = 'Account';
-      const about = nav.querySelector('a[href*="about.html"]');
-      if (about) about.insertAdjacentElement('afterend', link);
-      else nav.append(link);
-      applyLang(localStorage.getItem(LANG_KEY) || 'en');
+  function initAccountMenu() {
+    const cart = document.querySelector('.nav-actions .cart-icon-link');
+    if (!cart || document.querySelector('[data-account-menu]')) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'account-menu';
+    menu.setAttribute('data-account-menu', '');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'account-icon-button';
+    button.setAttribute('aria-label', 'Cont');
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-haspopup', 'menu');
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.5"></circle><path d="M4.5 20c.7-4 3.3-6 7.5-6s6.8 2 7.5 6"></path></svg>';
+
+    const panel = document.createElement('div');
+    panel.className = 'account-menu-panel';
+    panel.setAttribute('role', 'menu');
+    panel.hidden = true;
+
+    const signIn = document.createElement('a');
+    signIn.href = '/studio/account/login.php';
+    signIn.setAttribute('role', 'menuitem');
+    signIn.setAttribute('data-en', 'Sign in');
+    signIn.setAttribute('data-ro', 'Autentificare');
+    signIn.textContent = 'Sign in';
+
+    const createAccount = document.createElement('a');
+    createAccount.href = '/studio/account/register.php';
+    createAccount.setAttribute('role', 'menuitem');
+    createAccount.setAttribute('data-en', 'Create account');
+    createAccount.setAttribute('data-ro', 'Creeaza cont');
+    createAccount.textContent = 'Create account';
+
+    panel.append(signIn, createAccount);
+    menu.append(button, panel);
+    cart.insertAdjacentElement('afterend', menu);
+
+    let authenticated = false;
+    function updateAccountLabel() {
+      const isRomanian = document.documentElement.lang === 'ro';
+      button.setAttribute('aria-label', isRomanian
+        ? (authenticated ? 'Contul meu' : 'Cont')
+        : (authenticated ? 'My account' : 'Account'));
+      button.setAttribute('aria-haspopup', authenticated ? 'false' : 'menu');
+    }
+    function closeMenu() {
+      panel.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    }
+
+    button.addEventListener('click', () => {
+      if (authenticated) {
+        window.location.href = '/studio/account/';
+        return;
+      }
+      const shouldOpen = panel.hidden;
+      panel.hidden = !shouldOpen;
+      button.setAttribute('aria-expanded', String(shouldOpen));
     });
+    panel.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+    document.addEventListener('click', (event) => {
+      if (!menu.contains(event.target)) closeMenu();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeMenu();
+    });
+    document.addEventListener('ggs:language-changed', updateAccountLabel);
+
+    fetch('/studio/api/customer-context.php', { credentials: 'same-origin', cache: 'no-store' })
+      .then((response) => response.json())
+      .then((context) => {
+        authenticated = Boolean(context.authenticated);
+        updateAccountLabel();
+      })
+      .catch(() => {});
+
+    applyLang(localStorage.getItem(LANG_KEY) || 'en');
   }
 
   /* ---------- Cart count badge (shared across pages) ---------- */
@@ -158,7 +224,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     initLangToggle();
-    initCustomerAccountLinks();
+    initAccountMenu();
     initMobileNav();
     initScrollReveal();
     initAnchorScroll();

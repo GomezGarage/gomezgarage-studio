@@ -17,7 +17,7 @@ header('X-Content-Type-Options: nosniff');
 <meta name="robots" content="noindex, nofollow">
 <title><?= ggs_customer_escape($customerTitle) ?> — Gomez Garage Studio</title>
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
-<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-about-process-responsive">
+<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-account-menu">
 <link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
 </head>
 <body class="customer-account-body">
@@ -28,7 +28,6 @@ header('X-Content-Type-Options: nosniff');
       <a href="/studio/products.html" data-en="Products" data-ro="Produse">Products</a>
       <a href="/studio/custom.html" data-en="Custom Order" data-ro="Comanda Custom">Custom Order</a>
       <a href="/studio/about.html" data-en="About" data-ro="Despre">About</a>
-      <a href="/studio/account/" data-en="Account" data-ro="Cont">Account</a>
     </nav>
     <div class="nav-actions">
       <div class="nav-toggle" data-lang-toggle><button data-lang-btn="en" class="active">EN</button><button data-lang-btn="ro">RO</button></div>

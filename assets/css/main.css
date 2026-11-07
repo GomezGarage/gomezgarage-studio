@@ -200,6 +200,36 @@ section { position: relative; }
   display: flex;
   align-items: center;
 }
+.account-menu { position: relative; display: flex; align-items: center; }
+.account-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  transition: border-color var(--transition), color var(--transition);
+}
+.account-icon-button:hover, .account-icon-button:focus-visible { border-color: var(--accent); color: var(--text); }
+.account-icon-button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.account-menu-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 120;
+  display: grid;
+  min-width: 190px;
+  padding: 7px;
+  background: rgba(17,17,17,0.98);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 14px 32px rgba(0,0,0,0.45);
+}
+.account-menu-panel[hidden] { display: none !important; }
+.account-menu-panel a { padding: 10px 12px; color: var(--text-secondary); font-family: var(--font-heading); font-size: 15px; font-weight: 600; }
+.account-menu-panel a:hover, .account-menu-panel a:focus-visible { color: var(--text); background: var(--surface-alt); }
 .cart-count {
   position: absolute;
   top: -8px;
@@ -251,6 +281,20 @@ section { position: relative; }
     line-height: 1;
   }
   .nav-burger:hover { border-color: var(--accent); color: var(--accent); }
+}
+
+@media (max-width: 620px) {
+  .nav-actions { gap: 8px; }
+  .nav-toggle button { padding: 7px 6px; font-size: 11px; }
+  .account-icon-button, .nav-burger { width: 36px; height: 38px; }
+  .nav-logo img { height: 32px; }
+}
+
+@media (max-width: 380px) {
+  .container.nav-inner { padding-left: 16px; padding-right: 16px; }
+  .nav-actions { gap: 6px; }
+  .nav-toggle button { padding: 6px 4px; font-size: 10px; }
+  .account-icon-button, .nav-burger { width: 34px; height: 36px; }
 }
 
 /* ---------- Hero ---------- */
