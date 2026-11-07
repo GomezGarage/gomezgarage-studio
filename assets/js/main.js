@@ -52,8 +52,30 @@
     const burger = document.querySelector('[data-nav-burger]');
     const links = document.querySelector('.nav-links');
     if (!burger || !links) return;
+    links.id = links.id || 'primary-navigation';
+    burger.setAttribute('aria-controls', links.id);
+
+    function setMenuOpen(isOpen) {
+      links.classList.toggle('nav-links-open', isOpen);
+      burger.setAttribute('aria-expanded', String(isOpen));
+      burger.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+      burger.textContent = isOpen ? '×' : '☰';
+    }
+
+    setMenuOpen(false);
     burger.addEventListener('click', () => {
-      links.classList.toggle('nav-links-open');
+      setMenuOpen(burger.getAttribute('aria-expanded') !== 'true');
+    });
+    links.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => setMenuOpen(false));
+    });
+    document.addEventListener('click', (event) => {
+      if (burger.getAttribute('aria-expanded') === 'true' && !links.contains(event.target) && !burger.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setMenuOpen(false);
     });
   }
 

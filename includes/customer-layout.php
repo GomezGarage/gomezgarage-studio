@@ -17,14 +17,14 @@ header('X-Content-Type-Options: nosniff');
 <meta name="robots" content="noindex, nofollow">
 <title><?= ggs_customer_escape($customerTitle) ?> — Gomez Garage Studio</title>
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
-<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-customer-accounts">
+<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-mobile-nav">
 <link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
 </head>
 <body class="customer-account-body">
 <header class="site-header">
   <div class="container nav-inner">
     <a href="/studio/index.html" class="nav-logo"><img src="/studio/assets/images/logo-ggs3d.png" alt="Gomez Garage"></a>
-    <nav class="nav-links">
+    <nav id="primary-navigation" class="nav-links">
       <a href="/studio/products.html" data-en="Products" data-ro="Produse">Products</a>
       <a href="/studio/custom.html" data-en="Custom Order" data-ro="Comanda Custom">Custom Order</a>
       <a href="/studio/about.html" data-en="About" data-ro="Despre">About</a>
@@ -34,7 +34,7 @@ header('X-Content-Type-Options: nosniff');
       <div class="nav-toggle" data-lang-toggle><button data-lang-btn="en" class="active">EN</button><button data-lang-btn="ro">RO</button></div>
       <div class="nav-toggle" data-currency-toggle><button data-currency-btn="EUR" class="active">EUR</button><button data-currency-btn="RON">RON</button></div>
       <a href="/studio/cart.html" class="cart-icon-link" aria-label="Cart">🛒<span class="cart-count hidden" data-cart-count>0</span></a>
-      <button class="nav-burger" data-nav-burger aria-label="Menu">☰</button>
+      <button class="nav-burger" data-nav-burger type="button" aria-label="Open menu" aria-expanded="false" aria-controls="primary-navigation">☰</button>
     </div>
   </div>
 </header>
