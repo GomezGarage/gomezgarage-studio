@@ -17,7 +17,7 @@ header('X-Content-Type-Options: nosniff');
 <meta name="robots" content="noindex, nofollow">
 <title><?= ggs_customer_escape($customerTitle) ?> — Gomez Garage Studio</title>
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
-<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-taller-home-hero">
+<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-home-process-images">
 <link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
 </head>
 <body class="customer-account-body">
