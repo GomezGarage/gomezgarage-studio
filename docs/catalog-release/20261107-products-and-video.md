@@ -118,3 +118,19 @@ facturare si expediere nu este modificat.
 
 Referinte tehnice: [HTML video](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/video)
 si [uploaduri PHP](https://www.php.net/manual/en/features.file-upload.php).
+
+## Corectii pentru ordinea fotografiilor si moneda
+
+Actualizarea `codex/image-order-currency-fix` necesita doar pull din cPanel,
+fara import SQL. Deschide din nou editorul produsului dupa pull.
+
+- Fotografiile salvate au camp Order si butoane de mutare mai devreme, mai tarziu
+  sau pe prima pozitie (Make main). Apasa Save Product pentru persistenta.
+- Prima fotografie din ordine devine coperta. Fisierele noi se adauga la final;
+  dupa prima salvare pot fi ordonate. Textele alternative raman asociate pozei.
+- Schimbarea RON/EUR actualizeaza pretul paginii produsului, al recomandarilor si
+  al cardurilor de pe homepage, fara sa refaca galeria sau cantitatea selectata.
+- Detectarea initiala a tarii nu suprascrie o alegere manuala facuta intre timp.
+- Au fost verificate sintaxa PHP/JavaScript si interfata locala cu imagini sintetice.
+  In browser, preturile au trecut de la 145/170 RON la 29/34 EUR. Nu s-au executat
+  teste automate suplimentare sau operatii pe baza de productie.

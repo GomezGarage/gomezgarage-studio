@@ -233,3 +233,11 @@ table.admin-table { width: 100%; border-collapse: collapse; min-width: 640px; }
   width: 100%; min-width: 0; padding: 10px; color: var(--text); background: var(--bg);
   border: 1px solid var(--border); border-radius: var(--radius); font: inherit;
 }
+
+.image-upload-grid .thumb-wrap input[data-image-order] {
+  width: 76px; padding: 8px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.image-order-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.image-order-actions .btn { padding: 8px 10px; }
+.image-upload-grid [data-primary-flag][hidden] { display: none; }

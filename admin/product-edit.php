@@ -111,13 +111,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
     $product['videos'] = $keptVideos;
   }
 
-  // ---- Images: keep existing minus removed, reorder for primary, append new uploads ----
+  // ---- Images: order only known saved images, remove selected, append uploads ----
   $existingImages = $product['images'];
   $removed = $_POST['remove_image'] ?? [];
-  $kept = array_values(array_diff($existingImages, $removed));
-
+  $orderedImages = [];
+  foreach ($existingImages as $i => $path) {
+    if (in_array($path, $removed, true)) continue;
+    $order = filter_var($_POST['image_order'][$i] ?? $i + 1, FILTER_VALIDATE_INT);
+    $orderedImages[] = ['path' => $path, 'order' => $order !== false && $order > 0 ? $order : $i + 1, 'index' => $i];
+  }
+  usort($orderedImages, static fn($a, $b) => ($a['order'] <=> $b['order']) ?: ($a['index'] <=> $b['index']));
+  $kept = array_column($orderedImages, 'path');
+  // Preserve submissions from editor tabs opened before this update.
   $primary = $_POST['primary_image'] ?? '';
-  if ($primary && in_array($primary, $kept, true)) {
+  if (!isset($_POST['image_order']) && in_array($primary, $kept, true)) {
     $kept = array_values(array_merge([$primary], array_diff($kept, [$primary])));
   }
 
@@ -310,19 +317,23 @@ require __DIR__ . '/../includes/admin-header.php';
 
   <div class="admin-panel">
     <h3>Images</h3>
+    <p class="form-hint">Set the gallery order with the numbers or move buttons. The first image is the main product photo. Save Product to apply.</p>
     <?php if ($product['images']): ?>
-      <div class="image-upload-grid">
+      <div class="image-upload-grid" data-image-order-grid>
         <?php foreach ($product['images'] as $i => $img): ?>
           <div class="thumb-wrap">
-            <?php if ($i === 0): ?><span class="primary-flag">PRIMARY</span><?php endif; ?>
+            <span class="primary-flag" data-primary-flag <?= $i === 0 ? '' : 'hidden' ?>>PRIMARY</span>
             <img src="<?= htmlspecialchars($img) ?>" alt="">
             <?php if ($contentEnabled): ?>
               <label>Alt text EN<input type="text" maxlength="300" name="image_alt_en[<?= $i ?>]" value="<?= htmlspecialchars($product['image_alt'][$img]['en'] ?? '') ?>"></label>
               <label>Alt text RO<input type="text" maxlength="300" name="image_alt_ro[<?= $i ?>]" value="<?= htmlspecialchars($product['image_alt'][$img]['ro'] ?? '') ?>"></label>
             <?php endif; ?>
-            <label style="display:block;font-size:11px;margin-top:4px;">
-              <input type="radio" name="primary_image" value="<?= htmlspecialchars($img) ?>" <?= $i === 0 ? 'checked' : '' ?>> Primary
-            </label>
+            <label>Order<input type="number" min="1" step="1" name="image_order[<?= $i ?>]" value="<?= $i + 1 ?>" data-image-order></label>
+            <div class="image-order-actions">
+              <button type="button" class="btn btn-outline btn-sm" data-image-move="up" aria-label="Move image earlier">&#8592;</button>
+              <button type="button" class="btn btn-outline btn-sm" data-image-move="down" aria-label="Move image later">&#8594;</button>
+              <button type="button" class="btn btn-outline btn-sm" data-image-move="first">Make main</button>
+            </div>
             <label style="display:block;font-size:11px;">
               <input type="checkbox" name="remove_image[]" value="<?= htmlspecialchars($img) ?>"> Remove
             </label>
@@ -333,7 +344,7 @@ require __DIR__ . '/../includes/admin-header.php';
     <div class="form-group">
       <label>Upload new images</label>
       <input type="file" name="images[]" multiple accept="image/png,image/jpeg,image/webp,image/svg+xml">
-      <div class="form-hint">First image (or the one marked Primary) is used as the main product photo.</div>
+      <div class="form-hint">New images are appended to the gallery. Save once, then arrange them above.</div>
     </div>
   </div>
 
@@ -362,6 +373,37 @@ require __DIR__ . '/../includes/admin-header.php';
 </form>
 
 <script>
+const imageGrid = document.querySelector('[data-image-order-grid]');
+if (imageGrid) {
+  const rows = () => Array.from(imageGrid.children);
+  const refreshImageOrder = () => rows().forEach((row, index, all) => {
+    row.querySelector('[data-image-order]').value = index + 1;
+    row.querySelector('[data-primary-flag]').hidden = index !== 0;
+    row.querySelector('[data-image-move="up"]').disabled = index === 0;
+    row.querySelector('[data-image-move="down"]').disabled = index === all.length - 1;
+    row.querySelector('[data-image-move="first"]').disabled = index === 0;
+  });
+  imageGrid.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-image-move]');
+    if (!button) return;
+    const row = button.closest('.thumb-wrap');
+    if (button.dataset.imageMove === 'up' && row.previousElementSibling) imageGrid.insertBefore(row, row.previousElementSibling);
+    if (button.dataset.imageMove === 'down' && row.nextElementSibling) imageGrid.insertBefore(row.nextElementSibling, row);
+    if (button.dataset.imageMove === 'first') imageGrid.prepend(row);
+    refreshImageOrder();
+    button.focus();
+  });
+  imageGrid.addEventListener('change', (event) => {
+    if (!event.target.matches('[data-image-order]')) return;
+    const row = event.target.closest('.thumb-wrap');
+    const requested = Number(event.target.value);
+    const position = Number.isFinite(requested) ? Math.max(1, Math.min(rows().length, Math.trunc(requested))) : 1;
+    const remaining = rows().filter((item) => item !== row);
+    imageGrid.insertBefore(row, remaining[position - 1] || null);
+    refreshImageOrder();
+  });
+  refreshImageOrder();
+}
 document.getElementById('add-spec-row').addEventListener('click', function () {
   var wrap = document.getElementById('specs-editor');
   var row = document.createElement('div');
