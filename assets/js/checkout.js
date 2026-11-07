@@ -41,6 +41,7 @@
   // Filled in by preloadCheckoutConfig(); used when mounting the widget.
   let revolutPublicKey = null;
   let revolutMode = 'prod';
+  let customerCsrfToken = '';
 
   // The order_number of the order created by the widget's createOrder()
   // callback, used to build the redirect URLs (Revolut's own callback
@@ -88,6 +89,7 @@
 
     renderOrderSummary(cart);
     document.addEventListener('ggs:currency-changed', () => renderOrderSummary(cart));
+    const customerContextReady = preloadCustomerContext(form);
 
     const countrySelect = form.querySelector('[name="country"]');
     countrySelect.addEventListener('change', () => renderOrderSummary(cart));
@@ -97,9 +99,80 @@
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (!validateCheckoutForm(form)) return;
-      submitOrder(form, cart, getSelectedPaymentMethod(form));
+      customerContextReady.finally(() => {
+        if (!validateCheckoutForm(form)) return;
+        submitOrder(form, cart, getSelectedPaymentMethod(form));
+      });
     });
+  }
+
+  function preloadCustomerContext(form) {
+    return fetch(`${API_BASE}/customer-context.php`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        customerCsrfToken = data.csrf_token || '';
+        if (!data.authenticated || !data.customer) return;
+        const splitName = String(data.customer.name || '').trim().split(/\s+/);
+        setIfBlank(form, 'first_name', splitName.shift() || '');
+        setIfBlank(form, 'last_name', splitName.join(' '));
+        setIfBlank(form, 'email', data.customer.email || '');
+
+        const addresses = Array.isArray(data.addresses) ? data.addresses : [];
+        if (!addresses.length) return;
+        const firstStep = form.querySelector('.checkout-step');
+        const selectWrap = document.createElement('div');
+        selectWrap.className = 'form-group checkout-saved-addresses';
+        const label = document.createElement('label');
+        label.setAttribute('data-en', 'Use a saved address');
+        label.setAttribute('data-ro', 'Foloseste o adresa salvata');
+        label.textContent = 'Use a saved address';
+        const select = document.createElement('select');
+        select.name = 'saved_address';
+        const manual = document.createElement('option');
+        manual.value = '';
+        manual.setAttribute('data-en', 'Enter address manually');
+        manual.setAttribute('data-ro', 'Completeaza manual');
+        manual.textContent = document.documentElement.lang === 'ro' ? 'Completeaza manual' : 'Enter address manually';
+        select.append(manual);
+        addresses.forEach((address, index) => {
+          const option = document.createElement('option');
+          option.value = String(index);
+          option.textContent = `${address.label} — ${address.street}, ${address.city}`;
+          option.dataset.address = JSON.stringify(address);
+          select.append(option);
+          if (Number(address.is_default) === 1 && select.value === '') select.value = String(index);
+        });
+        selectWrap.append(label, select);
+        const title = firstStep.querySelector('h3');
+        if (title) title.insertAdjacentElement('afterend', selectWrap);
+        else firstStep.prepend(selectWrap);
+
+        function applyAddress(address) {
+          if (!address) return;
+          setIfBlank(form, 'phone', address.phone || '');
+          form.querySelector('[name="street"]').value = address.street || '';
+          form.querySelector('[name="city"]').value = address.city || '';
+          form.querySelector('[name="postal"]').value = address.postal || '';
+          form.querySelector('[name="country"]').value = address.country || 'RO';
+          const recipientName = String(address.recipient_name || data.customer.name || '').trim().split(/\s+/);
+          form.querySelector('[name="first_name"]').value = recipientName.shift() || '';
+          form.querySelector('[name="last_name"]').value = recipientName.join(' ');
+        }
+        select.addEventListener('change', () => {
+          if (select.value === '') return;
+          try { applyAddress(JSON.parse(select.selectedOptions[0].dataset.address)); } catch (_) {}
+        });
+        if (select.value !== '') {
+          try { applyAddress(JSON.parse(select.selectedOptions[0].dataset.address)); } catch (_) {}
+        }
+        if (window.GGSLang) window.GGSLang.refresh();
+      })
+      .catch(() => {});
+  }
+
+  function setIfBlank(form, name, value) {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (field && !field.value && value) field.value = value;
   }
 
   function currentShippingEur(form) {
@@ -291,7 +364,7 @@
     if (method === 'cod') {
       fetch(`${API_BASE}/create-order.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(customerCsrfToken ? { 'X-CSRF-Token': customerCsrfToken } : {}) },
         body: JSON.stringify(payload),
       })
         .then((res) => res.json())
@@ -352,7 +425,7 @@
       createOrder() {
         return fetch(`${API_BASE}/create-order.php`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(customerCsrfToken ? { 'X-CSRF-Token': customerCsrfToken } : {}) },
           body: JSON.stringify(payload),
         })
           .then((res) => res.json())

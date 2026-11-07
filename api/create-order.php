@@ -16,6 +16,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/customer-auth.php';
 
 ggs_cors_headers();
 
@@ -41,6 +42,13 @@ if (!is_array($body['items']) || count($body['items']) === 0) {
 }
 
 $db = ggs_db();
+$customerAccount = ggs_customer_current();
+if ($customerAccount && !ggs_customer_verify_csrf()) {
+  ggs_json_response(['success' => false, 'error' => 'Your session expired. Refresh checkout and try again.'], 403);
+}
+$customerAccountId = $customerAccount && strtolower($customerAccount['email']) === strtolower(trim((string) $body['email']))
+  ? (int) $customerAccount['id']
+  : null;
 
 // Re-price every line item from the database — never trust client-sent prices.
 $orderItems = [];
@@ -102,11 +110,12 @@ $customerPhone = $body['phone'] ?? '';
 
 $stmt = $db->prepare(
   'INSERT INTO orders
-    (order_number, status, payment_method, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, total_eur)
-   VALUES (?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    (order_number, customer_account_id, status, payment_method, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, total_eur)
+   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->execute([
   $orderNumber,
+  $customerAccountId,
   $paymentMethod,
   $customerName,
   $body['email'],
@@ -119,6 +128,8 @@ $stmt->execute([
   $totalEur,
 ]);
 $orderId = (int) $db->lastInsertId();
+$db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+  ->execute([$orderId, 'pending', 'Order placed']);
 
 if ($paymentMethod === 'cod') {
   // No payment gateway in the loop — the order is confirmed the moment it's
@@ -138,6 +149,7 @@ if ($paymentMethod === 'cod') {
   $orderRow = [
     'id' => $orderId,
     'order_number' => $orderNumber,
+    'customer_account_id' => $customerAccountId,
     'customer_name' => $customerName,
     'customer_email' => $body['email'],
     'shipping_address' => json_encode($shippingAddress),

@@ -57,6 +57,8 @@ if (in_array($event['event'], $paidEvents, true)) {
   $invoiceNumber = ggs_generate_invoice_number($db);
   $db->prepare('UPDATE orders SET invoice_number = ?, status = "paid" WHERE revolut_order_id = ?')
     ->execute([$invoiceNumber, $event['order_id']]);
+  $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+    ->execute([(int) $order['id'], 'paid', 'Payment confirmed']);
   $order['status'] = 'paid';
   $order['invoice_number'] = $invoiceNumber;
 

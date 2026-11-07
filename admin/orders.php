@@ -6,7 +6,7 @@ ggs_require_admin();
 
 $db = ggs_db();
 
-$validStatuses = ['pending','paid','processing','shipped','delivered','cancelled'];
+$validStatuses = ['pending','paid','processing','printing','shipped','delivered','cancelled'];
 $filter = $_GET['status'] ?? 'all';
 
 if ($filter !== 'all' && in_array($filter, $validStatuses, true)) {

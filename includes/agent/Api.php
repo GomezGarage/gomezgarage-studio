@@ -239,7 +239,7 @@ final class Api
             invalid();
         }
         $input['limit'] = (int) $limit;
-        $statuses = $route === 'products' ? ['published', 'draft', 'all'] : ['all', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
+        $statuses = $route === 'products' ? ['published', 'draft', 'all'] : ['all', 'pending', 'paid', 'processing', 'printing', 'shipped', 'delivered', 'cancelled'];
         $input['status'] = $input['status'] ?? $statuses[0];
         if (!in_array($input['status'], $statuses, true)
             || (isset($input['category']) && !in_array($input['category'], ['desk', 'display', 'automotive', 'other', 'home'], true))) {

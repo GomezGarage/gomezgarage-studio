@@ -17,6 +17,7 @@ $counts = $db->query("SELECT
     COUNT(*) AS total,
     SUM(status = 'paid') AS paid,
     SUM(status = 'processing') AS processing,
+    SUM(status = 'printing') AS printing,
     SUM(status = 'shipped') AS shipped
   FROM orders")->fetch();
 

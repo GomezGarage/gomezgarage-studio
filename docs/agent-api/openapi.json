@@ -1486,6 +1486,7 @@
               "pending",
               "paid",
               "processing",
+              "printing",
               "shipped",
               "delivered",
               "cancelled"
@@ -1500,6 +1501,7 @@
             "enum": [
               "unknown",
               "processing",
+              "printing",
               "shipped",
               "delivered"
             ]

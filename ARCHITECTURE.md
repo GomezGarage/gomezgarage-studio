@@ -60,6 +60,7 @@ gomezgarage.eu/studio/
 ├── checkout.html           → Checkout + adresa + nota
 ├── order-success.html      → Confirmare comanda
 ├── order-failed.html       → Plata esuata
+├── account/                → Autentificare, istoric comenzi, adrese si cereri custom
 │
 ├── admin/
 │   ├── login.php           → Autentificare admin
@@ -255,6 +256,7 @@ gomezgarage.eu/studio/
 - `pending` — order creat, plata in asteptare
 - `paid` — confirmat de Revolut webhook
 - `processing` — tu l-ai vazut, il pregatesti
+- `printing` — piesa este in curs de printare
 - `shipped` — expediat (introduci tracking manual)
 - `delivered` — livrat
 - `cancelled` — anulat
@@ -263,9 +265,9 @@ gomezgarage.eu/studio/
 - Date client complet
 - Produse + cantitati + pret
 - Nota clientului
-- Status cu butoane de schimbare
+- Status cu butoane de schimbare si timeline pentru client
 - Camp tracking number (manual)
-- Buton: trimite email update catre client
+- Email automat la actualizarea statusului sau trackingului, dupa preferintele clientului
 
 ### 5.5 Settings (admin/settings.php)
 - Email notificari comenzi noi (adresa ta)
@@ -319,7 +321,7 @@ CREATE TABLE orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_number VARCHAR(20) UNIQUE,  -- GGS-2026-0001
   revolut_order_id VARCHAR(100),
-  status ENUM('pending','paid','processing','shipped','delivered','cancelled') DEFAULT 'pending',
+  status ENUM('pending','paid','processing','printing','shipped','delivered','cancelled') DEFAULT 'pending',
   customer_name VARCHAR(200),
   customer_email VARCHAR(200),
   customer_phone VARCHAR(50),
@@ -330,9 +332,13 @@ CREATE TABLE orders (
   shipping_eur DECIMAL(10,2),
   total_eur DECIMAL(10,2),
   tracking_number VARCHAR(100),
+  customer_account_id INT UNSIGNED NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Customer accounts, addresses, order history, and custom inquiry tables
+-- are defined in database/schema.sql and database/migrations/20261107_customer_accounts.sql.
 
 -- Admin users
 CREATE TABLE admin_users (
@@ -373,8 +379,8 @@ CREATE TABLE settings (
    → Redirect client la order-success.html sau order-failed.html
 
 5. Tu primesti email cu detaliile comenzii
-   → Intri in admin, schimbi status in 'processing', apoi 'shipped'
-   → Optional: trimiti email update catre client cu tracking
+   → Intri in admin, actualizezi statusul pe parcursul pregatirii, printarii si livrarii
+   → Clientul primeste emailuri dupa preferinte si vede timeline-ul in cont
 ```
 
 ### 6.4 Currency detection
@@ -475,7 +481,7 @@ CREATE TABLE settings (
 
 ## 11. WHAT WE DON'T BUILD (YET)
 
-- Nu facem wishlist / user accounts
+- Nu facem wishlist
 - Nu facem reviews sistem
 - Nu facem blog
 - Nu facem newsletter integrat (poate mai tarziu Brevo)

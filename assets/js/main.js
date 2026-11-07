@@ -57,6 +57,21 @@
     });
   }
 
+  function initCustomerAccountLinks() {
+    document.querySelectorAll('.nav-links').forEach((nav) => {
+      if (nav.querySelector('a[href="/studio/account/"]')) return;
+      const link = document.createElement('a');
+      link.href = '/studio/account/';
+      link.setAttribute('data-en', 'Account');
+      link.setAttribute('data-ro', 'Cont');
+      link.textContent = 'Account';
+      const about = nav.querySelector('a[href*="about.html"]');
+      if (about) about.insertAdjacentElement('afterend', link);
+      else nav.append(link);
+      applyLang(localStorage.getItem(LANG_KEY) || 'en');
+    });
+  }
+
   /* ---------- Cart count badge (shared across pages) ---------- */
   function updateCartCountBadge() {
     const badges = document.querySelectorAll('[data-cart-count]');
@@ -121,6 +136,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     initLangToggle();
+    initCustomerAccountLinks();
     initMobileNav();
     initScrollReveal();
     initAnchorScroll();

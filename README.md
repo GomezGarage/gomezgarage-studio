@@ -57,6 +57,10 @@ full design decisions, page structure, schema and payment flow.
   Complete photographs, prices, stock and specifications in the admin editor.
   For an existing installation, follow [the catalog release guide](docs/catalog-release/README.md)
   and import only its two migration files; do not re-run the full schema.
+- Customer accounts, saved addresses, order timelines and custom-request tracking use
+  [the customer accounts migration](database/migrations/20261107_customer_accounts.sql).
+  For an existing installation, back up the database and import that migration once
+  after pulling the matching code. Git pull does not run the migration.
 - Apache renders `product.html`, `products.html` and `sitemap.xml` through their PHP
   counterparts. Product copy/metadata and published catalog links are available in
   initial HTML; the sitemap follows published products automatically. Existing product

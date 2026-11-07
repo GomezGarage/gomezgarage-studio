@@ -56,7 +56,7 @@ de cenți. Nu se face conversie valutară sau apel la Revolut. Sumele reprezint�
 valoarea comenzilor, nu încasări. `payment_state` este întotdeauna `unknown`,
 inclusiv pentru `paid`: statusul poate fi setat manual și nu există registru
 independent al încasării. `fulfilment_status` reflectă numai statusurile native
-`processing`, `shipped`, `delivered`; altfel este `unknown`. `status` nativ este
+`processing`, `printing`, `shipped`, `delivered`; altfel este `unknown`. `status` nativ este
 păstrat separat. `customer_language` este `null`, fără deducere RO/EN.
 
 Date exportate: țara și trackingul, identificatorii comenzii, numele produselor din

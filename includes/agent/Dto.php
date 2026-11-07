@@ -140,10 +140,10 @@ final class Dto
         $result['customer_ref'] = $normalizedEmail !== '' && filter_var($normalizedEmail, FILTER_VALIDATE_EMAIL)
             ? 'studio_' . hash_hmac('sha256', "customer-ref-v1\0" . $normalizedEmail, $customerRefKey)
             : null;
-        $result['status'] = self::choice($row['status'], ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled']);
+        $result['status'] = self::choice($row['status'], ['pending', 'paid', 'processing', 'printing', 'shipped', 'delivered', 'cancelled']);
         // Admin can manually set every native status. None proves receipt of funds.
         $result['payment_state'] = 'unknown';
-        $result['fulfilment_status'] = in_array($row['status'], ['processing', 'shipped', 'delivered'], true) ? $row['status'] : 'unknown';
+        $result['fulfilment_status'] = in_array($row['status'], ['processing', 'printing', 'shipped', 'delivered'], true) ? $row['status'] : 'unknown';
         $result['customer_language'] = null;
         $result['currency'] = 'EUR';
         foreach (['subtotal', 'shipping', 'total'] as $amount) {

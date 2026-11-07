@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/customer-auth.php';
 
 ggs_cors_headers();
 
@@ -47,9 +48,17 @@ $name = trim(is_string($body['name'] ?? null) ? $body['name'] : '');
 $email = trim(is_string($body['email'] ?? null) ? $body['email'] : '');
 $need = trim(is_string($body['need'] ?? null) ? $body['need'] : '');
 $budget = trim(is_string($body['budget'] ?? null) ? $body['budget'] : '');
+$customerAccount = ggs_customer_current();
+
+if (!ggs_customer_verify_csrf()) {
+  ggs_custom_order_error('Your session expired. Refresh the page and try again.', 'csrf_invalid', 403);
+}
 
 if ($name === '' || $need === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
   ggs_custom_order_error('Please fill in your name, a valid email, and what you need.', 'invalid_form', 422);
+}
+if ($customerAccount && strtolower($customerAccount['email']) !== strtolower($email)) {
+  ggs_custom_order_error('Use the email address linked to your account, or sign out before sending this request.', 'account_email_mismatch', 422);
 }
 
 $maxFiles = 5;
@@ -131,8 +140,38 @@ if (isset($_FILES['attachments'])) {
   }
 }
 
+$inquiryNumber = 'GGC-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+$attachmentNames = array_map(static fn(array $attachment): string => $attachment['name'], $attachments);
+$db = ggs_db();
+$db->beginTransaction();
+try {
+  $db->prepare('INSERT INTO custom_inquiries (inquiry_number, customer_account_id, customer_name, customer_email, need_text, budget, attachment_names, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    ->execute([$inquiryNumber, $customerAccount['id'] ?? null, $name, strtolower($email), $need, $budget, json_encode($attachmentNames), 'received']);
+  $inquiryId = (int) $db->lastInsertId();
+  $db->prepare('INSERT INTO custom_inquiry_history (inquiry_id, status, note) VALUES (?, ?, ?)')
+    ->execute([$inquiryId, 'received', 'Request submitted']);
+  $db->commit();
+} catch (Throwable $e) {
+  if ($db->inTransaction()) $db->rollBack();
+  error_log('GGS custom inquiry could not be saved: ' . $e->getMessage());
+  ggs_custom_order_error('We could not save your request right now. Please try again.', 'save_failed', 503);
+}
+
+$inquiry = [
+  'id' => $inquiryId,
+  'inquiry_number' => $inquiryNumber,
+  'customer_account_id' => $customerAccount['id'] ?? null,
+  'customer_name' => $name,
+  'customer_email' => strtolower($email),
+  'need_text' => $need,
+  'budget' => $budget,
+  'attachment_names' => json_encode($attachmentNames),
+  'status' => 'received',
+];
+
 $html = '
   <h2>New custom order inquiry</h2>
+  <p><strong>Request number:</strong> ' . htmlspecialchars($inquiryNumber, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>
   <p><strong>Name:</strong> ' . htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>
   <p><strong>Email:</strong> ' . htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>
   <p><strong>Budget:</strong> ' . htmlspecialchars($budget ?: 'Not specified', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>
@@ -147,6 +186,8 @@ if ($attachments) {
   $html .= '<p><strong>Attached reference files:</strong> ' . implode(', ', $fileNames) . '</p>';
 }
 
-$sent = ggs_send_mail('contact@gomezgarage.eu', "[GGS] Custom order inquiry from {$name}", $html, null, $attachments);
+$sent = ggs_send_mail('contact@gomezgarage.eu', "[GGS] Custom order inquiry {$inquiryNumber} from {$name}", $html, null, $attachments);
+ggs_send_customer_custom_received($inquiry);
 
-ggs_json_response(['success' => $sent], $sent ? 200 : 502);
+if (!$sent) error_log('GGS custom inquiry owner notification email failed for ' . $inquiryNumber);
+ggs_json_response(['success' => true, 'inquiry_number' => $inquiryNumber, 'notification_sent' => $sent], 200);

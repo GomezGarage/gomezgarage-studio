@@ -17,26 +17,44 @@ if (!$order) {
   exit;
 }
 
-$validStatuses = ['pending','paid','processing','shipped','delivered','cancelled'];
+$validStatuses = ['pending','paid','processing','printing','shipped','delivered','cancelled'];
 $notice = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $action = $_POST['action'] ?? '';
-
-  if ($action === 'update_status' && in_array($_POST['status'] ?? '', $validStatuses, true)) {
-    $db->prepare('UPDATE orders SET status = ? WHERE id = ?')->execute([$_POST['status'], $id]);
-    $order['status'] = $_POST['status'];
-    $notice = 'Status updated.';
-  }
-
-  if ($action === 'update_tracking') {
-    $tracking = trim($_POST['tracking_number'] ?? '');
-    $db->prepare('UPDATE orders SET tracking_number = ? WHERE id = ?')->execute([$tracking, $id]);
-    $order['tracking_number'] = $tracking;
-    $notice = 'Tracking number saved.';
-  }
-
-  if ($action === 'send_update') {
+  if (!ggs_admin_verify_csrf()) {
+    $notice = 'Your session expired. Refresh and try again.';
+  } elseif ($action === 'update_status' && in_array($_POST['status'] ?? '', $validStatuses, true)) {
+    $nextStatus = (string) $_POST['status'];
+    $note = trim((string) ($_POST['status_note'] ?? ''));
+    $changed = $nextStatus !== $order['status'] || $note !== '';
+    if ($nextStatus !== $order['status']) {
+      $db->prepare('UPDATE orders SET status = ? WHERE id = ?')->execute([$nextStatus, $id]);
+      $order['status'] = $nextStatus;
+    }
+    if ($changed) {
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note, created_by_admin_id) VALUES (?, ?, ?, ?)')
+        ->execute([$id, $nextStatus, $note, $_SESSION['admin_id'] ?? null]);
+      ggs_send_customer_order_status_update($order, $note, in_array($nextStatus, ['shipped', 'delivered'], true));
+    }
+    $notice = 'Status updated. Customer email preferences were applied.';
+  } elseif ($action === 'update_tracking') {
+    $tracking = trim((string) ($_POST['tracking_number'] ?? ''));
+    if (strlen($tracking) > 100) {
+      $notice = 'Tracking number must be 100 characters or fewer.';
+    } else {
+      $changed = $tracking !== (string) ($order['tracking_number'] ?? '');
+      $db->prepare('UPDATE orders SET tracking_number = ? WHERE id = ?')->execute([$tracking, $id]);
+      $order['tracking_number'] = $tracking;
+      if ($changed) {
+        $note = $tracking === '' ? 'Tracking number removed.' : 'Tracking number added or updated.';
+        $db->prepare('INSERT INTO order_status_history (order_id, status, note, created_by_admin_id) VALUES (?, ?, ?, ?)')
+          ->execute([$id, $order['status'], $note, $_SESSION['admin_id'] ?? null]);
+        if ($tracking !== '') ggs_send_customer_order_status_update($order, $note, true);
+      }
+      $notice = 'Tracking number saved. Customer email preferences were applied.';
+    }
+  } elseif ($action === 'send_update') {
     ggs_send_order_update($order);
     $notice = 'Update email sent to customer.';
   }
@@ -97,22 +115,25 @@ require __DIR__ . '/../includes/admin-header.php';
 <div class="admin-panel">
   <h3>Status</h3>
   <form method="post" class="form-row" style="align-items:end;">
+    <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
     <input type="hidden" name="action" value="update_status">
     <div class="form-group">
       <label>Order status</label>
       <select name="status">
         <?php foreach ($validStatuses as $s): ?>
-          <option value="<?= $s ?>" <?= $order['status'] === $s ? 'selected' : '' ?>><?= ucfirst($s) ?></option>
+          <option value="<?= htmlspecialchars($s) ?>" <?= $order['status'] === $s ? 'selected' : '' ?>><?= ucfirst(str_replace('_', ' ', $s)) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
-    <div class="form-group"><button type="submit" class="btn btn-primary">Update status</button></div>
+    <div class="form-group"><label>Customer update note (optional)</label><input type="text" name="status_note" maxlength="500" placeholder="e.g. Your part has entered the print queue"></div>
+    <div class="form-group"><button type="submit" class="btn btn-primary">Update status and notify</button></div>
   </form>
 </div>
 
 <div class="admin-panel">
   <h3>Tracking</h3>
   <form method="post" class="form-row" style="align-items:end;">
+    <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
     <input type="hidden" name="action" value="update_tracking">
     <div class="form-group">
       <label>Tracking number</label>
@@ -121,6 +142,7 @@ require __DIR__ . '/../includes/admin-header.php';
     <div class="form-group"><button type="submit" class="btn btn-outline">Save tracking</button></div>
   </form>
   <form method="post" style="margin-top:12px;">
+    <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
     <input type="hidden" name="action" value="send_update">
     <button type="submit" class="btn btn-primary">Email status/tracking update to customer</button>
   </form>

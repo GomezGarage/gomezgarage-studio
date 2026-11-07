@@ -39,6 +39,20 @@ function ggs_require_admin(): void
   $_SESSION['admin_last_active'] = time();
 }
 
+function ggs_admin_csrf_token(): string
+{
+  ggs_start_admin_session();
+  if (empty($_SESSION['admin_csrf'])) $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+  return $_SESSION['admin_csrf'];
+}
+
+function ggs_admin_verify_csrf(): bool
+{
+  ggs_start_admin_session();
+  $submitted = (string) ($_POST['admin_csrf_token'] ?? '');
+  return $submitted !== '' && isset($_SESSION['admin_csrf']) && hash_equals($_SESSION['admin_csrf'], $submitted);
+}
+
 function ggs_attempt_login(string $username, string $password): bool
 {
   ggs_start_admin_session();

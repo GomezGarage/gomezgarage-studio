@@ -28,6 +28,7 @@ $activeNav = $activeNav ?? '';
     <a href="/studio/admin/index.php" class="admin-nav-link <?= $activeNav === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
     <a href="/studio/admin/products.php" class="admin-nav-link <?= $activeNav === 'products' ? 'active' : '' ?>">Products</a>
     <a href="/studio/admin/orders.php" class="admin-nav-link <?= $activeNav === 'orders' ? 'active' : '' ?>">Orders</a>
+    <a href="/studio/admin/custom-inquiries.php" class="admin-nav-link <?= $activeNav === 'custom-inquiries' ? 'active' : '' ?>">Custom requests</a>
     <a href="/studio/admin/settings.php" class="admin-nav-link <?= $activeNav === 'settings' ? 'active' : '' ?>">Settings</a>
     <div class="admin-sidebar-footer">
       <a href="/studio/admin/logout.php" class="admin-nav-link">Log out</a>

@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/studio/assets/images/favicon-32.png?v=2">
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
 <link rel="apple-touch-icon" href="/studio/assets/images/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-custom-capabilities">
+<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-customer-accounts">
 <link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
 </head>
 <body>
@@ -93,6 +93,7 @@
         <span class="section-label mono" data-en="Get a quote" data-ro="Cere o oferta">Get a quote</span>
         <h2 data-en="Tell us what you need" data-ro="Spune-ne ce ai nevoie">Tell us what you need</h2>
         <p data-en="Custom orders typically ship in 7-14 days." data-ro="Comenzile custom se livreaza de obicei in 7-14 zile.">Custom orders typically ship in 7-14 days.</p>
+        <p class="form-hint"><a class="customer-inline-link" href="/studio/account/login.php" data-en="Have an account? Sign in to keep this request in your account." data-ro="Ai cont? Autentifica-te pentru a pastra cererea in cont.">Have an account? Sign in to keep this request in your account.</a></p>
       </div>
       <form id="custom-order-form" enctype="multipart/form-data">
         <div class="form-group">
@@ -147,7 +148,7 @@
 
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
-<script src="/studio/assets/js/main.js"></script>
+<script src="/studio/assets/js/main.js?v=20261107-customer-accounts"></script>
 <script>
 var customOrderForm = document.getElementById('custom-order-form');
 var customOrderFiles = document.getElementById('custom-order-attachments');
@@ -155,6 +156,19 @@ var customOrderFileList = document.getElementById('custom-order-files');
 var customOrderMaxFiles = 5;
 var customOrderMaxFileSize = 5 * 1024 * 1024;
 var customOrderMaxTotalSize = 8 * 1024 * 1024;
+var customOrderCsrfToken = '';
+var customOrderContextReady = fetch('/studio/api/customer-context.php', { cache: 'no-store' })
+  .then(function (response) { return response.json(); })
+  .then(function (context) {
+    customOrderCsrfToken = context.csrf_token || '';
+    if (context.authenticated && context.customer) {
+      var nameField = customOrderForm.querySelector('[name="name"]');
+      var emailField = customOrderForm.querySelector('[name="email"]');
+      if (nameField && !nameField.value) nameField.value = context.customer.name || '';
+      if (emailField && !emailField.value) emailField.value = context.customer.email || '';
+    }
+  })
+  .catch(function () {});
 
 function customOrderFormatSize(bytes) {
   return bytes < 1024 * 1024
@@ -197,8 +211,9 @@ function customOrderUpdateFileList() {
 customOrderFiles.addEventListener('change', customOrderUpdateFileList);
 document.addEventListener('ggs:language-changed', customOrderUpdateFileList);
 
-customOrderForm.addEventListener('submit', function (e) {
+customOrderForm.addEventListener('submit', async function (e) {
   e.preventDefault();
+  await customOrderContextReady;
   var form = e.target;
   var status = document.getElementById('custom-order-status');
   var submitBtn = form.querySelector('[type="submit"]');
@@ -214,14 +229,15 @@ customOrderForm.addEventListener('submit', function (e) {
 
   fetch('/studio/api/custom-order.php', {
     method: 'POST',
+    headers: customOrderCsrfToken ? { 'X-CSRF-Token': customOrderCsrfToken } : {},
     body: data,
   })
     .then(function (res) { return res.json(); })
     .then(function (result) {
       if (result.success) {
         status.textContent = document.documentElement.lang === 'ro'
-          ? 'Multumim! Iti raspundem in curand.'
-          : "Thanks! We'll get back to you shortly.";
+          ? 'Cererea ' + (result.inquiry_number ? '#' + result.inquiry_number + ' a fost ' : 'a fost ') + 'trimisa. Iti raspundem in curand.'
+          : 'Request ' + (result.inquiry_number ? '#' + result.inquiry_number + ' was ' : 'was ') + 'sent. We will get back to you shortly.';
         form.reset();
         customOrderUpdateFileList();
       } else {
@@ -232,6 +248,9 @@ customOrderForm.addEventListener('submit', function (e) {
           file_too_large: isRomanian ? 'Fiecare fisier trebuie sa aiba maximum 5 MB.' : 'Each file must be no larger than 5 MB.',
           files_too_large: isRomanian ? 'Dimensiunea totala a fisierelor trebuie sa fie de maximum 8 MB.' : 'The combined file size must be no larger than 8 MB.',
           invalid_file_type: isRomanian ? 'Foloseste fisiere JPG, PNG, STL, SolidWorks sau PDF.' : 'Use JPG, PNG, STL, SolidWorks or PDF files.',
+          account_email_mismatch: isRomanian ? 'Foloseste emailul contului sau deconecteaza-te inainte de a trimite cererea.' : 'Use your account email or sign out before sending this request.',
+          csrf_invalid: isRomanian ? 'Sesiunea a expirat. Reincarca pagina si incearca din nou.' : 'Your session expired. Refresh the page and try again.',
+          save_failed: isRomanian ? 'Nu am putut salva cererea acum. Incearca din nou.' : 'We could not save your request right now. Please try again.',
           invalid_upload: isRomanian ? 'Alege fisierele folosind selectorul de fisiere.' : 'Please upload reference files using the file picker.',
           upload_failed: isRomanian ? 'Un fisier nu a putut fi incarcat. Incearca din nou.' : 'A file could not be uploaded. Please try again.',
         };

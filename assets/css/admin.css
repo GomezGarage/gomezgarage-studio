@@ -162,9 +162,11 @@ table.admin-table { width: 100%; border-collapse: collapse; min-width: 640px; }
 .status-pending { background: rgba(230,184,0,0.12); color: var(--warning); }
 .status-paid { background: rgba(46,204,113,0.12); color: var(--success); }
 .status-processing { background: rgba(136,136,136,0.15); color: var(--text-secondary); }
+.status-printing { background: rgba(230,59,46,0.14); color: #ff786e; }
 .status-shipped { background: rgba(59,130,230,0.12); color: #3b82e6; }
 .status-delivered { background: rgba(46,204,113,0.2); color: var(--success); }
 .status-cancelled { background: rgba(230,59,46,0.12); color: var(--danger); }
+.status-received, .status-reviewing, .status-needs_info, .status-quoted, .status-accepted, .status-in_progress, .status-completed, .status-declined { background: rgba(136,136,136,0.15); color: var(--text-secondary); }
 
 /* ---------- Forms / panels ---------- */
 .admin-panel {

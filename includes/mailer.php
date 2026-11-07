@@ -91,6 +91,9 @@ function ggs_send_order_confirmation(array $order, ?string $invoicePath = null):
   }
 
   $invoiceLine = $invoicePath ? '<p>Your invoice is attached to this email.</p>' : '';
+  $accountLine = !empty($order['customer_account_id'])
+    ? '<p><a href="' . SITE_URL . '/account/">View your order history in your account</a>.</p>'
+    : '<p>Create an account with this email to keep this and future orders together: <a href="' . SITE_URL . '/account/register.php">Create an account</a>.</p>';
 
   $body = "
     <h2>Thank you for your order, {$order['customer_name']}!</h2>
@@ -99,6 +102,7 @@ function ggs_send_order_confirmation(array $order, ?string $invoicePath = null):
     <p><strong>Total:</strong> {$order['total_eur']} EUR</p>
     <p><strong>Shipping to:</strong> {$address['street']}, {$address['city']}, {$address['postal']}, {$address['country']}</p>
     {$invoiceLine}
+    {$accountLine}
     <p>Custom and made-to-order items typically ship in 7-14 days. We'll email you again once your order ships.</p>
     <p>— Gomez Garage Studio</p>
   ";
@@ -120,17 +124,82 @@ function ggs_notify_low_stock(array $product): bool
 }
 
 /** Order status / tracking update, sent to the customer from admin/order-detail.php. */
-function ggs_send_order_update(array $order): bool
+function ggs_send_order_update(array $order, string $note = ''): bool
 {
   $subject = sprintf('Update on your Gomez Garage Studio order #%s', $order['order_number']);
   $trackingLine = $order['tracking_number']
-    ? "<p><strong>Tracking number:</strong> {$order['tracking_number']}</p>"
+    ? '<p><strong>Tracking number:</strong> ' . htmlspecialchars((string) $order['tracking_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>'
     : '';
+  $status = htmlspecialchars(ucfirst((string) $order['status']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  $noteLine = trim($note) !== '' ? '<p>' . nl2br(htmlspecialchars($note, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) . '</p>' : '';
   $body = "
     <h2>Order #{$order['order_number']} update</h2>
-    <p>Your order status is now: <strong>" . ucfirst($order['status']) . "</strong></p>
+    <p>Your order status is now: <strong>{$status}</strong></p>
     {$trackingLine}
+    {$noteLine}
     <p>— Gomez Garage Studio</p>
   ";
   return ggs_send_mail($order['customer_email'], $subject, $body);
+}
+
+function ggs_send_customer_verification(array $account, string $token): bool
+{
+  $url = SITE_URL . '/account/verify.php?token=' . rawurlencode($token);
+  $name = htmlspecialchars((string) $account['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  $body = "<h2>Verify your email</h2><p>Hello {$name},</p><p>Confirm your Gomez Garage Studio account using this link:</p><p><a href=\"{$url}\">Verify email address</a></p><p>This link expires in 24 hours. If you did not create this account, you can ignore this email.</p>";
+  return ggs_send_mail((string) $account['email'], 'Verify your Gomez Garage Studio account', $body);
+}
+
+function ggs_send_customer_password_reset(array $account, string $token): bool
+{
+  $url = SITE_URL . '/account/reset-password.php?token=' . rawurlencode($token);
+  $body = "<h2>Reset your password</h2><p>We received a request to reset the password for your Gomez Garage Studio account.</p><p><a href=\"{$url}\">Choose a new password</a></p><p>This link expires in one hour. If you did not request a reset, you can ignore this email.</p>";
+  return ggs_send_mail((string) $account['email'], 'Reset your Gomez Garage Studio password', $body);
+}
+
+function ggs_customer_order_updates_enabled(array $order): bool
+{
+  $accountId = (int) ($order['customer_account_id'] ?? 0);
+  if ($accountId <= 0) return true; // Guest orders receive transactional progress messages by default.
+  $stmt = ggs_db()->prepare('SELECT email_order_updates FROM customer_accounts WHERE id = ? LIMIT 1');
+  $stmt->execute([$accountId]);
+  $enabled = $stmt->fetchColumn();
+  return $enabled === false || (int) $enabled === 1;
+}
+
+function ggs_send_customer_order_status_update(array $order, string $note = '', bool $essential = false): bool
+{
+  $essential = $essential || in_array((string) ($order['status'] ?? ''), ['shipped', 'delivered'], true);
+  if (!$essential && !ggs_customer_order_updates_enabled($order)) return true;
+  $sent = ggs_send_order_update($order, $note);
+  if (!$sent) error_log('GGS order status email failed for ' . ($order['order_number'] ?? 'unknown order'));
+  return $sent;
+}
+
+function ggs_send_customer_custom_update(array $inquiry, string $note = ''): bool
+{
+  $accountId = (int) ($inquiry['customer_account_id'] ?? 0);
+  if ($accountId > 0) {
+    $stmt = ggs_db()->prepare('SELECT email_custom_updates FROM customer_accounts WHERE id = ? LIMIT 1');
+    $stmt->execute([$accountId]);
+    if ((int) $stmt->fetchColumn() === 0) return true;
+  }
+  $number = htmlspecialchars((string) $inquiry['inquiry_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  $status = htmlspecialchars(ucwords(str_replace('_', ' ', (string) $inquiry['status'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  $safeNote = trim($note) !== '' ? '<p>' . nl2br(htmlspecialchars($note, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) . '</p>' : '';
+  $body = "<h2>Custom request {$number}</h2><p>Status: <strong>{$status}</strong></p>{$safeNote}<p>— Gomez Garage Studio</p>";
+  $sent = ggs_send_mail((string) $inquiry['customer_email'], "Update on your custom request {$number}", $body);
+  if (!$sent) error_log('GGS custom request update email failed for ' . $number);
+  return $sent;
+}
+
+function ggs_send_customer_custom_received(array $inquiry): bool
+{
+  $number = htmlspecialchars((string) $inquiry['inquiry_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  $accountLine = '<p>You can create an account with this email to see this request and its updates: <a href="' . SITE_URL . '/account/register.php">Create an account</a>.</p>';
+  if (!empty($inquiry['customer_account_id'])) $accountLine = '<p><a href="' . SITE_URL . '/account/">View your account</a>.</p>';
+  $body = "<h2>We received your custom request</h2><p>Your request number is <strong>{$number}</strong>.</p><p>We will review the details and get back to you.</p>{$accountLine}<p>— Gomez Garage Studio</p>";
+  $sent = ggs_send_mail((string) $inquiry['customer_email'], "We received your custom request {$number}", $body);
+  if (!$sent) error_log('GGS custom request confirmation email failed for ' . $number);
+  return $sent;
 }
