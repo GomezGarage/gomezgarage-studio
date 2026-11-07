@@ -73,6 +73,8 @@
     return fetch('https://ip-api.com/json/?fields=countryCode')
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
+        // A manual choice made while this request was pending takes priority.
+        if (localStorage.getItem(MANUAL_KEY)) return;
         const detected = data && data.countryCode === 'RO' ? 'RON' : 'EUR';
         setCurrency(detected);
       })

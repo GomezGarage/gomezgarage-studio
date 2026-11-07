@@ -90,6 +90,13 @@
 
   window.GGSShop = { fetchProducts };
 
+  // Update amounts in place: preserve the gallery, video playback and quantity.
+  document.addEventListener('ggs:currency-changed', () => {
+    document.querySelectorAll('[data-currency-price]').forEach((element) => {
+      element.textContent = money(Number(element.dataset.currencyPrice));
+    });
+  });
+
   /* ======================= RENDER HELPERS ======================= */
 
   function money(priceEur) {
@@ -119,7 +126,7 @@
         <div class="product-card-body">
           <span class="badge mono material-badge">${window.GGSUtil.escapeHtml(p.material)}</span>
           <h3><a href="${productPath(p)}" data-en="${window.GGSUtil.escapeHtml(p.name_en)}" data-ro="${window.GGSUtil.escapeHtml(p.name_ro)}">${window.GGSUtil.escapeHtml(p.name_en)}</a></h3>
-          <div class="product-card-price mono">${money(p.price_eur)}</div>
+          <div class="product-card-price mono" data-currency-price="${Number(p.price_eur)}">${money(p.price_eur)}</div>
           <div class="product-card-actions">
             <a href="${productPath(p)}" class="btn btn-outline btn-sm" data-en="View" data-ro="Vezi">View</a>
             <button class="btn btn-primary btn-sm" data-add-to-cart="${p.id}" ${p.stock <= 0 ? 'disabled' : ''} data-en="Add to Cart" data-ro="Adauga in cos">Add to Cart</button>
@@ -291,7 +298,7 @@
         <span class="badge mono badge-accent">${window.GGSUtil.escapeHtml(p.material)}</span>
         ${p.sku ? `<p class="mono product-sku">SKU: ${esc(p.sku)}</p>` : ''}
         <h1 data-en="${window.GGSUtil.escapeHtml(p.name_en)}" data-ro="${window.GGSUtil.escapeHtml(p.name_ro)}">${window.GGSUtil.escapeHtml(p.name_en)}</h1>
-        <div class="product-price-block mono">${money(p.price_eur)}</div>
+        <div class="product-price-block mono" data-currency-price="${Number(p.price_eur)}">${money(p.price_eur)}</div>
         <p class="product-desc" data-en="${window.GGSUtil.escapeHtml(p.desc_short_en)}" data-ro="${window.GGSUtil.escapeHtml(p.desc_short_ro)}">${window.GGSUtil.escapeHtml(p.desc_short_en)}</p>
         <div class="stock-indicator ${p.stock <= 0 ? 'out' : (p.stock <= p.stock_threshold ? 'low' : 'in')}">${stockBadgeText(p)}</div>
         <div class="qty-selector">
