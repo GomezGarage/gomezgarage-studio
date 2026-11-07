@@ -341,6 +341,7 @@
     let activeMediaIndex = 0;
     let lightboxImageIndex = 0;
     let touchStart = null;
+    let lightboxTouchStart = null;
     let suppressImageClick = false;
 
     const setActiveThumb = (mediaIndex) => {
@@ -416,6 +417,19 @@
         showLightboxImage(lightboxImageIndex + 1);
       }
     });
+    lightbox.addEventListener('touchstart', (event) => {
+      if (event.touches.length !== 1 || event.target.closest('button')) return;
+      lightboxTouchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }, { passive: true });
+    lightbox.addEventListener('touchend', (event) => {
+      if (!lightboxTouchStart || !event.changedTouches.length) return;
+      const dx = event.changedTouches[0].clientX - lightboxTouchStart.x;
+      const dy = event.changedTouches[0].clientY - lightboxTouchStart.y;
+      lightboxTouchStart = null;
+      if (images.length < 2 || Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      showLightboxImage(lightboxImageIndex + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+    lightbox.addEventListener('touchcancel', () => { lightboxTouchStart = null; }, { passive: true });
     galleryMain.addEventListener('touchstart', (event) => {
       if (event.touches.length !== 1 || event.target.closest('video')) return;
       touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
