@@ -29,7 +29,7 @@ function ggs_mailer(): PHPMailer
   return $mail;
 }
 
-function ggs_send_mail(string $to, string $subject, string $htmlBody, ?string $attachmentPath = null): bool
+function ggs_send_mail(string $to, string $subject, string $htmlBody, ?string $attachmentPath = null, array $additionalAttachments = []): bool
 {
   try {
     $mail = ggs_mailer();
@@ -39,6 +39,13 @@ function ggs_send_mail(string $to, string $subject, string $htmlBody, ?string $a
     $mail->AltBody = strip_tags($htmlBody);
     if ($attachmentPath !== null && is_file($attachmentPath)) {
       $mail->addAttachment($attachmentPath);
+    }
+    foreach ($additionalAttachments as $attachment) {
+      $path = $attachment['path'] ?? '';
+      $name = $attachment['name'] ?? '';
+      if (is_string($path) && is_file($path) && is_string($name) && $name !== '') {
+        $mail->addAttachment($path, $name);
+      }
     }
     return $mail->send();
   } catch (PHPMailerException $e) {

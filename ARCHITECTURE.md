@@ -166,13 +166,14 @@ gomezgarage.eu/studio/
 ### 4.4 Custom Order (custom.html)
 
 - Hero scurt: "Built to your spec."
-- Portofoliu de exemple (imagini produse existente + orice custom facut anterior)
+- Galerie selectiva de proiecte custom reale, cu imagini si descrieri bilingve; nu se afiseaza carduri demo generice
 - Sectiune "What I can make": materiale disponibile, tipuri de produse, limitari (dimensiuni max printer etc)
 - Formular contact:
   - Nume
   - Email
   - Ce ai nevoie (textarea)
   - Buget aproximativ (optional, dropdown: <50 EUR / 50-150 EUR / 150+ EUR)
+  - Fisiere de referinta (optional): JPG, PNG, WebP, HEIC/HEIF sau PDF; maximum 5 fisiere, 5 MB fiecare si 8 MB in total. Fisierele sunt validate si atasate emailului, fara stocare publica.
   - Submit → trimite email la contact@gomezgarage.eu
 - Timeline asteptat: "Custom orders typically ship in 7-14 days"
 

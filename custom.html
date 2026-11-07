@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/studio/assets/images/favicon-32.png?v=2">
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
 <link rel="apple-touch-icon" href="/studio/assets/images/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="/studio/assets/css/main.css">
+<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-custom-attachments">
 <link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
 </head>
 <body>
@@ -51,36 +51,14 @@
     <div class="container">
       <span class="section-label mono" data-en="Custom Order" data-ro="Comanda Custom">Custom Order</span>
       <h1 data-en="Built to your spec." data-ro="Facut dupa specificatiile tale.">Built to your spec.</h1>
-    </div>
-  </section>
-
-  <section>
-    <div class="container">
-      <div class="section-head reveal">
-        <span class="section-label mono" data-en="Portfolio" data-ro="Portofoliu">Portfolio</span>
-        <h2 data-en="Previous custom work" data-ro="Lucrari custom anterioare">Previous custom work</h2>
-      </div>
-      <div class="product-grid">
-        <div class="product-card reveal">
-          <div class="product-card-media"><img class="img-primary" src="/studio/assets/images/custom-portfolio-1.svg" alt="Custom build 01"></div>
-          <div class="product-card-body"><h3 data-en="Client Commission — Desk Set" data-ro="Comanda Client — Set Birou">Client Commission — Desk Set</h3></div>
-        </div>
-        <div class="product-card reveal">
-          <div class="product-card-media"><img class="img-primary" src="/studio/assets/images/custom-portfolio-2.svg" alt="Custom build 02"></div>
-          <div class="product-card-body"><h3 data-en="Client Commission — Car Trim Piece" data-ro="Comanda Client — Piesa Auto">Client Commission — Car Trim Piece</h3></div>
-        </div>
-        <div class="product-card reveal">
-          <div class="product-card-media"><img class="img-primary" src="/studio/assets/images/custom-portfolio-3.svg" alt="Custom build 03"></div>
-          <div class="product-card-body"><h3 data-en="Client Commission — Display Base" data-ro="Comanda Client — Baza Expunere">Client Commission — Display Base</h3></div>
-        </div>
-      </div>
+      <p class="hero-sub" data-en="Tell us what you are working on. Add a photo, sketch or drawing and we will help shape it into a part that fits." data-ro="Spune-ne la ce lucrezi. Ataseaza o fotografie, o schita sau un desen, iar noi te ajutam sa-l transformi intr-o piesa potrivita.">Tell us what you are working on. Add a photo, sketch or drawing and we will help shape it into a part that fits.</p>
     </div>
   </section>
 
   <section class="carbon-bg">
     <div class="container">
       <div class="section-head reveal">
-        <span class="section-label mono" data-en="What I can make" data-ro="Ce pot face">What I can make</span>
+        <span class="section-label mono" data-en="What we can make" data-ro="Ce putem face">What we can make</span>
         <h2 data-en="Materials &amp; limits" data-ro="Materiale si limite">Materials &amp; limits</h2>
       </div>
       <div class="value-grid">
@@ -107,10 +85,10 @@
     <div class="container" style="max-width:640px;">
       <div class="section-head reveal">
         <span class="section-label mono" data-en="Get a quote" data-ro="Cere o oferta">Get a quote</span>
-        <h2 data-en="Tell me what you need" data-ro="Spune-mi ce ai nevoie">Tell me what you need</h2>
+        <h2 data-en="Tell us what you need" data-ro="Spune-ne ce ai nevoie">Tell us what you need</h2>
         <p data-en="Custom orders typically ship in 7-14 days." data-ro="Comenzile custom se livreaza de obicei in 7-14 zile.">Custom orders typically ship in 7-14 days.</p>
       </div>
-      <form id="custom-order-form">
+      <form id="custom-order-form" enctype="multipart/form-data">
         <div class="form-group">
           <label data-en="Name" data-ro="Nume">Name</label>
           <input type="text" name="name" required>
@@ -123,6 +101,14 @@
           <label data-en="What do you need?" data-ro="Ce ai nevoie?">What do you need?</label>
           <textarea name="need" rows="5" required></textarea>
         </div>
+        <div class="form-group custom-attachments-group">
+          <label for="custom-order-attachments" data-en="Reference files (optional)" data-ro="Fisiere de referinta (optional)">Reference files (optional)</label>
+          <div class="custom-file-picker">
+            <input id="custom-order-attachments" type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" aria-describedby="custom-order-files-hint">
+            <p id="custom-order-files-hint" class="form-hint" data-en="Attach photos, sketches or drawings (JPG, PNG, WebP, HEIC/HEIF or PDF). Up to 5 files, 5 MB each and 8 MB total." data-ro="Ataseaza fotografii, schite sau desene (JPG, PNG, WebP, HEIC/HEIF sau PDF). Maximum 5 fisiere, 5 MB fiecare si 8 MB in total.">Attach photos, sketches or drawings (JPG, PNG, WebP, HEIC/HEIF or PDF). Up to 5 files, 5 MB each and 8 MB total.</p>
+          </div>
+          <p id="custom-order-files" class="custom-file-list" aria-live="polite"></p>
+        </div>
         <div class="form-group">
           <label data-en="Approximate budget (optional)" data-ro="Buget aproximativ (optional)">Approximate budget (optional)</label>
           <select name="budget">
@@ -133,7 +119,7 @@
           </select>
         </div>
         <button type="submit" class="btn btn-primary btn-block" data-en="Send Request" data-ro="Trimite Cererea">Send Request</button>
-        <p id="custom-order-status" class="form-hint" style="margin-top:14px;"></p>
+        <p id="custom-order-status" class="form-hint" style="margin-top:14px;" aria-live="polite"></p>
       </form>
     </div>
   </section>
@@ -156,20 +142,72 @@
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
 <script src="/studio/assets/js/main.js"></script>
 <script>
-document.getElementById('custom-order-form').addEventListener('submit', function (e) {
+var customOrderForm = document.getElementById('custom-order-form');
+var customOrderFiles = document.getElementById('custom-order-attachments');
+var customOrderFileList = document.getElementById('custom-order-files');
+var customOrderMaxFiles = 5;
+var customOrderMaxFileSize = 5 * 1024 * 1024;
+var customOrderMaxTotalSize = 8 * 1024 * 1024;
+
+function customOrderFormatSize(bytes) {
+  return bytes < 1024 * 1024
+    ? Math.max(1, Math.round(bytes / 1024)) + ' KB'
+    : (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function customOrderUpdateFileList() {
+  var files = Array.from(customOrderFiles.files || []);
+  if (!files.length) {
+    customOrderFileList.textContent = '';
+    customOrderFileList.classList.remove('has-error');
+    return true;
+  }
+
+  var totalSize = files.reduce(function (total, file) { return total + file.size; }, 0);
+  var tooMany = files.length > customOrderMaxFiles;
+  var tooLarge = files.some(function (file) { return file.size > customOrderMaxFileSize; });
+  var totalTooLarge = totalSize > customOrderMaxTotalSize;
+  var isRomanian = document.documentElement.lang === 'ro';
+  var error = tooMany || tooLarge || totalTooLarge;
+
+  if (error) {
+    if (tooMany) {
+      customOrderFileList.textContent = isRomanian ? 'Poti atasa maximum 5 fisiere.' : 'You can attach up to 5 files.';
+    } else if (tooLarge) {
+      customOrderFileList.textContent = isRomanian ? 'Fiecare fisier trebuie sa aiba maximum 5 MB.' : 'Each file must be no larger than 5 MB.';
+    } else {
+      customOrderFileList.textContent = isRomanian ? 'Dimensiunea totala a fisierelor trebuie sa fie de maximum 8 MB.' : 'The combined file size must be no larger than 8 MB.';
+    }
+  } else {
+    customOrderFileList.textContent = files.map(function (file) {
+      return file.name + ' (' + customOrderFormatSize(file.size) + ')';
+    }).join(' · ');
+  }
+  customOrderFileList.classList.toggle('has-error', error);
+  return !error;
+}
+
+customOrderFiles.addEventListener('change', customOrderUpdateFileList);
+document.addEventListener('ggs:language-changed', customOrderUpdateFileList);
+
+customOrderForm.addEventListener('submit', function (e) {
   e.preventDefault();
   var form = e.target;
   var status = document.getElementById('custom-order-status');
   var submitBtn = form.querySelector('[type="submit"]');
-  var data = Object.fromEntries(new FormData(form).entries());
+  var isRomanian = document.documentElement.lang === 'ro';
+  if (!customOrderUpdateFileList()) {
+    status.textContent = customOrderFileList.textContent;
+    return;
+  }
+  var data = new FormData(form);
 
   submitBtn.disabled = true;
   status.textContent = '';
 
   fetch('/studio/api/custom-order.php', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: data,
   })
     .then(function (res) { return res.json(); })
     .then(function (result) {
@@ -178,12 +216,23 @@ document.getElementById('custom-order-form').addEventListener('submit', function
           ? 'Multumim! Iti raspundem in curand.'
           : "Thanks! We'll get back to you shortly.";
         form.reset();
+        customOrderUpdateFileList();
       } else {
-        status.textContent = result.error || 'Something went wrong. Please try again.';
+        var errors = {
+          request_too_large: isRomanian ? 'Cererea este prea mare. Alege fisiere mai mici.' : 'The request is too large. Please choose smaller files.',
+          invalid_form: isRomanian ? 'Completeaza numele, o adresa de email valida si detaliile cererii.' : 'Please fill in your name, a valid email, and what you need.',
+          too_many_files: isRomanian ? 'Poti atasa maximum 5 fisiere.' : 'You can attach up to 5 files.',
+          file_too_large: isRomanian ? 'Fiecare fisier trebuie sa aiba maximum 5 MB.' : 'Each file must be no larger than 5 MB.',
+          files_too_large: isRomanian ? 'Dimensiunea totala a fisierelor trebuie sa fie de maximum 8 MB.' : 'The combined file size must be no larger than 8 MB.',
+          invalid_file_type: isRomanian ? 'Foloseste fisiere JPG, PNG, WebP, HEIC/HEIF sau PDF.' : 'Use JPG, PNG, WebP, HEIC/HEIF or PDF files.',
+          invalid_upload: isRomanian ? 'Alege fisierele folosind selectorul de fisiere.' : 'Please upload reference files using the file picker.',
+          upload_failed: isRomanian ? 'Un fisier nu a putut fi incarcat. Incearca din nou.' : 'A file could not be uploaded. Please try again.',
+        };
+        status.textContent = errors[result.error_code] || (isRomanian ? 'A aparut o eroare. Incearca din nou.' : 'Something went wrong. Please try again.');
       }
     })
     .catch(function () {
-      status.textContent = 'Something went wrong. Please try again.';
+      status.textContent = isRomanian ? 'A aparut o eroare. Incearca din nou.' : 'Something went wrong. Please try again.';
     })
     .finally(function () {
       submitBtn.disabled = false;
