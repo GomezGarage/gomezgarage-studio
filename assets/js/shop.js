@@ -287,13 +287,20 @@
 
     wrap.innerHTML = `
       <div class="gallery">
-        <div class="gallery-main"><img id="gallery-main-img" src="${esc(images[0])}" alt="${esc(imageAlt(images[0]).en || p.name_en)}"><video id="gallery-main-video" hidden controls playsinline preload="none"></video></div>
+        <div class="gallery-main"><button type="button" class="gallery-image-trigger" id="gallery-image-trigger" aria-label="Open larger photo"><img id="gallery-main-img" src="${esc(images[0])}" alt="${esc(imageAlt(images[0]).en || p.name_en)}"></button><video id="gallery-main-video" hidden controls playsinline preload="none"></video><button type="button" class="gallery-swipe-prev" data-gallery-prev aria-label="Previous photo">&#10094;</button><button type="button" class="gallery-swipe-next" data-gallery-next aria-label="Next photo">&#10095;</button></div>
         ${(images.length + videos.length) > 1 ? `<div class="gallery-thumbs">
-          ${images.map((img, i) => `<button type="button" class="gallery-thumb ${i === 0 ? 'active' : ''}" data-thumb data-image="${i}" aria-label="Photo ${i + 1}" aria-pressed="${i === 0}"><img src="${esc(img)}" alt="${esc(imageAlt(img).en || p.name_en)}" loading="lazy"></button>`).join('')}
-          ${videos.map((v, i) => `<button type="button" class="gallery-thumb" data-thumb data-video="${i}" aria-label="${esc(v.title_en || `Video ${i + 1}`)}" aria-pressed="false"><img src="${esc(v.poster || images[0])}" alt="" loading="lazy"><span class="gallery-video-label">&#9654; Video ${i + 1}</span></button>`).join('')}
+          ${images.map((img, i) => `<button type="button" class="gallery-thumb ${i === 0 ? 'active' : ''}" data-thumb data-gallery-index="${i}" data-image="${i}" aria-label="Photo ${i + 1}" aria-pressed="${i === 0}"><img src="${esc(img)}" alt="${esc(imageAlt(img).en || p.name_en)}" loading="lazy"></button>`).join('')}
+          ${videos.map((v, i) => `<button type="button" class="gallery-thumb" data-thumb data-gallery-index="${images.length + i}" data-video="${i}" aria-label="${esc(v.title_en || `Video ${i + 1}`)}" aria-pressed="false"><img src="${esc(v.poster || images[0])}" alt="" loading="lazy"><span class="gallery-video-label">&#9654; Video ${i + 1}</span></button>`).join('')}
         </div>` : ''}
         <p class="gallery-caption" id="gallery-caption" hidden></p>
       </div>
+      <dialog class="gallery-lightbox" aria-label="Product photo viewer">
+        <button type="button" class="gallery-lightbox-close" data-lightbox-close aria-label="Close photo">&times;</button>
+        <button type="button" class="gallery-lightbox-arrow gallery-lightbox-prev" data-lightbox-prev aria-label="Previous photo">&#10094;</button>
+        <img class="gallery-lightbox-image" data-lightbox-image alt="">
+        <button type="button" class="gallery-lightbox-arrow gallery-lightbox-next" data-lightbox-next aria-label="Next photo">&#10095;</button>
+        <span class="gallery-lightbox-count" data-lightbox-count aria-live="polite"></span>
+      </dialog>
       <div class="product-info">
         <span class="badge mono badge-accent">${window.GGSUtil.escapeHtml(p.material)}</span>
         ${p.sku ? `<p class="mono product-sku">SKU: ${esc(p.sku)}</p>` : ''}
@@ -323,37 +330,121 @@
       </div>
     `;
 
-    wrap.querySelectorAll('[data-thumb]').forEach((thumb) => {
-      thumb.addEventListener('click', () => {
-        const image = document.getElementById('gallery-main-img');
-        const player = document.getElementById('gallery-main-video');
-        const caption = document.getElementById('gallery-caption');
-        player.pause();
-        if (thumb.hasAttribute('data-video')) {
-          const video = videos[Number(thumb.dataset.video)];
-          player.src = video.src;
-          player.poster = video.poster || images[0];
-          player.hidden = false;
-          image.hidden = true;
-          caption.dataset.en = video.title_en || 'Product video';
-          caption.dataset.ro = video.title_ro || video.title_en || 'Video produs';
-          caption.hidden = false;
-        } else {
-          const path = images[Number(thumb.dataset.image)];
-          image.src = path;
-          image.alt = imageAlt(path)[document.documentElement.lang] || imageAlt(path).en || p.name_en;
-          image.hidden = false;
-          player.hidden = true;
-          player.removeAttribute('src');
-          player.load();
-          caption.hidden = true;
-        }
-        wrap.querySelectorAll('[data-thumb]').forEach((t) => { t.classList.remove('active'); t.setAttribute('aria-pressed', 'false'); });
-        thumb.classList.add('active');
-        thumb.setAttribute('aria-pressed', 'true');
-        if (window.GGSLang) window.GGSLang.refresh();
+    const imageTrigger = wrap.querySelector('#gallery-image-trigger');
+    const mainImage = wrap.querySelector('#gallery-main-img');
+    const player = wrap.querySelector('#gallery-main-video');
+    const galleryMain = wrap.querySelector('.gallery-main');
+    const thumbs = [...wrap.querySelectorAll('[data-thumb]')];
+    const lightbox = wrap.querySelector('.gallery-lightbox');
+    const lightboxImage = wrap.querySelector('[data-lightbox-image]');
+    const lightboxCount = wrap.querySelector('[data-lightbox-count]');
+    let activeMediaIndex = 0;
+    let lightboxImageIndex = 0;
+    let touchStart = null;
+    let suppressImageClick = false;
+
+    const setActiveThumb = (mediaIndex) => {
+      activeMediaIndex = mediaIndex;
+      thumbs.forEach((thumb) => {
+        const active = Number(thumb.dataset.galleryIndex) === mediaIndex;
+        thumb.classList.toggle('active', active);
+        thumb.setAttribute('aria-pressed', String(active));
       });
+    };
+    const showMedia = (mediaIndex) => {
+      const thumb = thumbs.find((item) => Number(item.dataset.galleryIndex) === mediaIndex);
+      if (!thumb) return;
+      player.pause();
+      const caption = wrap.querySelector('#gallery-caption');
+      if (thumb.hasAttribute('data-video')) {
+        const video = videos[Number(thumb.dataset.video)];
+        player.src = video.src;
+        player.poster = video.poster || images[0];
+        player.hidden = false;
+        imageTrigger.hidden = true;
+        caption.dataset.en = video.title_en || 'Product video';
+        caption.dataset.ro = video.title_ro || video.title_en || 'Video produs';
+        caption.hidden = false;
+      } else {
+        const imageIndex = Number(thumb.dataset.image);
+        const path = images[imageIndex];
+        mainImage.src = path;
+        mainImage.alt = imageAlt(path)[document.documentElement.lang] || imageAlt(path).en || p.name_en;
+        imageTrigger.hidden = false;
+        player.hidden = true;
+        player.removeAttribute('src');
+        player.load();
+        caption.hidden = true;
+      }
+      setActiveThumb(mediaIndex);
+      if (window.GGSLang) window.GGSLang.refresh();
+    };
+    const stepGallery = (direction) => {
+      if (thumbs.length < 2) return;
+      const next = (activeMediaIndex + direction + thumbs.length) % thumbs.length;
+      showMedia(next);
+    };
+    const showLightboxImage = (imageIndex) => {
+      lightboxImageIndex = (imageIndex + images.length) % images.length;
+      const path = images[lightboxImageIndex];
+      lightboxImage.src = path;
+      lightboxImage.alt = imageAlt(path)[document.documentElement.lang] || imageAlt(path).en || p.name_en;
+      lightboxCount.textContent = `${lightboxImageIndex + 1} / ${images.length}`;
+      const hasMultiple = images.length > 1;
+      wrap.querySelector('[data-lightbox-prev]').hidden = !hasMultiple;
+      wrap.querySelector('[data-lightbox-next]').hidden = !hasMultiple;
+      const thumb = thumbs.find((item) => Number(item.dataset.image) === lightboxImageIndex);
+      if (thumb) showMedia(Number(thumb.dataset.galleryIndex));
+    };
+    thumbs.forEach((thumb) => thumb.addEventListener('click', () => showMedia(Number(thumb.dataset.galleryIndex))));
+    wrap.querySelector('[data-gallery-prev]').addEventListener('click', () => stepGallery(-1));
+    wrap.querySelector('[data-gallery-next]').addEventListener('click', () => stepGallery(1));
+    imageTrigger.addEventListener('click', () => {
+      if (suppressImageClick) { suppressImageClick = false; return; }
+      const imageIndex = Number(thumbs.find((thumb) => Number(thumb.dataset.galleryIndex) === activeMediaIndex)?.dataset.image || 0);
+      showLightboxImage(imageIndex);
+      lightbox.showModal();
     });
+    wrap.querySelector('[data-lightbox-close]').addEventListener('click', () => lightbox.close());
+    wrap.querySelector('[data-lightbox-prev]').addEventListener('click', () => showLightboxImage(lightboxImageIndex - 1));
+    wrap.querySelector('[data-lightbox-next]').addEventListener('click', () => showLightboxImage(lightboxImageIndex + 1));
+    lightbox.addEventListener('click', (event) => { if (event.target === lightbox) lightbox.close(); });
+    lightbox.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft' && images.length > 1) {
+        showLightboxImage(lightboxImageIndex - 1);
+      } else if (event.key === 'ArrowRight' && images.length > 1) {
+        showLightboxImage(lightboxImageIndex + 1);
+      }
+    });
+    galleryMain.addEventListener('touchstart', (event) => {
+      if (event.touches.length !== 1 || event.target.closest('video')) return;
+      touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }, { passive: true });
+    galleryMain.addEventListener('touchend', (event) => {
+      if (!touchStart || !event.changedTouches.length) return;
+      const dx = event.changedTouches[0].clientX - touchStart.x;
+      const dy = event.changedTouches[0].clientY - touchStart.y;
+      touchStart = null;
+      if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.2 || thumbs.length < 2) return;
+      suppressImageClick = true;
+      stepGallery(dx < 0 ? 1 : -1);
+      window.setTimeout(() => { suppressImageClick = false; }, 500);
+    }, { passive: true });
+    galleryMain.querySelectorAll('[data-gallery-prev], [data-gallery-next]').forEach((button) => {
+      button.hidden = thumbs.length < 2;
+    });
+    const updateGalleryLabels = () => {
+      const isRo = document.documentElement.lang === 'ro';
+      imageTrigger.setAttribute('aria-label', isRo ? 'Deschide fotografia marita' : 'Open larger photo');
+      wrap.querySelector('[data-gallery-prev]').setAttribute('aria-label', isRo ? 'Fotografia precedenta' : 'Previous photo');
+      wrap.querySelector('[data-gallery-next]').setAttribute('aria-label', isRo ? 'Fotografia urmatoare' : 'Next photo');
+      wrap.querySelector('[data-lightbox-close]').setAttribute('aria-label', isRo ? 'Inchide fotografia' : 'Close photo');
+      wrap.querySelector('[data-lightbox-prev]').setAttribute('aria-label', isRo ? 'Fotografia precedenta' : 'Previous photo');
+      wrap.querySelector('[data-lightbox-next]').setAttribute('aria-label', isRo ? 'Fotografia urmatoare' : 'Next photo');
+      lightbox.setAttribute('aria-label', isRo ? 'Vizualizator foto produs' : 'Product photo viewer');
+    };
+    updateGalleryLabels();
+    document.addEventListener('ggs:language-changed', updateGalleryLabels);
 
     const qtyInput = document.getElementById('detail-qty');
     wrap.querySelector('[data-qty-minus]').addEventListener('click', () => {
