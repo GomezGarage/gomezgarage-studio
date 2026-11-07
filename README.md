@@ -61,6 +61,9 @@ full design decisions, page structure, schema and payment flow.
   [the customer accounts migration](database/migrations/20261107_customer_accounts.sql).
   For an existing installation, back up the database and import that migration once
   after pulling the matching code. Git pull does not run the migration.
+  If an import stopped partway through, use
+  [the recovery migration](database/migrations/20261107_customer_accounts_recovery.sql)
+  instead of re-running the original file.
 - Apache renders `product.html`, `products.html` and `sitemap.xml` through their PHP
   counterparts. Product copy/metadata and published catalog links are available in
   initial HTML; the sitemap follows published products automatically. Existing product

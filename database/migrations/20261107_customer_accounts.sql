@@ -40,7 +40,7 @@ CREATE TABLE customer_addresses (
 
 ALTER TABLE orders
   MODIFY status ENUM('pending','paid','processing','printing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending',
-  ADD COLUMN customer_account_id INT UNSIGNED NULL AFTER customer_type,
+  ADD COLUMN customer_account_id INT UNSIGNED NULL,
   ADD KEY idx_orders_customer_account (customer_account_id),
   ADD CONSTRAINT fk_orders_customer_account FOREIGN KEY (customer_account_id) REFERENCES customer_accounts(id) ON DELETE SET NULL;
 
