@@ -762,10 +762,12 @@ section { padding: 100px 0; }
 /* ---------- Process teaser ---------- */
 .process-steps {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
 }
+.about-process-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .process-step {
+  min-width: 0;
   padding: 36px 28px;
   text-align: center;
   border: 1px solid var(--border);
@@ -782,8 +784,17 @@ section { padding: 100px 0; }
 .process-step h3 { font-size: 20px; margin-bottom: 10px; }
 .process-step p { color: var(--text-secondary); font-size: 14px; }
 
+@media (max-width: 980px) {
+  .about-process-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 780px) {
   .process-steps { grid-template-columns: 1fr; }
+  .about-process-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .about-process-steps { grid-template-columns: 1fr; }
 }
 
 /* ---------- Custom order CTA banner ---------- */
