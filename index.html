@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/studio/assets/images/favicon-32.png?v=2">
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
 <link rel="apple-touch-icon" href="/studio/assets/images/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-hero-cad-v2">
+<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-home-sections">
 <link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
 </head>
 <body>
@@ -75,57 +75,64 @@
   </section>
 
   <!-- BRAND STORY -->
-  <section class="carbon-bg">
+  <section class="carbon-bg studio-story">
     <div class="container">
-      <div class="section-head reveal">
-        <span class="section-label mono" data-en="The Studio" data-ro="Studioul">The Studio</span>
-        <h2 data-en="Objects with intent" data-ro="Obiecte cu intentie">Objects with intent</h2>
-        <p data-en="Gomez Garage Studio designs and prints every product in-house, near Bucharest, Romania. Every piece starts as a CAD model and ends as something built to outlast the desk it sits on." data-ro="Gomez Garage Studio proiecteaza si printeaza fiecare produs in-house, langa Bucuresti, Romania. Fiecare piesa incepe ca model CAD si se termina ca un obiect facut sa dureze mai mult decat biroul pe care sta.">Gomez Garage Studio designs and prints every product in-house, near Bucharest, Romania. Every piece starts as a CAD model and ends as something built to outlast the desk it sits on.</p>
+      <div class="studio-story-grid">
+        <div class="studio-story-copy reveal">
+          <span class="section-label mono" data-en="The Studio" data-ro="Studioul">The Studio</span>
+          <h2 data-en="Original designs. Made in-house." data-ro="Design original. Realizat in atelier.">Original designs. Made in-house.</h2>
+          <p data-en="We design each piece near Bucharest, choose the material for its purpose, and print it in our own workshop." data-ro="Proiectam fiecare piesa langa Bucuresti, alegem materialul potrivit scopului ei si o printam in atelierul nostru.">We design each piece near Bucharest, choose the material for its purpose, and print it in our own workshop.</p>
+          <a href="/studio/about.html" class="btn btn-outline" data-en="Inside the Studio" data-ro="Descopera studioul">Inside the Studio</a>
+        </div>
+        <figure class="studio-story-visual reveal">
+          <img src="/studio/assets/images/about-design-wireframe.webp" alt="Abstract CAD wireframe model" loading="lazy" decoding="async">
+          <span class="studio-visual-tag mono" data-en="DESIGNED IN ROMANIA" data-ro="PROIECTAT IN ROMANIA">DESIGNED IN ROMANIA</span>
+          <figcaption class="studio-visual-caption mono"><span>GGS / 01</span><span>CAD → FDM</span></figcaption>
+        </figure>
       </div>
-      <div class="value-grid">
-        <div class="value-item reveal">
-          <div class="value-icon">✎</div>
-          <h4 data-en="Designed from scratch" data-ro="Proiectat de la zero">Designed from scratch</h4>
-          <p data-en="Every product starts as an original CAD model, not a downloaded file." data-ro="Fiecare produs incepe ca model CAD original, nu un fisier descarcat.">Every product starts as an original CAD model, not a downloaded file.</p>
+      <div class="studio-proof-grid">
+        <div class="studio-proof reveal">
+          <span class="mono">01</span>
+          <div><h3 data-en="Original CAD" data-ro="CAD original">Original CAD</h3><p data-en="Every piece starts with our own design." data-ro="Fiecare piesa incepe cu un design propriu.">Every piece starts with our own design.</p></div>
         </div>
-        <div class="value-item reveal">
-          <div class="value-icon">⛭</div>
-          <h4 data-en="Printed in-house" data-ro="Printat in-house">Printed in-house</h4>
-          <p data-en="Printed in-house on industrial FDM printers with heated chambers; parts receive extra hand finishing when needed." data-ro="Printat in-house pe imprimante industriale FDM cu camera incalzita; piesele primesc finisare manuala suplimentara cand este cazul.">Printed in-house on industrial FDM printers with heated chambers; parts receive extra hand finishing when needed.</p>
+        <div class="studio-proof reveal">
+          <span class="mono">02</span>
+          <div><h3 data-en="Made in-house" data-ro="Realizat in atelier">Made in-house</h3><p data-en="Printed and checked in our workshop." data-ro="Printat si verificat in atelierul nostru.">Printed and checked in our workshop.</p></div>
         </div>
-        <div class="value-item reveal">
-          <div class="value-icon">⇢</div>
-          <h4 data-en="Ships EU &amp; UK" data-ro="Livrare UE si UK">Ships EU &amp; UK</h4>
-          <p data-en="Packed and shipped from Romania to the EU and United Kingdom." data-ro="Ambalat si expediat din Romania catre UE si Regatul Unit.">Packed and shipped from Romania to the EU and United Kingdom.</p>
+        <div class="studio-proof reveal">
+          <span class="mono">03</span>
+          <div><h3 data-en="EU &amp; UK shipping" data-ro="Livrare in UE si UK">EU &amp; UK shipping</h3><p data-en="Packed and shipped from Romania." data-ro="Ambalat si expediat din Romania.">Packed and shipped from Romania.</p></div>
         </div>
       </div>
-      <p style="margin-top:40px;"><a href="/studio/about.html" class="btn btn-outline" data-en="More about the process" data-ro="Mai multe despre proces">More about the process</a></p>
     </div>
   </section>
 
   <!-- PROCESS TEASER -->
-  <section id="process">
+  <section class="home-process" id="process">
     <div class="container">
       <div class="section-head reveal">
         <span class="section-label mono" data-en="Process" data-ro="Proces">Process</span>
         <h2 data-en="Design. Print. Deliver." data-ro="Design. Print. Livrare.">Design. Print. Deliver.</h2>
       </div>
-      <div class="process-steps">
-        <div class="process-step reveal">
-          <span class="step-num mono">01</span>
+      <div class="home-process-steps">
+        <article class="home-process-step reveal">
+          <div class="home-process-marker"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5 40 14v20L24 43 8 34V14L24 5Z"/><path d="m8 14 16 9 16-9M24 23v20M16 9l16 9M32 9l-16 9"/></svg></div>
+          <span class="step-num mono">01 / CAD</span>
           <h3 data-en="Design" data-ro="Design">Design</h3>
-          <p data-en="Modeled from scratch in CAD, tolerance-checked before it ever gets printed." data-ro="Modelat de la zero in CAD, verificat la toleranta inainte de a fi printat.">Modeled from scratch in CAD, tolerance-checked before it ever gets printed.</p>
-        </div>
-        <div class="process-step reveal">
-          <span class="step-num mono">02</span>
-          <h3 data-en="Print" data-ro="Print">Print</h3>
-          <p data-en="Printed on industrial FDM machines in fiber-reinforced materials." data-ro="Printat pe masini industriale FDM din materiale ranforsate cu fibra.">Printed on industrial FDM machines in fiber-reinforced materials.</p>
-        </div>
-        <div class="process-step reveal">
-          <span class="step-num mono">03</span>
+          <p data-en="Modeled from scratch and checked for print tolerances." data-ro="Modelat de la zero si verificat pentru tolerantele de printare.">Modeled from scratch and checked for print tolerances.</p>
+        </article>
+        <article class="home-process-step reveal">
+          <div class="home-process-marker"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 7h26v8H11zM15 15v8l-4 5v12h26V28l-4-5v-8M15 34h18M19 23h10M20 7V4h8v3M21 28v4h6v-4"/></svg></div>
+          <span class="step-num mono">02 / FDM</span>
+          <h3 data-en="Print" data-ro="Printare">Print</h3>
+          <p data-en="Built layer by layer with a material chosen for the job." data-ro="Realizat strat cu strat, cu un material ales pentru rolul piesei.">Built layer by layer with a material chosen for the job.</p>
+        </article>
+        <article class="home-process-step reveal">
+          <div class="home-process-marker"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m24 5 17 9v20l-17 9-17-9V14l17-9Z"/><path d="m7 14 17 10 17-10M24 24v19M15 9l17 10M33 9 16 19"/></svg></div>
+          <span class="step-num mono" data-en="03 / SHIP" data-ro="03 / LIVRARE">03 / SHIP</span>
           <h3 data-en="Deliver" data-ro="Livrare">Deliver</h3>
-          <p data-en="Checked before dispatch and hand-finished where the design calls for it, then shipped across the EU and UK." data-ro="Verificat inainte de expediere si finisat manual cand designul o cere, apoi livrat in UE si UK.">Checked before dispatch and hand-finished where the design calls for it, then shipped across the EU and UK.</p>
-        </div>
+          <p data-en="Checked before dispatch; extra hand finishing when needed." data-ro="Verificat inainte de expediere; finisare manuala suplimentara cand este cazul.">Checked before dispatch; extra hand finishing when needed.</p>
+        </article>
       </div>
     </div>
   </section>
