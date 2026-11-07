@@ -288,6 +288,62 @@ section { position: relative; }
   .hero h1 { font-size: clamp(40px, 11vw, 60px); }
 }
 
+.about-hero {
+  min-height: clamp(520px, 60vh, 720px);
+  min-height: clamp(520px, 60svh, 720px);
+  padding: 0;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(90deg, rgba(10,10,10,0.12) 0%, rgba(10,10,10,0.2) 48%, rgba(10,10,10,0.02) 78%, rgba(10,10,10,0.12) 100%),
+    url('../images/about-hero-cad-to-object.webp');
+  background-size: cover;
+  background-position: center;
+}
+.about-hero .hero-content { max-width: 640px; }
+
+@media (max-width: 720px) {
+  .about-hero {
+    min-height: min(720px, calc(100vh - var(--header-height)));
+    min-height: min(720px, calc(100svh - var(--header-height)));
+    background-image:
+      linear-gradient(90deg, rgba(10,10,10,0.48), rgba(10,10,10,0.3)),
+      url('../images/about-hero-cad-to-object.webp');
+    background-position: 62% center;
+  }
+}
+
+.about-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+.about-gallery-card {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: transform var(--transition), border-color var(--transition);
+}
+.about-gallery-card:hover { transform: translateY(-4px); border-color: #333; }
+.about-gallery-card > img {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-bottom: 1px solid var(--border);
+}
+.about-gallery-copy { padding: 18px 20px 20px; }
+.about-gallery-copy > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.about-gallery-copy h3 { margin-bottom: 6px; font-size: 20px; }
+.about-gallery-copy p { color: var(--text-secondary); font-size: 14px; }
+@media (max-width: 980px) { .about-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .about-gallery { grid-template-columns: 1fr; } }
+
 /* ---------- Reveal animation ---------- */
 .reveal {
   opacity: 0;

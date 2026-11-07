@@ -8,13 +8,13 @@
 <link rel="canonical" href="https://gomezgarage.eu/studio/about.html">
 <meta property="og:title" content="About — Gomez Garage Studio">
 <meta property="og:description" content="The story, process and materials behind Gomez Garage Studio.">
-<meta property="og:image" content="https://gomezgarage.eu/studio/assets/images/about-desk.svg">
+<meta property="og:image" content="https://gomezgarage.eu/studio/assets/images/about-hero-cad-to-object.webp">
 <meta property="og:url" content="https://gomezgarage.eu/studio/about.html">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="32x32" href="/studio/assets/images/favicon-32.png?v=2">
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
 <link rel="apple-touch-icon" href="/studio/assets/images/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="/studio/assets/css/main.css">
+<link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-about-visuals">
 <link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
 </head>
 <body>
@@ -47,7 +47,7 @@
 </header>
 
 <main>
-  <section class="hero" style="min-height:60vh; background-image:linear-gradient(180deg, rgba(10,10,10,0.6), rgba(10,10,10,0.95)), url('/studio/assets/images/about-desk.svg'); background-size:cover; background-position:center;">
+  <section class="hero about-hero">
     <div class="container hero-content">
       <span class="hero-eyebrow mono" data-en="ABOUT" data-ro="DESPRE">ABOUT</span>
       <h1 data-en="Near Bucharest, Romania." data-ro="Langa Bucuresti, Romania.">Near Bucharest, Romania.</h1>
@@ -96,17 +96,38 @@
     </div>
   </section>
 
-  <section>
+  <section class="carbon-bg">
     <div class="container">
       <div class="section-head reveal">
-        <span class="section-label mono" data-en="Equipment" data-ro="Echipament">Equipment</span>
-        <h2 data-en="The setup" data-ro="Setup-ul">The setup</h2>
-        <p data-en="Industrial FDM printers with heated chambers, run and calibrated in-house for consistent, warp-free prints at scale." data-ro="Imprimante industriale FDM cu camera incalzita, operate si calibrate in-house pentru printuri consistente, fara deformari, la scara.">Industrial FDM printers with heated chambers, run and calibrated in-house for consistent, warp-free prints at scale.</p>
+        <span class="section-label mono" data-en="Inside the Studio" data-ro="Din studio">Inside the Studio</span>
+        <h2 data-en="From design to finished piece" data-ro="De la design la piesa finala">From design to finished piece</h2>
+        <p data-en="Each piece begins as a CAD model, takes shape layer by layer, then is checked and finished by hand." data-ro="Fiecare piesa incepe ca model CAD, prinde forma strat cu strat, apoi este verificata si finisata manual.">Each piece begins as a CAD model, takes shape layer by layer, then is checked and finished by hand.</p>
       </div>
-      <div class="product-grid">
-        <div class="product-card reveal"><div class="product-card-media"><img class="img-primary" src="/studio/assets/images/about-setup.svg" alt="Workshop setup"></div></div>
-        <div class="product-card reveal"><div class="product-card-media"><img class="img-primary" src="/studio/assets/images/about-printers.svg" alt="Industrial FDM printers"></div></div>
-        <div class="product-card reveal"><div class="product-card-media"><img class="img-primary" src="/studio/assets/images/about-desk.svg" alt="Carbon fiber desk"></div></div>
+      <div class="about-gallery">
+        <article class="about-gallery-card reveal">
+          <img src="/studio/assets/images/about-design-wireframe.webp" alt="Abstract CAD wireframe model" loading="lazy" decoding="async">
+          <div class="about-gallery-copy">
+            <span class="mono" data-en="01 / Design" data-ro="01 / Design">01 / Design</span>
+            <h3 data-en="Original CAD design" data-ro="Design CAD original">Original CAD design</h3>
+            <p data-en="Every product starts with an original model." data-ro="Fiecare produs incepe cu un model original.">Every product starts with an original model.</p>
+          </div>
+        </article>
+        <article class="about-gallery-card reveal">
+          <img src="/studio/assets/images/about-print-fdm.webp" alt="FDM printer building a form layer by layer" loading="lazy" decoding="async">
+          <div class="about-gallery-copy">
+            <span class="mono" data-en="02 / Print" data-ro="02 / Printare">02 / Print</span>
+            <h3 data-en="Printed in-house" data-ro="Printat in-house">Printed in-house</h3>
+            <p data-en="Built layer by layer in the workshop." data-ro="Realizat strat cu strat in atelier.">Built layer by layer in the workshop.</p>
+          </div>
+        </article>
+        <article class="about-gallery-card reveal">
+          <img src="/studio/assets/images/about-finish-detail.webp" alt="Close-up of fine layers on a dark printed surface" loading="lazy" decoding="async">
+          <div class="about-gallery-copy">
+            <span class="mono" data-en="03 / Finish" data-ro="03 / Finisaj">03 / Finish</span>
+            <h3 data-en="Finished by hand" data-ro="Finisat manual">Finished by hand</h3>
+            <p data-en="Each piece is checked before it is ready to ship." data-ro="Fiecare piesa este verificata inainte de livrare.">Each piece is checked before it is ready to ship.</p>
+          </div>
+        </article>
       </div>
     </div>
   </section>
