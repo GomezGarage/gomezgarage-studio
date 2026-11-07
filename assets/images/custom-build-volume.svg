@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img" aria-labelledby="title desc">
+  <title id="title">Print volume: 390 by 390 by 340 millimeters</title>
+  <desc id="desc">Technical isometric drawing of a cubic build volume with width and depth of 390 millimeters and height of 340 millimeters.</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#252525" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10Z" fill="#ed382d"/>
+    </marker>
+    <style>
+      .dimension { fill: none; stroke: #ed382d; stroke-width: 2; marker-start: url(#arrow); marker-end: url(#arrow); }
+      .extension { stroke: #8b302b; stroke-width: 1; stroke-dasharray: 5 6; }
+      .measure { fill: #f3f3f3; font: 700 25px Arial, sans-serif; letter-spacing: 1px; }
+      .small { fill: #858585; font: 12px Arial, sans-serif; letter-spacing: 3px; }
+    </style>
+  </defs>
+  <rect width="960" height="600" fill="#101010"/>
+  <rect width="960" height="600" fill="url(#grid)" opacity=".62"/>
+  <polygon points="480,104 718,226 480,348 242,226" fill="#1a1a1a" stroke="#666" stroke-width="2"/>
+  <polygon points="242,226 480,348 480,492 242,370" fill="#141414" stroke="#555" stroke-width="2"/>
+  <polygon points="480,348 718,226 718,370 480,492" fill="#1d1d1d" stroke="#555" stroke-width="2"/>
+  <path d="M242 226 480 348 718 226M480 348V492" fill="none" stroke="#aaa" stroke-width="2"/>
+  <path d="M242 370 480 492 718 370" fill="none" stroke="#7b2925" stroke-width="2"/>
+  <path d="M242 226V370M718 226V370" fill="none" stroke="#4d4d4d" stroke-width="1" stroke-dasharray="6 7"/>
+
+  <path class="extension" d="M242 370 198 392M480 492 436 514M480 492 526 515M718 370 764 393M718 226 790 226M718 370 790 370"/>
+  <path class="dimension" d="M205 397 443 519"/>
+  <path class="dimension" d="M517 519 755 397"/>
+  <path class="dimension" d="M790 235V361"/>
+
+  <rect x="283" y="426" width="116" height="42" rx="3" fill="#111" stroke="#5b2622"/>
+  <text x="341" y="455" text-anchor="middle" class="measure">390 mm</text>
+  <rect x="558" y="426" width="116" height="42" rx="3" fill="#111" stroke="#5b2622"/>
+  <text x="616" y="455" text-anchor="middle" class="measure">390 mm</text>
+  <rect x="804" y="278" width="108" height="42" rx="3" fill="#111" stroke="#5b2622"/>
+  <text x="858" y="307" text-anchor="middle" class="measure">340 mm</text>
+</svg>

@@ -167,7 +167,7 @@ gomezgarage.eu/studio/
 
 - Hero scurt: "Built to your spec."
 - Galerie selectiva de proiecte custom reale, cu imagini si descrieri bilingve; nu se afiseaza carduri demo generice
-- Sectiune "What we can make": materiale disponibile (PLA, PETG, ABS, ASA, PLA-CF, ABS-CF, ABS-GF, ASA-CF, ASA-GF, PA6-CF), tipuri de produse custom si volum maxim de printare 390 x 390 x 340 mm per piesa
+- Sectiune "What we can make": carduri vizuale pentru materiale (PLA, PETG, ABS, ASA, PLA-CF, ABS-CF, ABS-GF, ASA-CF, ASA-GF, PA6-CF), tipuri de produse custom si volumul maxim de printare de 390 x 390 x 340 mm per piesa
 - Formular contact:
   - Nume
   - Email
