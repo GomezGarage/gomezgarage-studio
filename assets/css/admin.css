@@ -222,3 +222,14 @@ table.admin-table { width: 100%; border-collapse: collapse; min-width: 640px; }
   font-size: 12px;
   color: var(--text-muted);
 }
+.product-video-editor { padding: 18px 0; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+.specs-editor-row { grid-template-columns: 1fr 1fr auto; }
+.specs-editor-row:has(input[name="spec_key_ro[]"]) { grid-template-columns: 1fr 1fr; }
+.specs-editor-row:has(input[name="spec_key_ro[]"]) button { justify-self: end; }
+.image-upload-grid .thumb-wrap:has(input[name^="image_alt"]) { width: 230px; }
+.image-upload-grid .thumb-wrap { height: auto; }
+.image-upload-grid .thumb-wrap label { display: block; margin-top: 8px; font-size: 11px; color: var(--text-secondary); }
+.image-upload-grid .thumb-wrap input[type="text"], .specs-editor-row input {
+  width: 100%; min-width: 0; padding: 10px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius); font: inherit;
+}

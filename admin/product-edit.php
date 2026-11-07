@@ -2,10 +2,13 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/catalog.php';
+require_once __DIR__ . '/../includes/product-content.php';
 
 ggs_require_admin();
 
 $db = ggs_db();
+$contentEnabled = ggs_content_available($db);
+$_SESSION['product_edit_csrf'] ??= bin2hex(random_bytes(32));
 $id = isset($_GET['id']) && ctype_digit($_GET['id']) ? (int) $_GET['id'] : null;
 if (isset($_POST['id']) && ctype_digit($_POST['id'])) {
   $id = (int) $_POST['id'];
@@ -34,10 +37,18 @@ if ($id) {
   $existing['specs'] = json_decode($existing['specs'] ?? '[]', true) ?: [];
   $product = array_merge($product, $existing);
 }
+$product = array_merge(ggs_content_defaults(), $product);
+if ($id) $product = ggs_with_product_content($db, [$product])[0];
 
 $errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+  $errors[] = 'This upload exceeds the server request limit. Ask the host to increase post_max_size and upload_max_filesize, or upload a smaller file.';
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 'save') {
+  if (!hash_equals($_SESSION['product_edit_csrf'], (string) ($_POST['csrf'] ?? ''))) {
+    $errors[] = 'The form expired. Reload this page and try again.';
+  }
   $product['name_en'] = trim($_POST['name_en'] ?? '');
   $product['name_ro'] = trim($_POST['name_ro'] ?? '');
   $product['desc_short_en'] = trim($_POST['desc_short_en'] ?? '');
@@ -60,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
 
   // ---- Specs (key/value repeatable rows) ----
   $specs = [];
+  $specsRo = [];
   $specKeys = $_POST['spec_key'] ?? [];
   $specValues = $_POST['spec_value'] ?? [];
   foreach ($specKeys as $i => $key) {
@@ -67,9 +79,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
     $value = trim($specValues[$i] ?? '');
     if ($key !== '' && $value !== '') {
       $specs[] = ['key' => $key, 'value' => $value];
+      $specsRo[] = ['key' => trim($_POST['spec_key_ro'][$i] ?? ''), 'value' => trim($_POST['spec_value_ro'][$i] ?? '')];
     }
   }
   $product['specs'] = $specs;
+  if ($contentEnabled) {
+    $product['specs_ro'] = $specsRo;
+    foreach (['sku', 'seo_title_en', 'seo_title_ro', 'seo_description_en', 'seo_description_ro'] as $field) {
+      $product[$field] = trim((string) ($_POST[$field] ?? ''));
+      if (mb_strlen($product[$field]) > ($field === 'sku' ? 80 : 300)) $errors[] = 'The ' . $field . ' field is too long.';
+    }
+    $product['image_alt'] = [];
+    foreach ($product['images'] as $i => $path) {
+      $product['image_alt'][$path] = ['en' => mb_substr(trim($_POST['image_alt_en'][$i] ?? ''), 0, 300),
+        'ro' => mb_substr(trim($_POST['image_alt_ro'][$i] ?? ''), 0, 300)];
+    }
+    $keptVideos = [];
+    foreach ($product['videos'] as $i => $video) {
+      if (in_array((string) $i, $_POST['remove_video'] ?? [], true)) continue;
+      if (!ggs_video_path($video['src'] ?? '')) continue;
+      $video['title_en'] = mb_substr(trim($_POST['video_title_en'][$i] ?? ''), 0, 150);
+      $video['title_ro'] = mb_substr(trim($_POST['video_title_ro'][$i] ?? ''), 0, 150);
+      $poster = $_POST['video_poster'][$i] ?? '';
+      $video['poster'] = in_array($poster, $product['images'], true) ? $poster : '';
+      $video['_order'] = (int) ($_POST['video_order'][$i] ?? $i);
+      $keptVideos[] = $video;
+    }
+    usort($keptVideos, static fn($a, $b) => $a['_order'] <=> $b['_order']);
+    foreach ($keptVideos as &$video) unset($video['_order']);
+    unset($video);
+    $product['videos'] = $keptVideos;
+  }
 
   // ---- Images: keep existing minus removed, reorder for primary, append new uploads ----
   $existingImages = $product['images'];
@@ -83,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
 
   $uploadDir = __DIR__ . '/../assets/images/products/';
   $newImages = [];
-  if (!empty($_FILES['images']['name'][0] ?? null)) {
+  if (!$errors && !empty($_FILES['images']['name'][0] ?? null)) {
     foreach ($_FILES['images']['name'] as $i => $name) {
       if ($_FILES['images']['error'][$i] !== UPLOAD_ERR_OK) continue;
       $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
@@ -95,9 +135,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
     }
   }
   $product['images'] = array_merge($kept, $newImages);
+  foreach ($product['videos'] as &$video) {
+    if (!in_array($video['poster'] ?? '', $product['images'], true)) $video['poster'] = '';
+  }
+  unset($video);
   if ($product['status'] === 'published' && !$product['images']) $errors[] = 'Add a product photograph before publishing.';
 
+  $newVideos = [];
+  if ($contentEnabled && !$errors && !empty($_FILES['videos']['name'][0] ?? null)) {
+    if (count($product['videos']) + count($_FILES['videos']['name']) > 4) {
+      $errors[] = 'Use up to four videos per product.';
+    } else {
+      try {
+        foreach ($_FILES['videos']['name'] as $i => $name) {
+          $file = [];
+          foreach (['name', 'tmp_name', 'error', 'size'] as $key) $file[$key] = $_FILES['videos'][$key][$i];
+          $newVideos[] = ['src' => ggs_upload_product_video($file), 'title_en' => '', 'title_ro' => '', 'poster' => ''];
+        }
+      } catch (RuntimeException $e) {
+        foreach ($newVideos as $video) @unlink(__DIR__ . '/../' . substr($video['src'], strlen('/studio/')));
+        $newVideos = [];
+        $errors[] = $e->getMessage();
+      }
+    }
+  }
+  $product['videos'] = array_merge($product['videos'], $newVideos);
+
   if (!$errors) {
+    $db->beginTransaction();
+    try {
     if (!$id) {
       $product['slug'] = ggs_unique_slug($db, $product['name_en']);
       $stmt = $db->prepare(
@@ -135,6 +201,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
       ]);
     }
 
+    if ($contentEnabled) {
+      $extra = array_intersect_key($product, ggs_content_defaults());
+      ggs_save_product_content($db, $id, $extra);
+    }
+    $db->commit();
+    } catch (Throwable $e) {
+      if ($db->inTransaction()) $db->rollBack();
+      foreach ($newVideos as $video) @unlink(__DIR__ . '/../' . substr($video['src'], strlen('/studio/')));
+      throw $e;
+    }
     header('Location: /studio/admin/products.php');
     exit;
   }
@@ -171,6 +247,7 @@ require __DIR__ . '/../includes/admin-header.php';
 
 <form method="post" action="/studio/admin/product-edit.php<?= $id ? '?id=' . $id : '' ?>" enctype="multipart/form-data">
   <input type="hidden" name="id" value="<?= $id ?? '' ?>">
+  <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_edit_csrf']) ?>">
 
   <div class="admin-panel">
     <h3>Name &amp; description</h3>
@@ -239,6 +316,10 @@ require __DIR__ . '/../includes/admin-header.php';
           <div class="thumb-wrap">
             <?php if ($i === 0): ?><span class="primary-flag">PRIMARY</span><?php endif; ?>
             <img src="<?= htmlspecialchars($img) ?>" alt="">
+            <?php if ($contentEnabled): ?>
+              <label>Alt text EN<input type="text" maxlength="300" name="image_alt_en[<?= $i ?>]" value="<?= htmlspecialchars($product['image_alt'][$img]['en'] ?? '') ?>"></label>
+              <label>Alt text RO<input type="text" maxlength="300" name="image_alt_ro[<?= $i ?>]" value="<?= htmlspecialchars($product['image_alt'][$img]['ro'] ?? '') ?>"></label>
+            <?php endif; ?>
             <label style="display:block;font-size:11px;margin-top:4px;">
               <input type="radio" name="primary_image" value="<?= htmlspecialchars($img) ?>" <?= $i === 0 ? 'checked' : '' ?>> Primary
             </label>
@@ -256,14 +337,20 @@ require __DIR__ . '/../includes/admin-header.php';
     </div>
   </div>
 
+  <?php require __DIR__ . '/../includes/admin-product-content.php'; ?>
+
   <div class="admin-panel">
     <h3>Technical specs</h3>
     <div id="specs-editor">
       <?php $specs = $product['specs'] ?: [['key' => '', 'value' => '']]; ?>
-      <?php foreach ($specs as $spec): ?>
+      <?php foreach ($specs as $i => $spec): ?>
         <div class="specs-editor-row">
           <input type="text" name="spec_key[]" placeholder="Dimensions" value="<?= htmlspecialchars($spec['key']) ?>">
           <input type="text" name="spec_value[]" placeholder="220 x 100 x 60 mm" value="<?= htmlspecialchars($spec['value']) ?>">
+          <?php if ($contentEnabled): ?>
+            <input type="text" name="spec_key_ro[]" placeholder="Dimensiuni RO" value="<?= htmlspecialchars($product['specs_ro'][$i]['key'] ?? '') ?>">
+            <input type="text" name="spec_value_ro[]" placeholder="Valoare RO" value="<?= htmlspecialchars($product['specs_ro'][$i]['value'] ?? '') ?>">
+          <?php endif; ?>
           <button type="button" class="btn btn-outline btn-sm" data-remove-spec-row>×</button>
         </div>
       <?php endforeach; ?>
@@ -280,6 +367,9 @@ document.getElementById('add-spec-row').addEventListener('click', function () {
   var row = document.createElement('div');
   row.className = 'specs-editor-row';
   row.innerHTML = '<input type="text" name="spec_key[]" placeholder="Key"><input type="text" name="spec_value[]" placeholder="Value"><button type="button" class="btn btn-outline btn-sm" data-remove-spec-row>×</button>';
+  <?php if ($contentEnabled): ?>
+  row.querySelector('button').insertAdjacentHTML('beforebegin', '<input type="text" name="spec_key_ro[]" placeholder="Denumire RO"><input type="text" name="spec_value_ro[]" placeholder="Valoare RO">');
+  <?php endif; ?>
   wrap.appendChild(row);
 });
 document.getElementById('specs-editor').addEventListener('click', function (e) {

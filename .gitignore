@@ -16,6 +16,10 @@ config.php
 assets/images/products/*
 !assets/images/products/*.svg
 
+# Product videos are uploaded by the owner and survive Git pulls.
+assets/videos/products/*
+!assets/videos/products/.htaccess
+
 # Facturi PDF generate - contin date personale ale clientilor, niciodata pe git
 invoices/*
 !invoices/.htaccess

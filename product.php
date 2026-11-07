@@ -2,6 +2,7 @@
 /** Apache serves product.html through this renderer; existing id links remain valid. */
 ini_set('display_errors', '0');
 require_once __DIR__ . '/includes/catalog-view.php';
+require_once __DIR__ . '/includes/product-content.php';
 $template = file_get_contents(__DIR__ . '/product.html');
 try {
     require_once __DIR__ . '/includes/db.php';
@@ -22,7 +23,7 @@ try {
         $template = ggs_catalog_slot($template, 'PRODUCT_HEAD', '<title>Product not found | Gomez Garage Studio</title><meta name="robots" content="noindex">');
         $template = ggs_catalog_slot($template, 'PRODUCT_DETAIL', '<p class="empty-state" data-en="Product not found." data-ro="Produsul nu a fost gasit.">Product not found.</p>');
     } else {
-        $product = ggs_catalog_product($product);
+        $product = ggs_catalog_product(ggs_with_product_content(ggs_db(), [$product])[0]);
         $template = ggs_catalog_slot($template, 'PRODUCT_HEAD', ggs_product_head($product));
         $template = ggs_catalog_slot($template, 'PRODUCT_DETAIL', ggs_product_body($product));
         $template = str_replace('<!--PRODUCT_BREADCRUMB-->', '<span data-en="' . ggs_catalog_escape($product['name_en'])

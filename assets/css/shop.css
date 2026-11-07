@@ -134,8 +134,17 @@
   transition: border-color var(--transition);
 }
 .gallery-thumbs img:hover, .gallery-thumbs img.active { border-color: var(--accent); }
+.gallery-main video { width: 100%; height: 100%; object-fit: contain; }
+.gallery-main [hidden] { display: none; }
+.gallery-thumbs { flex-wrap: wrap; }
+.gallery-thumb { position: relative; width: 76px; height: 76px; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
+.gallery-thumb img { width: 100%; height: 100%; border: 0; border-radius: 0; }
+.gallery-thumb:hover, .gallery-thumb.active, .gallery-thumb:focus-visible { border-color: var(--accent); outline-color: var(--accent); }
+.gallery-video-label { position: absolute; inset: auto 0 0; padding: 3px; background: rgba(0,0,0,.8); color: #fff; font-size: 10px; }
+.gallery-caption { margin-top: 10px; color: var(--text-secondary); font-size: 13px; }
 
 .product-info .badge { margin-bottom: 14px; }
+.product-sku { color: var(--text-secondary); font-size: 12px; margin-bottom: 12px; }
 .product-info h1 { font-size: clamp(30px, 4vw, 44px); margin-bottom: 14px; }
 .product-price-block {
   font-family: var(--font-mono);

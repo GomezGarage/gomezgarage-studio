@@ -1,0 +1,524 @@
+[
+  {
+    "slug": "magsafe-apple-watch-dock",
+    "name_en": "MagSafe & Apple Watch Stand - Dark Grey ASA-CF",
+    "name_ro": "Suport MagSafe si Apple Watch - ASA-CF gri inchis",
+    "material": "ASA-CF Dark Grey",
+    "category": "desk",
+    "price_eur": 49,
+    "stock": 0,
+    "featured": 1,
+    "desc_short_en": "An original MagSafe and Apple Watch stand in dark grey ASA-CF, with an angled phone face, raised watch support and rear cable routing. Stand only.",
+    "desc_short_ro": "Suport original pentru MagSafe si Apple Watch, din ASA-CF gri inchis, cu fata inclinata si traseu pentru cabluri. Se livreaza doar suportul.",
+    "desc_long_en": "Give your everyday devices a place of their own. Two charging positions come together in a compact geometric stand for your desk or bedside table.\n\nORIGINAL DESIGN BY GOMEZ GARAGE STUDIO\nDesigned from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.\n\nRecessed side panels and the fine ASA-CF texture give the stand its industrial character. The inclined phone face supports comfortable viewing, while the raised Apple Watch position keeps both devices accessible. Cables pass towards the rear of the stand.\n\nThe photographed MagSafe and Apple Watch charging pucks illustrate the intended setup. Check charger dimensions before ordering; fit can vary between charger models. The stand itself contains no charging electronics.\n\nWHAT IS INCLUDED\nOne dark grey ASA-CF stand. Phone, watch, charging pucks, cables, power adapters and photography props are not included.",
+    "desc_long_ro": "Un loc dedicat pentru dispozitivele folosite zilnic. Doua pozitii de incarcare sunt reunite intr-un suport geometric compact pentru birou sau noptiera.\n\nDESIGN ORIGINAL GOMEZ GARAGE STUDIO\nProiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.\n\nPanourile laterale adancite si textura fina a materialului ASA-CF dau suportului un caracter industrial. Fata inclinata pozitioneaza telefonul pentru vizualizare, iar sprijinul superior pastreaza Apple Watch la indemana. Cablurile sunt directionate spre spate.\n\nPucurile MagSafe si Apple Watch din fotografii ilustreaza configuratia de utilizare. Verifica dimensiunile incarcatoarelor inainte de comanda; potrivirea poate varia intre modele. Suportul nu contine electronica de incarcare.\n\nCE PRIMESTI\nUn suport din ASA-CF gri inchis. Telefonul, ceasul, pucurile de incarcare, cablurile, adaptoarele de alimentare si recuzita nu sunt incluse.",
+    "how_made_en": "Original CAD design by Gomez Garage Studio, FDM printed in dark grey ASA-CF, an ASA composite containing carbon fibre. Fine layer texture remains visible on the finished surface.",
+    "how_made_ro": "Design CAD original Gomez Garage Studio, printat FDM din ASA-CF gri inchis, un compozit ASA cu fibra de carbon. Textura fina a straturilor ramane vizibila pe produs.",
+    "specs": [
+      {
+        "key": "Material",
+        "value": "ASA-CF"
+      },
+      {
+        "key": "Colour",
+        "value": "Dark grey"
+      },
+      {
+        "key": "Setup",
+        "value": "MagSafe + Apple Watch charging pucks"
+      },
+      {
+        "key": "Included",
+        "value": "Stand only; chargers and devices excluded"
+      }
+    ],
+    "status": "draft",
+    "stock_threshold": 3,
+    "images": [],
+    "presentation": {
+      "sku": "GGS-MAG1-ASACF-DGR",
+      "seo_title_en": "MagSafe & Apple Watch Stand in ASA-CF | Gomez Garage Studio",
+      "seo_title_ro": "Suport MagSafe si Apple Watch ASA-CF | Gomez Garage Studio",
+      "seo_description_en": "An original MagSafe and Apple Watch stand in dark grey ASA-CF, with an angled phone face, raised watch support and rear cable routing. Stand only.",
+      "seo_description_ro": "Suport original pentru MagSafe si Apple Watch, din ASA-CF gri inchis, cu fata inclinata si traseu pentru cabluri. Se livreaza doar suportul.",
+      "specs_ro": [
+        {
+          "key": "Material",
+          "value": "ASA-CF"
+        },
+        {
+          "key": "Culoare",
+          "value": "Gri inchis"
+        },
+        {
+          "key": "Configuratie",
+          "value": "Pucuri de incarcare MagSafe + Apple Watch"
+        },
+        {
+          "key": "Inclus",
+          "value": "Doar suportul; incarcatoarele si dispozitivele nu sunt incluse"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "media-dock-organizer",
+    "name_en": "Media Dock - USB, SD & microSD Organizer",
+    "name_ro": "Media Dock - Organizator USB, SD si microSD",
+    "material": "PLA-CF Black",
+    "category": "desk",
+    "price_eur": 39,
+    "stock": 0,
+    "featured": 1,
+    "desc_short_en": "Keep USB drives and memory cards visible in 34 dedicated slots. An original matte black PLA-CF desk organizer with an inclined face, accessory tray and non-slip feet.",
+    "desc_short_ro": "Stickuri USB si carduri organizate in 34 de locasuri dedicate. Design original din PLA-CF negru, cu fata inclinata, tava pentru accesorii si picioruse antialunecare.",
+    "desc_long_en": "Keep your next shoot organised. Media Dock brings USB drives, SD cards and microSD cards into one visible, accessible desktop arrangement.\n\nORIGINAL DESIGN BY GOMEZ GARAGE STUDIO\nDesigned from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.\n\n34 DEDICATED SLOTS\n10 USB-A, 8 USB-C, 4 full-size SD and 12 microSD slots. The inclined face keeps each row in view, while the front tray holds small adapters, card readers and accessories. Four non-slip feet help keep the organizer in place.\n\nPrinted in matte black PLA-CF, with a fine texture and subtle layer lines. The GGS3D maker's mark is integrated into the underside.\n\nFIT AND FUNCTION\nSlot access depends on the width and shape of each drive body. Oversized drives may cover neighbouring slots. Media Dock provides passive storage with no electronic components or data connection.\n\nWHAT IS INCLUDED\nOne Media Dock organizer with four non-slip feet. USB drives, memory cards, adapters and all other accessories shown are not included.\n\nCARE\nWipe gently with a soft, slightly damp cloth. Keep away from heat and prolonged direct sunlight.",
+    "desc_long_ro": "Pregateste-ti urmatoarea sesiune foto cu accesoriile la indemana. Media Dock reuneste stickurile USB si cardurile SD si microSD intr-un organizator de birou usor de folosit.\n\nDESIGN ORIGINAL GOMEZ GARAGE STUDIO\nProiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.\n\n34 DE LOCASURI DEDICATE\n10 USB-A, 8 USB-C, 4 pentru carduri SD si 12 pentru microSD. Fata inclinata pastreaza randurile la vedere, iar tava frontala ofera loc pentru adaptoare, cititoare de carduri si accesorii mici. Patru picioruse antialunecare ajuta la stabilitate.\n\nPrintat din PLA-CF negru mat, cu textura fina si straturi discrete. Marcajul GGS3D este integrat pe partea inferioara.\n\nCOMPATIBILITATE SI UTILIZARE\nAccesul la locasuri depinde de latimea si forma carcasei stickului. Modelele late pot acoperi locasurile vecine. Media Dock este un organizator pasiv, fara componente electronice sau conexiune de date.\n\nCE PRIMESTI\nUn organizator Media Dock cu patru picioruse antialunecare. Stickurile, cardurile, adaptoarele si celelalte accesorii din fotografii nu sunt incluse.\n\nINTRETINERE\nSterge usor cu o laveta moale, putin umeda. Pastreaza departe de caldura si expunere prelungita la soare.",
+    "how_made_en": "Designed from scratch in CAD and 3D printed by Gomez Garage Studio in Romania. Made from black PLA-CF, a PLA composite containing carbon fibre.",
+    "how_made_ro": "Proiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania. Realizat din PLA-CF negru, un compozit PLA cu fibra de carbon.",
+    "specs": [
+      {
+        "key": "Dimensions W x D x H",
+        "value": "18 x 12.5 x 8 cm"
+      },
+      {
+        "key": "Capacity",
+        "value": "10 USB-A / 8 USB-C / 4 SD / 12 microSD"
+      },
+      {
+        "key": "Material",
+        "value": "Black PLA-CF"
+      },
+      {
+        "key": "Feet",
+        "value": "Four non-slip feet"
+      },
+      {
+        "key": "Included",
+        "value": "Organizer only"
+      }
+    ],
+    "status": "draft",
+    "stock_threshold": 3,
+    "images": [],
+    "presentation": {
+      "sku": "GGS-MDK1-PLACF-BLK",
+      "seo_title_en": "USB Drive, SD & microSD Organizer - 34 Slots | Gomez Garage Studio",
+      "seo_title_ro": "Organizator USB, SD si microSD - 34 locasuri | Gomez Garage Studio",
+      "seo_description_en": "Keep USB drives and memory cards visible in 34 dedicated slots. An original matte black PLA-CF desk organizer with an inclined face, accessory tray and non-slip feet.",
+      "seo_description_ro": "Stickuri USB si carduri organizate in 34 de locasuri dedicate. Design original din PLA-CF negru, cu fata inclinata, tava pentru accesorii si picioruse antialunecare.",
+      "specs_ro": [
+        {
+          "key": "Dimensiuni L x A x I",
+          "value": "18 x 12,5 x 8 cm"
+        },
+        {
+          "key": "Capacitate",
+          "value": "10 USB-A / 8 USB-C / 4 SD / 12 microSD"
+        },
+        {
+          "key": "Material",
+          "value": "PLA-CF negru"
+        },
+        {
+          "key": "Picioruse",
+          "value": "Patru picioruse antialunecare"
+        },
+        {
+          "key": "Inclus",
+          "value": "Doar organizatorul"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "treble-clef-headphone-stand",
+    "name_en": "Treble Clef Headphone Stand - Black PLA-CF",
+    "name_ro": "Suport casti Cheia Sol - PLA-CF negru",
+    "material": "PLA-CF Black",
+    "category": "desk",
+    "price_eur": 39,
+    "stock": 0,
+    "desc_short_en": "A sculptural treble clef headphone stand with a curved headband support, broad base and four non-slip feet. Original design, 3D printed in matte black PLA-CF.",
+    "desc_short_ro": "Suport de casti in forma de cheie sol, cu sprijin curbat, baza lata si patru picioruse antialunecare. Design original, printat din PLA-CF negru mat.",
+    "desc_long_en": "Give your headphones a place in your music setup. A sculptural treble clef combines a recognisable musical shape with a practical curved headband support.\n\nORIGINAL DESIGN BY GOMEZ GARAGE STUDIO\nDesigned from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.\n\nThe thick profile rises from a broad freestanding base. Four black non-slip feet help keep the stand in place, while the open loops remain a distinctive part of your desk when the headphones are in use. The GGS3D maker's mark is integrated into the underside.\n\nBlack PLA-CF gives the piece a fine matte texture, suited to a music desk, home studio or listening corner. Fine printed layers remain visible on close inspection.\n\nHEADPHONE FIT\nThe headphones pictured demonstrate the curved saddle. Fit depends on your headset's dimensions and headband shape. Contact the studio before ordering if your headset has an unusually shaped headband.\n\nWHAT IS INCLUDED\nOne headphone stand with four non-slip feet. Headphones, audio equipment and decorative props are not included.\n\nCARE\nWipe with a soft, slightly damp cloth. Keep away from heat and prolonged direct sunlight.",
+    "desc_long_ro": "Un loc dedicat pentru casti in spatiul tau de muzica. Forma sculpturala a cheii sol combina un simbol muzical usor de recunoscut cu un sprijin curbat pentru bentita castilor.\n\nDESIGN ORIGINAL GOMEZ GARAGE STUDIO\nProiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.\n\nProfilul gros se ridica dintr-o baza lata. Patru picioruse negre antialunecare ajuta la stabilitate, iar buclele deschise pastreaza forma expresiva chiar si cand folosesti castile. Marcajul GGS3D este integrat pe dedesubt.\n\nPLA-CF negru ofera o textura fina, mata, potrivita pe un birou de muzica, intr-un home studio sau langa echipamentul audio. Straturile printate raman vizibile de aproape.\n\nCOMPATIBILITATE\nCastile din fotografii ilustreaza sprijinul curbat. Potrivirea depinde de dimensiunile castilor si de forma bentitei. Contacteaza studioul inainte de comanda pentru o bentita cu forma neobisnuita.\n\nCE PRIMESTI\nUn suport de casti cu patru picioruse antialunecare. Castile, echipamentele audio si recuzita nu sunt incluse.\n\nINTRETINERE\nSterge cu o laveta moale, putin umeda. Pastreaza departe de caldura si expunere prelungita la soare.",
+    "how_made_en": "An original CAD design by Gomez Garage Studio, 3D printed in Romania using black PLA-CF, a PLA composite containing carbon fibre.",
+    "how_made_ro": "Design CAD original Gomez Garage Studio, printat 3D in Romania din PLA-CF negru, un compozit PLA cu fibra de carbon.",
+    "specs": [
+      {
+        "key": "Height",
+        "value": "28.5 cm"
+      },
+      {
+        "key": "Width",
+        "value": "18 cm"
+      },
+      {
+        "key": "Depth",
+        "value": "7 cm"
+      },
+      {
+        "key": "Material",
+        "value": "Black PLA-CF"
+      },
+      {
+        "key": "Feet",
+        "value": "Four non-slip feet"
+      },
+      {
+        "key": "Included",
+        "value": "Stand only; headphones excluded"
+      }
+    ],
+    "status": "draft",
+    "stock_threshold": 3,
+    "images": [],
+    "featured": 0,
+    "presentation": {
+      "sku": "GGS-TC-PLA-CF-BLK",
+      "seo_title_en": "Treble Clef Headphone Stand in Black PLA-CF | Gomez Garage Studio",
+      "seo_title_ro": "Suport casti Cheia Sol din PLA-CF negru | Gomez Garage Studio",
+      "seo_description_en": "A sculptural treble clef headphone stand with a curved headband support, broad base and four non-slip feet. Original design, 3D printed in matte black PLA-CF.",
+      "seo_description_ro": "Suport de casti in forma de cheie sol, cu sprijin curbat, baza lata si patru picioruse antialunecare. Design original, printat din PLA-CF negru mat.",
+      "specs_ro": [
+        {
+          "key": "Inaltime",
+          "value": "28,5 cm"
+        },
+        {
+          "key": "Latime",
+          "value": "18 cm"
+        },
+        {
+          "key": "Adancime",
+          "value": "7 cm"
+        },
+        {
+          "key": "Material",
+          "value": "PLA-CF negru"
+        },
+        {
+          "key": "Picioruse",
+          "value": "Patru picioruse antialunecare"
+        },
+        {
+          "key": "Inclus",
+          "value": "Doar suportul; castile nu sunt incluse"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "zippo-lighter-display-stand",
+    "name_en": "Zippo Lighter Display Stand - Matte Black PETG",
+    "name_ro": "Stand brichete Zippo - PETG negru mat",
+    "material": "PETG Matte Black",
+    "category": "display",
+    "price_eur": 45,
+    "stock": 0,
+    "featured": 1,
+    "desc_short_en": "Display up to 12 Zippo lighters in three stepped rows, with a dedicated 125 ml fluid-can compartment and accessory tray. Original design in matte black PETG.",
+    "desc_short_ro": "Stand pentru pana la 12 brichete Zippo, pe trei randuri, cu loc pentru recipient de 125 ml si tava pentru accesorii. Design original din PETG negru mat.",
+    "desc_long_en": "Give your lighter collection a dedicated place on the shelf. Three stepped rows hold up to 12 standard Zippo lighters, with four individual pockets per row.\n\nORIGINAL DESIGN BY GOMEZ GARAGE STUDIO\nDesigned from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.\n\nThe side compartment fits the 125 ml lighter-fluid can shown, while the shallow tray keeps flints, wicks and small accessories together. Non-slip feet help keep the display in place.\n\nMATERIAL AND FINISH\nMatte black PETG creates a restrained backdrop for metal finishes, engraving and colourful lighter artwork.\n\nFine printed layers remain visible on the finished matte black PETG surface.\n\nFIT\nDesigned around standard Zippo lighters and the photographed fluid can. Oversized cases or added ornaments may affect fit; contact the studio with measurements before ordering.\n\nWHAT IS INCLUDED\nOne display stand with non-slip feet. Lighters, fluid can and accessories are not included. This is an independent display accessory compatible with standard Zippo lighters.\n\nCARE\nWipe gently with a soft, slightly damp cloth. Keep away from heat and prolonged direct sunlight.",
+    "desc_long_ro": "Ofera colectiei tale un loc dedicat pe raft. Trei randuri in trepte gazduiesc pana la 12 brichete Zippo standard, cu patru locasuri individuale pe fiecare rand.\n\nDESIGN ORIGINAL GOMEZ GARAGE STUDIO\nProiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.\n\nCompartimentul lateral este potrivit pentru recipientul de benzina de 125 ml din fotografii, iar tava pastreaza pietrele, fitilurile si accesoriile mici impreuna. Piciorusele antialunecare ajuta la stabilitate.\n\nMATERIAL SI FINISAJ\nPETG negru mat ofera un fundal discret pentru finisajele metalice, gravurile si desenele de pe brichete.\n\nStraturile fine ale printului raman vizibile pe suprafata din PETG negru mat.\n\nCOMPATIBILITATE\nProiectat pentru brichete Zippo standard si recipientul prezentat. Carcasele supradimensionate sau ornamentele adaugate pot afecta potrivirea; contacteaza studioul cu dimensiunile inainte de comanda.\n\nCE PRIMESTI\nUn stand cu picioruse antialunecare. Brichetele, recipientul de benzina si accesoriile nu sunt incluse. Suportul este un produs independent, compatibil cu brichetele Zippo standard.\n\nINTRETINERE\nSterge usor cu o laveta moale, putin umeda. Pastreaza departe de caldura si expunere prelungita la soare.",
+    "how_made_en": "Designed from scratch in CAD and 3D printed by Gomez Garage Studio in Romania using matte black PETG. The stepped pockets, side compartment and accessory tray form one printed body.",
+    "how_made_ro": "Proiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania din PETG negru mat. Locasurile in trepte, compartimentul lateral si tava sunt integrate in corpul printat.",
+    "specs": [
+      {
+        "key": "Dimensions W x D x H",
+        "value": "26 x 13 x 11 cm"
+      },
+      {
+        "key": "Capacity",
+        "value": "Up to 12 standard Zippo lighters"
+      },
+      {
+        "key": "Fluid can",
+        "value": "125 ml, as pictured"
+      },
+      {
+        "key": "Material",
+        "value": "PETG Matte Black"
+      },
+      {
+        "key": "Included",
+        "value": "Stand with non-slip feet; accessories excluded"
+      }
+    ],
+    "status": "draft",
+    "stock_threshold": 3,
+    "images": [],
+    "presentation": {
+      "sku": "GGS-ZIP-PETG-BLK",
+      "seo_title_en": "Display Stand for 12 Zippo Lighters | Gomez Garage Studio",
+      "seo_title_ro": "Stand pentru 12 brichete Zippo | Gomez Garage Studio",
+      "seo_description_en": "Display up to 12 Zippo lighters in three stepped rows, with a dedicated 125 ml fluid-can compartment and accessory tray. Original design in matte black PETG.",
+      "seo_description_ro": "Stand pentru pana la 12 brichete Zippo, pe trei randuri, cu loc pentru recipient de 125 ml si tava pentru accesorii. Design original din PETG negru mat.",
+      "specs_ro": [
+        {
+          "key": "Dimensiuni L x A x I",
+          "value": "26 x 13 x 11 cm"
+        },
+        {
+          "key": "Capacitate",
+          "value": "Pana la 12 brichete Zippo standard"
+        },
+        {
+          "key": "Recipient",
+          "value": "125 ml, ca in fotografii"
+        },
+        {
+          "key": "Material",
+          "value": "PETG Matte Black"
+        },
+        {
+          "key": "Inclus",
+          "value": "Stand cu picioruse antialunecare; fara accesorii"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "zippo-lighter-display-stand-walnut",
+    "name_en": "Zippo Lighter Display Stand - Walnut Collector's Edition",
+    "name_ro": "Stand brichete Zippo - Editia Walnut",
+    "material": "Walnut Wood PLA",
+    "category": "display",
+    "price_eur": 55,
+    "stock": 1,
+    "featured": 0,
+    "desc_short_en": "A limited run of four Walnut Wood PLA display stands for 12 Zippo lighters, with a fluid-can compartment and accessory tray. Original Gomez Garage Studio design.",
+    "desc_short_ro": "Editie limitata la patru standuri din Walnut Wood PLA, pentru 12 brichete Zippo, cu loc pentru recipient si accesorii. Design original Gomez Garage Studio.",
+    "desc_long_en": "Give your lighter collection a dedicated place on the shelf. Three stepped rows hold up to 12 standard Zippo lighters, with four individual pockets per row.\n\nORIGINAL DESIGN BY GOMEZ GARAGE STUDIO\nDesigned from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.\n\nThe side compartment fits the 125 ml lighter-fluid can shown, while the shallow tray keeps flints, wicks and small accessories together. Non-slip feet help keep the display in place.\n\nWALNUT COLLECTOR'S EDITION\nThis Walnut run is limited to four stands in total. Made from SUNLU Walnut Wood PLA, a PLA composite containing 15% real wood powder according to the filament manufacturer. Walnut is the commercial material variant; the finish has a warm brown wood-like appearance.\n\nFine printed layers remain visible on the finished warm brown wood-filled PLA surface.\n\nFIT\nDesigned around standard Zippo lighters and the photographed fluid can. Oversized cases or added ornaments may affect fit; contact the studio with measurements before ordering.\n\nWHAT IS INCLUDED\nOne display stand with non-slip feet. Lighters, fluid can and accessories are not included. This is an independent display accessory compatible with standard Zippo lighters.\n\nCARE\nWipe gently with a soft, slightly damp cloth. Keep away from heat and prolonged direct sunlight.",
+    "desc_long_ro": "Ofera colectiei tale un loc dedicat pe raft. Trei randuri in trepte gazduiesc pana la 12 brichete Zippo standard, cu patru locasuri individuale pe fiecare rand.\n\nDESIGN ORIGINAL GOMEZ GARAGE STUDIO\nProiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.\n\nCompartimentul lateral este potrivit pentru recipientul de benzina de 125 ml din fotografii, iar tava pastreaza pietrele, fitilurile si accesoriile mici impreuna. Piciorusele antialunecare ajuta la stabilitate.\n\nEDITIA WALNUT\nSeria Walnut este limitata la patru standuri in total. Realizat din SUNLU Walnut Wood PLA, un compozit PLA care contine 15% pulbere reala de lemn, conform producatorului filamentului. Walnut este varianta comerciala a materialului, cu aspect de lemn in tonuri calde de maro.\n\nStraturile fine ale printului raman vizibile pe suprafata din PLA cu pulbere de lemn, in tonuri calde de maro.\n\nCOMPATIBILITATE\nProiectat pentru brichete Zippo standard si recipientul prezentat. Carcasele supradimensionate sau ornamentele adaugate pot afecta potrivirea; contacteaza studioul cu dimensiunile inainte de comanda.\n\nCE PRIMESTI\nUn stand cu picioruse antialunecare. Brichetele, recipientul de benzina si accesoriile nu sunt incluse. Suportul este un produs independent, compatibil cu brichetele Zippo standard.\n\nINTRETINERE\nSterge usor cu o laveta moale, putin umeda. Pastreaza departe de caldura si expunere prelungita la soare.",
+    "how_made_en": "Designed from scratch in CAD and 3D printed by Gomez Garage Studio in Romania using Walnut Wood PLA. The stepped pockets, side compartment and accessory tray form one printed body.",
+    "how_made_ro": "Proiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania din Walnut Wood PLA. Locasurile in trepte, compartimentul lateral si tava sunt integrate in corpul printat.",
+    "specs": [
+      {
+        "key": "Dimensions W x D x H",
+        "value": "26 x 13 x 11 cm"
+      },
+      {
+        "key": "Capacity",
+        "value": "Up to 12 standard Zippo lighters"
+      },
+      {
+        "key": "Fluid can",
+        "value": "125 ml, as pictured"
+      },
+      {
+        "key": "Material",
+        "value": "Walnut Wood PLA"
+      },
+      {
+        "key": "Edition",
+        "value": "Four stands in total"
+      },
+      {
+        "key": "Included",
+        "value": "Stand with non-slip feet; accessories excluded"
+      }
+    ],
+    "status": "draft",
+    "stock_threshold": 3,
+    "images": [],
+    "presentation": {
+      "sku": "GGS-ZIP-WAL",
+      "seo_title_en": "Walnut Display Stand for 12 Zippo Lighters | Gomez Garage Studio",
+      "seo_title_ro": "Stand Walnut pentru 12 brichete Zippo | Gomez Garage Studio",
+      "seo_description_en": "A limited run of four Walnut Wood PLA display stands for 12 Zippo lighters, with a fluid-can compartment and accessory tray. Original Gomez Garage Studio design.",
+      "seo_description_ro": "Editie limitata la patru standuri din Walnut Wood PLA, pentru 12 brichete Zippo, cu loc pentru recipient si accesorii. Design original Gomez Garage Studio.",
+      "specs_ro": [
+        {
+          "key": "Dimensiuni L x A x I",
+          "value": "26 x 13 x 11 cm"
+        },
+        {
+          "key": "Capacitate",
+          "value": "Pana la 12 brichete Zippo standard"
+        },
+        {
+          "key": "Recipient",
+          "value": "125 ml, ca in fotografii"
+        },
+        {
+          "key": "Material",
+          "value": "Walnut Wood PLA"
+        },
+        {
+          "key": "Editie",
+          "value": "Patru standuri in total"
+        },
+        {
+          "key": "Inclus",
+          "value": "Stand cu picioruse antialunecare; fara accesorii"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "tealight-holder-set-black",
+    "name_en": "Black Tealight Holder Set of 3 - PLA-CF",
+    "name_ro": "Set 3 suporturi tealight negre - PLA-CF",
+    "material": "PLA-CF Black",
+    "category": "home",
+    "price_eur": 29,
+    "stock": 0,
+    "desc_short_en": "Three sculptural tealight holders with twisted geometric surfaces, 3D printed in matte black PLA-CF. Original design in 10, 8 and 6 cm heights. Candles not included.",
+    "desc_short_ro": "Trei suporturi tealight cu fatete rasucite, printate din PLA-CF negru mat. Design original, cu inaltimi de 10, 8 si 6 cm. Lumanarile nu sunt incluse.",
+    "desc_long_en": "Bring a quiet architectural accent to your home. Three twisted geometric surfaces catch the light from different angles, creating a coordinated display for a console, sideboard or dining table.\n\nORIGINAL DESIGN BY GOMEZ GARAGE STUDIO\nDesigned from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.\n\nMATERIAL AND FINISH\nMade from black PLA-CF, a PLA composite containing carbon fibre, with a fine matte texture. Fine printed layers and surface texture remain visible. The GGS3D maker's mark is on the underside.\n\nTHE SET\nThree holders, 10, 8 and 6 cm high. Each base is 6 cm across, with a 39 mm recess for a tealight. Check the outside diameter of your tealight cup before ordering.\n\nWHAT IS INCLUDED\nOne complete set of three holders. Candles and decorative props are not included.\n\nUSE AND CARE\nKeep tealights in their original metal cups; do not pour wax directly into the holders. Place on a stable, heat-resistant surface away from flammable objects. Never leave burning candles unattended. Wipe the holders with a soft, slightly damp cloth; do not put in the dishwasher.",
+    "desc_long_ro": "Un accent arhitectural discret pentru casa ta. Fatetele rasucite surprind lumina din unghiuri diferite si formeaza un ansamblu potrivit pe o consola, o comoda sau masa de dining.\n\nDESIGN ORIGINAL GOMEZ GARAGE STUDIO\nProiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.\n\nMATERIAL SI FINISAJ\nRealizat din PLA-CF negru, un compozit PLA cu fibra de carbon, cu textura fina, mata. Straturile si textura printului raman vizibile. Marcajul GGS3D se afla pe partea inferioara.\n\nSETUL\nTrei suporturi cu inaltimi de 10, 8 si 6 cm. Fiecare baza masoara 6 cm, iar locasul pentru tealight are 39 mm. Verifica diametrul exterior al cupei lumanarii inainte de comanda.\n\nCE PRIMESTI\nUn set complet de trei suporturi. Lumanarile si recuzita nu sunt incluse.\n\nUTILIZARE SI INTRETINERE\nPastreaza lumanarile in cupele metalice originale; nu turna ceara direct in suport. Asaza pe o suprafata stabila, rezistenta la caldura, departe de obiecte inflamabile. Nu lasa lumanarile aprinse nesupravegheate. Sterge suporturile cu o laveta moale, putin umeda; nu le pune in masina de spalat vase.",
+    "how_made_en": "An original Gomez Garage Studio design, created from scratch in CAD and 3D printed in Romania using black PLA-CF, a PLA composite containing carbon fibre.",
+    "how_made_ro": "Design original Gomez Garage Studio, proiectat de la zero in CAD si printat 3D in Romania din PLA-CF negru, un compozit PLA cu fibra de carbon.",
+    "specs": [
+      {
+        "key": "Set",
+        "value": "Three holders"
+      },
+      {
+        "key": "Heights",
+        "value": "10 / 8 / 6 cm"
+      },
+      {
+        "key": "Base width",
+        "value": "6 cm each"
+      },
+      {
+        "key": "Tealight recess",
+        "value": "39 mm diameter"
+      },
+      {
+        "key": "Material",
+        "value": "Black PLA-CF"
+      },
+      {
+        "key": "Included",
+        "value": "Holders only; candles excluded"
+      }
+    ],
+    "status": "draft",
+    "stock_threshold": 3,
+    "images": [],
+    "featured": 0,
+    "presentation": {
+      "sku": "GGS-TLH3-PLACF-BLK",
+      "seo_title_en": "Black Tealight Holders Set of 3 in PLA-CF | Gomez Garage Studio",
+      "seo_title_ro": "Set 3 suporturi tealight negre PLA-CF | Gomez Garage Studio",
+      "seo_description_en": "Three sculptural tealight holders with twisted geometric surfaces, 3D printed in matte black PLA-CF. Original design in 10, 8 and 6 cm heights. Candles not included.",
+      "seo_description_ro": "Trei suporturi tealight cu fatete rasucite, printate din PLA-CF negru mat. Design original, cu inaltimi de 10, 8 si 6 cm. Lumanarile nu sunt incluse.",
+      "specs_ro": [
+        {
+          "key": "Set",
+          "value": "Trei suporturi"
+        },
+        {
+          "key": "Inaltimi",
+          "value": "10 / 8 / 6 cm"
+        },
+        {
+          "key": "Latime baza",
+          "value": "6 cm fiecare"
+        },
+        {
+          "key": "Locas tealight",
+          "value": "Diametru 39 mm"
+        },
+        {
+          "key": "Material",
+          "value": "PLA-CF negru"
+        },
+        {
+          "key": "Inclus",
+          "value": "Doar suporturile; fara lumanari"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "tealight-holder-set-rainbow-one-of-a-kind",
+    "name_en": "Rainbow Tealight Holder Set of 3 - One of a Kind",
+    "name_ro": "Set 3 suporturi tealight Rainbow - Unicat",
+    "material": "Rainbow PLA",
+    "category": "home",
+    "price_eur": 34,
+    "stock": 1,
+    "desc_short_en": "One rainbow tealight holder set, exactly as photographed. Three twisted geometric forms in graduated heights, 3D printed in rainbow PLA. Candles not included.",
+    "desc_short_ro": "Un singur set Rainbow, exact cel fotografiat. Trei suporturi cu fatete rasucite si inaltimi diferite, printate din PLA rainbow. Lumanarile nu sunt incluse.",
+    "desc_long_en": "The set you see is the set you receive. Three twisted geometric forms combine yellow, teal, violet and warm copper tones, with a different gradient across each holder.\n\nORIGINAL DESIGN BY GOMEZ GARAGE STUDIO\nDesigned from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.\n\nONE-OFF COLOUR ARRANGEMENT\nThis listing is for the exact three holders shown in the real product photographs. Only one set is available in this colour arrangement. The colour comes from the rainbow PLA filament itself. Fine printed layers and surface texture remain visible. The GGS3D maker's mark is on the underside.\n\nTHE SET\nThree holders, 10, 8 and 6 cm high. Each base is 6 cm across, with a 39 mm recess for a tealight. Check the outside diameter of your tealight cup before ordering.\n\nWHAT IS INCLUDED\nOne complete set of three holders. Candles and decorative props are not included. Quantity 1 means one complete set of three.\n\nUSE AND CARE\nKeep tealights in their original metal cups; do not pour wax directly into the holders. Place on a stable, heat-resistant surface away from flammable objects. Never leave burning candles unattended. Wipe the holders with a soft, slightly damp cloth; do not put in the dishwasher.",
+    "desc_long_ro": "Setul din fotografii este setul pe care il primesti. Trei forme geometrice rasucite combina galben, turcoaz, violet si tonuri calde de cupru, cu treceri de culoare diferite pe fiecare suport.\n\nDESIGN ORIGINAL GOMEZ GARAGE STUDIO\nProiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.\n\nCOMBINATIE UNICA DE CULORI\nListarea este pentru cele trei suporturi din fotografiile reale. Este disponibil un singur set cu aceasta distributie a culorilor. Culorile provin din filamentul PLA rainbow. Straturile si textura printului raman vizibile. Marcajul GGS3D se afla pe partea inferioara.\n\nSETUL\nTrei suporturi cu inaltimi de 10, 8 si 6 cm. Fiecare baza masoara 6 cm, iar locasul pentru tealight are 39 mm. Verifica diametrul exterior al cupei lumanarii inainte de comanda.\n\nCE PRIMESTI\nUn set complet de trei suporturi. Lumanarile si recuzita nu sunt incluse. Cantitatea 1 reprezinta un set complet de trei suporturi.\n\nUTILIZARE SI INTRETINERE\nPastreaza lumanarile in cupele metalice originale; nu turna ceara direct in suport. Asaza pe o suprafata stabila, rezistenta la caldura, departe de obiecte inflamabile. Nu lasa lumanarile aprinse nesupravegheate. Sterge suporturile cu o laveta moale, putin umeda; nu le pune in masina de spalat vase.",
+    "how_made_en": "An original Gomez Garage Studio design, created from scratch in CAD and 3D printed in Romania using rainbow PLA. The multicolour filament creates the actual transitions across this exact set.",
+    "how_made_ro": "Design original Gomez Garage Studio, proiectat de la zero in CAD si printat 3D in Romania din PLA rainbow. Filamentul multicolor formeaza trecerile de culoare ale acestui set.",
+    "specs": [
+      {
+        "key": "Set",
+        "value": "Three holders"
+      },
+      {
+        "key": "Heights",
+        "value": "10 / 8 / 6 cm"
+      },
+      {
+        "key": "Base width",
+        "value": "6 cm each"
+      },
+      {
+        "key": "Tealight recess",
+        "value": "39 mm diameter"
+      },
+      {
+        "key": "Material",
+        "value": "Rainbow PLA"
+      },
+      {
+        "key": "Included",
+        "value": "Holders only; candles excluded"
+      },
+      {
+        "key": "Availability",
+        "value": "One set in the photographed colour arrangement"
+      }
+    ],
+    "status": "draft",
+    "stock_threshold": 3,
+    "images": [],
+    "featured": 0,
+    "presentation": {
+      "sku": "GGS-TLH3-PLA-RBW-001",
+      "seo_title_en": "Rainbow Tealight Holders Set of 3 - One of a Kind | Gomez Garage Studio",
+      "seo_title_ro": "Set suporturi tealight Rainbow unicat | Gomez Garage Studio",
+      "seo_description_en": "One rainbow tealight holder set, exactly as photographed. Three twisted geometric forms in graduated heights, 3D printed in rainbow PLA. Candles not included.",
+      "seo_description_ro": "Un singur set Rainbow, exact cel fotografiat. Trei suporturi cu fatete rasucite si inaltimi diferite, printate din PLA rainbow. Lumanarile nu sunt incluse.",
+      "specs_ro": [
+        {
+          "key": "Set",
+          "value": "Trei suporturi"
+        },
+        {
+          "key": "Inaltimi",
+          "value": "10 / 8 / 6 cm"
+        },
+        {
+          "key": "Latime baza",
+          "value": "6 cm fiecare"
+        },
+        {
+          "key": "Locas tealight",
+          "value": "Diametru 39 mm"
+        },
+        {
+          "key": "Material",
+          "value": "PLA rainbow"
+        },
+        {
+          "key": "Inclus",
+          "value": "Doar suporturile; fara lumanari"
+        },
+        {
+          "key": "Disponibilitate",
+          "value": "Un singur set in combinatia de culori fotografiata"
+        }
+      ]
+    }
+  }
+]

@@ -48,6 +48,11 @@ full design decisions, page structure, schema and payment flow.
 
 ## Notes
 
+- For the current seven-product draft catalog, video uploads, SKUs and bilingual SEO,
+  use [the November catalog and video release](docs/catalog-release/20261107-products-and-video.md).
+  Its SQL resets the draft catalog at the owner's request and runs once. Do not
+  re-run the full schema on an existing store.
+
 - A fresh `database/schema.sql` installs the six real catalog listings as drafts.
   Complete photographs, prices, stock and specifications in the admin editor.
   For an existing installation, follow [the catalog release guide](docs/catalog-release/README.md)

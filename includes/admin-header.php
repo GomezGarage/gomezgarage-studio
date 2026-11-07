@@ -17,7 +17,7 @@ $activeNav = $activeNav ?? '';
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
 <link rel="apple-touch-icon" href="/studio/assets/images/apple-touch-icon.png?v=2">
 <link rel="stylesheet" href="/studio/assets/css/main.css">
-<link rel="stylesheet" href="/studio/assets/css/admin.css">
+<link rel="stylesheet" href="/studio/assets/css/admin.css?v=20261107">
 </head>
 <body class="admin-body">
 <div class="admin-shell">

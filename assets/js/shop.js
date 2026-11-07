@@ -227,6 +227,19 @@
         return;
       }
       renderProductDetail(wrap, product);
+      document.addEventListener('ggs:language-changed', () => {
+        updateProductMetadata(product);
+        const stock = wrap.querySelector('.stock-indicator');
+        if (stock) stock.textContent = stockBadgeText(product);
+        wrap.querySelectorAll('[data-image] img').forEach((img) => {
+          const path = (product.images || [])[Number(img.parentElement.dataset.image)];
+          const alt = (product.image_alt || {})[path] || {};
+          img.alt = alt[document.documentElement.lang] || alt.en || product.name_en;
+        });
+        const main = wrap.querySelector('#gallery-main-img');
+        const active = wrap.querySelector('[data-image].active img');
+        if (main && active) main.alt = active.alt;
+      });
       recordProductView(product.id);
       injectProductSchema(product);
       loadRelated(product);
@@ -261,14 +274,22 @@
     updateProductMetadata(p);
     const images = (p.images && p.images.length) ? p.images : ['/studio/assets/images/products/placeholder.svg'];
     const specs = p.specs || [];
+    const esc = window.GGSUtil.escapeHtml;
+    const videos = (p.videos || []).filter((v) => /^\/studio\/assets\/videos\/products\/[a-f0-9]{32}\.mp4$/.test(v.src || ''));
+    const imageAlt = (path) => (p.image_alt && p.image_alt[path]) || {};
 
     wrap.innerHTML = `
       <div class="gallery">
-        <div class="gallery-main"><img id="gallery-main-img" src="${window.GGSUtil.escapeHtml(images[0])}" alt="${window.GGSUtil.escapeHtml(p.name_en)}"></div>
-        ${images.length > 1 ? `<div class="gallery-thumbs">${images.map((img, i) => `<img src="${window.GGSUtil.escapeHtml(img)}" class="${i === 0 ? 'active' : ''}" data-thumb>`).join('')}</div>` : ''}
+        <div class="gallery-main"><img id="gallery-main-img" src="${esc(images[0])}" alt="${esc(imageAlt(images[0]).en || p.name_en)}"><video id="gallery-main-video" hidden controls playsinline preload="none"></video></div>
+        ${(images.length + videos.length) > 1 ? `<div class="gallery-thumbs">
+          ${images.map((img, i) => `<button type="button" class="gallery-thumb ${i === 0 ? 'active' : ''}" data-thumb data-image="${i}" aria-label="Photo ${i + 1}" aria-pressed="${i === 0}"><img src="${esc(img)}" alt="${esc(imageAlt(img).en || p.name_en)}" loading="lazy"></button>`).join('')}
+          ${videos.map((v, i) => `<button type="button" class="gallery-thumb" data-thumb data-video="${i}" aria-label="${esc(v.title_en || `Video ${i + 1}`)}" aria-pressed="false"><img src="${esc(v.poster || images[0])}" alt="" loading="lazy"><span class="gallery-video-label">&#9654; Video ${i + 1}</span></button>`).join('')}
+        </div>` : ''}
+        <p class="gallery-caption" id="gallery-caption" hidden></p>
       </div>
       <div class="product-info">
         <span class="badge mono badge-accent">${window.GGSUtil.escapeHtml(p.material)}</span>
+        ${p.sku ? `<p class="mono product-sku">SKU: ${esc(p.sku)}</p>` : ''}
         <h1 data-en="${window.GGSUtil.escapeHtml(p.name_en)}" data-ro="${window.GGSUtil.escapeHtml(p.name_ro)}">${window.GGSUtil.escapeHtml(p.name_en)}</h1>
         <div class="product-price-block mono">${money(p.price_eur)}</div>
         <p class="product-desc" data-en="${window.GGSUtil.escapeHtml(p.desc_short_en)}" data-ro="${window.GGSUtil.escapeHtml(p.desc_short_ro)}">${window.GGSUtil.escapeHtml(p.desc_short_en)}</p>
@@ -286,9 +307,10 @@
           <h2 data-en="About this piece" data-ro="Despre acest produs">About this piece</h2>
           <p data-en="${window.GGSUtil.escapeHtml(p.desc_long_en)}" data-ro="${window.GGSUtil.escapeHtml(p.desc_long_ro)}">${window.GGSUtil.escapeHtml(p.desc_long_en)}</p>
         </div>` : ''}
-        ${specs.length ? `<table class="specs-table">${specs.map((s) => `<tr><td>${window.GGSUtil.escapeHtml(s.key)}</td><td>${window.GGSUtil.escapeHtml(s.value)}</td></tr>`).join('')}</table>` : ''}
+        ${specs.length ? `<table class="specs-table">${specs.map((s, i) => `<tr><td data-en="${esc(s.key)}" data-ro="${esc((p.specs_ro || [])[i]?.key || s.key)}">${esc(s.key)}</td><td data-en="${esc(s.value)}" data-ro="${esc((p.specs_ro || [])[i]?.value || s.value)}">${esc(s.value)}</td></tr>`).join('')}</table>` : ''}
         <div class="how-made-block">
-          <h3 data-en="How it's made" data-ro="Cum este fabricat">How it's made</h3>
+          <h3 data-en="Original design by Gomez Garage Studio" data-ro="Design original Gomez Garage Studio">Original design by Gomez Garage Studio</h3>
+          <p data-en="Designed from scratch in CAD and 3D printed by Gomez Garage Studio in Romania." data-ro="Proiectat de la zero in CAD si printat 3D de Gomez Garage Studio in Romania.">Designed from scratch in CAD and 3D printed by Gomez Garage Studio in Romania.</p>
           <p data-en="${window.GGSUtil.escapeHtml(p.how_made_en)}" data-ro="${window.GGSUtil.escapeHtml(p.how_made_ro)}">${window.GGSUtil.escapeHtml(p.how_made_en)}</p>
         </div>
       </div>
@@ -296,9 +318,33 @@
 
     wrap.querySelectorAll('[data-thumb]').forEach((thumb) => {
       thumb.addEventListener('click', () => {
-        document.getElementById('gallery-main-img').src = thumb.src;
-        wrap.querySelectorAll('[data-thumb]').forEach((t) => t.classList.remove('active'));
+        const image = document.getElementById('gallery-main-img');
+        const player = document.getElementById('gallery-main-video');
+        const caption = document.getElementById('gallery-caption');
+        player.pause();
+        if (thumb.hasAttribute('data-video')) {
+          const video = videos[Number(thumb.dataset.video)];
+          player.src = video.src;
+          player.poster = video.poster || images[0];
+          player.hidden = false;
+          image.hidden = true;
+          caption.dataset.en = video.title_en || 'Product video';
+          caption.dataset.ro = video.title_ro || video.title_en || 'Video produs';
+          caption.hidden = false;
+        } else {
+          const path = images[Number(thumb.dataset.image)];
+          image.src = path;
+          image.alt = imageAlt(path)[document.documentElement.lang] || imageAlt(path).en || p.name_en;
+          image.hidden = false;
+          player.hidden = true;
+          player.removeAttribute('src');
+          player.load();
+          caption.hidden = true;
+        }
+        wrap.querySelectorAll('[data-thumb]').forEach((t) => { t.classList.remove('active'); t.setAttribute('aria-pressed', 'false'); });
         thumb.classList.add('active');
+        thumb.setAttribute('aria-pressed', 'true');
+        if (window.GGSLang) window.GGSLang.refresh();
       });
     });
 
@@ -320,7 +366,9 @@
   }
 
   function updateProductMetadata(p) {
-    document.title = `${p.name_en} | Gomez Garage Studio`;
+    const lang = document.documentElement.lang === 'ro' ? 'ro' : 'en';
+    document.title = p[`seo_title_${lang}`] || `${p[`name_${lang}`] || p.name_en} | Gomez Garage Studio`;
+    const description = p[`seo_description_${lang}`] || p[`desc_short_${lang}`] || p.desc_short_en;
     const url = `https://gomezgarage.eu${productPath(p)}`;
     let canonical = document.querySelector('link[rel="canonical"]');
     if (canonical) canonical.href = url;
@@ -333,13 +381,14 @@
       }
       tag.content = content || '';
     };
-    setMeta('meta[name="description"]', 'name', 'description', p.desc_short_en);
+    setMeta('meta[name="description"]', 'name', 'description', description);
     setMeta('meta[property="og:title"]', 'property', 'og:title', document.title);
-    setMeta('meta[property="og:description"]', 'property', 'og:description', p.desc_short_en);
+    setMeta('meta[property="og:description"]', 'property', 'og:description', description);
     setMeta('meta[property="og:url"]', 'property', 'og:url', url);
     if (p.images && p.images[0]) {
       setMeta('meta[property="og:image"]', 'property', 'og:image', new URL(p.images[0], 'https://gomezgarage.eu').href);
-      setMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', p.name_en);
+      const alt = (p.image_alt || {})[p.images[0]] || {};
+      setMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', alt[lang] || alt.en || p[`name_${lang}`] || p.name_en);
     }
   }
 
@@ -356,7 +405,7 @@
       name: p.name_en,
       description: p.desc_short_en,
       ...(images.length ? { image: images.map((img) => new URL(img, 'https://gomezgarage.eu').href) } : {}),
-      sku: String(p.id),
+      sku: p.sku || String(p.id),
       material: p.material,
       ...(Number(p.price_eur) > 0 ? { offers: {
         '@type': 'Offer',

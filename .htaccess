@@ -6,7 +6,7 @@ Options -Indexes
 ServerSignature Off
 
 # Never serve the config file or composer metadata directly.
-<FilesMatch "^(config\.php|config\.example\.php|composer\.(json|lock))$">
+<FilesMatch "^(config\.php|config\.example\.php|composer\.(json|lock)|\.user\.ini)$">
   Require all denied
 </FilesMatch>
 
