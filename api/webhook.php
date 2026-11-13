@@ -46,7 +46,9 @@ if (!$order) {
   ggs_json_response(['success' => false, 'error' => 'Order not found'], 404);
 }
 
-$paidEvents = ['ORDER_COMPLETED', 'ORDER_AUTHORISED'];
+// Orders use AUTOMATIC capture. AUTHORISED is only an intermediate state;
+// fiscal processing starts after Revolut confirms the captured payment.
+$paidEvents = ['ORDER_COMPLETED'];
 $failedEvents = ['ORDER_PAYMENT_FAILED', 'ORDER_CANCELLED'];
 
 // Idempotency: only act the first time we see the order move to paid/cancelled.
