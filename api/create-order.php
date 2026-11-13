@@ -89,7 +89,7 @@ foreach ($body['items'] as $item) {
   $subtotalEur += (float) $product['price_eur'] * $qty;
 }
 
-// Shipping — Romania / EU / UK, rates from admin settings (section 5.5 / 6.3).
+// Shipping — Romania / European Union only.
 $euCountries = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
 $country = strtoupper(substr((string) $body['country'], 0, 2));
 $county = trim((string) ($body['county'] ?? ''));
@@ -109,6 +109,9 @@ if ($country === 'RO' && $county === '') {
 }
 if ($customerType === 'pj' && ($companyName === '' || $companyCui === '' || $companyAddress === '' || $companyCity === '' || $companyCounty === '' || $companyPostal === '' || !preg_match('/^[A-Z]{2}$/', $companyCountry))) {
   ggs_json_response(['success' => false, 'error' => 'Complete all required company invoice fields'], 422);
+}
+if ($customerType === 'pj' && !in_array($companyCountry, $euCountries, true)) {
+  ggs_json_response(['success' => false, 'error' => 'Company invoice country must be within the European Union'], 422);
 }
 if (strlen($companyName) > 200 || strlen($companyCui) > 20 || strlen($companyReg) > 50 || strlen($companyAddress) > 500 || strlen($companyCity) > 120 || strlen($companyCounty) > 120 || strlen($companyPostal) > 30) {
   ggs_json_response(['success' => false, 'error' => 'Company invoice details are too long'], 422);
@@ -165,12 +168,10 @@ if ($country === 'RO' && ggs_sameday_enabled()) {
   }
 } elseif ($country === 'RO') {
   $shippingEur = (float) ggs_get_setting('shipping_ro_eur', '5.00');
-} elseif ($country === 'GB') {
-  $shippingEur = (float) ggs_get_setting('shipping_uk_eur', '18.00');
 } elseif (in_array($country, $euCountries, true)) {
   $shippingEur = (float) ggs_get_setting('shipping_eu_eur', '12.00');
 } else {
-  ggs_json_response(['success' => false, 'error' => 'We only ship within the EU and UK'], 422);
+  ggs_json_response(['success' => false, 'error' => 'We only ship within the European Union'], 422);
 }
 
 $totalEur = round($subtotalEur + $shippingEur, 2);

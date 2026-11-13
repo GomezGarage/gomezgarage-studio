@@ -5,7 +5,7 @@ $account = ggs_customer_require_login();
 $db = ggs_db();
 $error = '';
 $notice = '';
-$countries = ['RO','GB','AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','SK','SI','ES','SE'];
+$countries = ['RO','AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','SK','SI','ES','SE'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!ggs_customer_verify_csrf()) {

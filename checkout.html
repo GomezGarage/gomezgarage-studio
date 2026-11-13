@@ -10,10 +10,12 @@
 <link rel="icon" href="/studio/assets/images/favicon.ico?v=2" sizes="any">
 <link rel="apple-touch-icon" href="/studio/assets/images/apple-touch-icon.png?v=2">
 <link rel="stylesheet" href="/studio/assets/css/main.css?v=20261107-home-process-images">
-<link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261026-catalog">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynhtRCyLEWn2ODVKwKP9j2mTFV9M=" crossorigin="">
+<link rel="stylesheet" href="/studio/assets/css/shop.css?v=20261113-checkout-map">
 <!-- Preloaded here with defer so window.RevolutCheckout is already
      available by the time the customer clicks submit. -->
 <script src="https://merchant.revolut.com/embed.js" defer></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
 </head>
 <body>
 
@@ -82,7 +84,6 @@
                   <label data-en="Country" data-ro="Tara">Country</label>
                   <select name="country">
                   <option value="RO">Romania</option>
-                  <option value="GB">United Kingdom</option>
                   <option value="AT">Austria</option>
                   <option value="BE">Belgium</option>
                   <option value="BG">Bulgaria</option>
@@ -133,12 +134,31 @@
                 </div>
                 <div class="form-row">
                   <div class="form-group"><label data-en="Registered office postal code" data-ro="Cod postal sediu social">Registered office postal code</label><input type="text" name="company_postal" maxlength="30"></div>
-                  <div class="form-group"><label data-en="Registered office country code" data-ro="Cod tara sediu social">Registered office country code</label><input type="text" name="company_country" maxlength="2" placeholder="RO"></div>
+                  <div class="form-group"><label data-en="Registered office country" data-ro="Tara sediu social">Registered office country</label><select name="company_country"><option value="">—</option><option value="RO">Romania</option><option value="AT">Austria</option><option value="BE">Belgium</option><option value="BG">Bulgaria</option><option value="HR">Croatia</option><option value="CY">Cyprus</option><option value="CZ">Czechia</option><option value="DK">Denmark</option><option value="EE">Estonia</option><option value="FI">Finland</option><option value="FR">France</option><option value="DE">Germany</option><option value="GR">Greece</option><option value="HU">Hungary</option><option value="IE">Ireland</option><option value="IT">Italy</option><option value="LV">Latvia</option><option value="LT">Lithuania</option><option value="LU">Luxembourg</option><option value="MT">Malta</option><option value="NL">Netherlands</option><option value="PL">Poland</option><option value="PT">Portugal</option><option value="SK">Slovakia</option><option value="SI">Slovenia</option><option value="ES">Spain</option><option value="SE">Sweden</option></select></div>
                 </div>
               </div>
               <div class="form-group">
                 <label data-en="Order note (optional)" data-ro="Nota comanda (optional)">Order note (optional)</label>
                 <textarea name="note" rows="3"></textarea>
+              </div>
+              <div class="checkout-billing-address">
+                <label class="customer-checkbox"><input type="checkbox" name="billing_same_as_shipping" value="1" checked><span data-en="Billing address is the same as the delivery address" data-ro="Adresa de facturare este aceeasi cu adresa de livrare">Billing address is the same as the delivery address</span></label>
+                <div class="hidden" data-billing-fields>
+                  <div class="form-group"><label data-en="Billing street address" data-ro="Adresa de facturare">Billing street address</label><input type="text" name="billing_street" maxlength="500"></div>
+                  <div class="form-row">
+                    <div class="form-group"><label data-en="Billing city" data-ro="Oras facturare">Billing city</label><input type="text" name="billing_city" maxlength="120"></div>
+                    <div class="form-group"><label data-en="Billing county / region" data-ro="Judet / regiune facturare">Billing county / region</label><input type="text" name="billing_county" maxlength="120"></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group"><label data-en="Billing postal code" data-ro="Cod postal facturare">Billing postal code</label><input type="text" name="billing_postal" maxlength="30"></div>
+                    <div class="form-group">
+                      <label data-en="Billing country" data-ro="Tara facturare">Billing country</label>
+                      <select name="billing_country">
+                        <option value="RO">Romania</option><option value="AT">Austria</option><option value="BE">Belgium</option><option value="BG">Bulgaria</option><option value="HR">Croatia</option><option value="CY">Cyprus</option><option value="CZ">Czechia</option><option value="DK">Denmark</option><option value="EE">Estonia</option><option value="FI">Finland</option><option value="FR">France</option><option value="DE">Germany</option><option value="GR">Greece</option><option value="HU">Hungary</option><option value="IE">Ireland</option><option value="IT">Italy</option><option value="LV">Latvia</option><option value="LT">Lithuania</option><option value="LU">Luxembourg</option><option value="MT">Malta</option><option value="NL">Netherlands</option><option value="PL">Poland</option><option value="PT">Portugal</option><option value="SK">Slovakia</option><option value="SI">Slovenia</option><option value="ES">Spain</option><option value="SE">Sweden</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -160,6 +180,11 @@
                     <button type="button" class="btn btn-outline" data-easybox-search-btn data-en="Search" data-ro="Cauta">Search</button>
                   </div>
                 </div>
+                <div class="sameday-map-toolbar">
+                  <span class="form-hint" data-en="Move the map and choose an Easybox marker." data-ro="Muta harta si alege un Easybox direct din marker.">Move the map and choose an Easybox marker.</span>
+                  <button type="button" class="btn btn-outline btn-small" data-easybox-geolocate data-en="Near me" data-ro="Langa mine">Near me</button>
+                </div>
+                <div class="sameday-easybox-map" data-easybox-map aria-label="Easybox map"></div>
                 <div class="sameday-location-results" data-easybox-results></div>
                 <input type="hidden" name="shipping_ooh_id" value="">
                 <div class="sameday-selected hidden" data-easybox-selected></div>
@@ -169,35 +194,18 @@
               <p class="form-hint" data-sameday-quote-status data-en="Complete the Romanian delivery address, then calculate the exact Sameday rate." data-ro="Completeaza adresa din Romania, apoi calculeaza tariful exact Sameday.">Complete the Romanian delivery address, then calculate the exact Sameday rate.</p>
             </div>
 
-            <div class="checkout-step">
-              <h3><span class="step-badge" data-payment-step-badge>2</span><span data-en="Payment" data-ro="Plata">Payment</span></h3>
-
-              <div class="payment-method-selector">
-                <div class="payment-option-card active">
-                  <div class="payment-option-head">
-                    <span class="payment-option-title" data-en="Online Payment" data-ro="Plata online">Online Payment</span>
-                  </div>
-                  <div class="payment-option-methods">
-                    <span class="badge mono">Card</span>
-                    <span class="badge mono">Apple Pay</span>
-                    <span class="badge mono">Google Pay</span>
-                    <span class="badge mono">Revolut Pay</span>
-                  </div>
-                </div>
-              </div>
-
-              <div id="checkout-order-error" class="checkout-error-banner hidden"></div>
-
-              <button type="submit" class="btn btn-primary btn-block" id="checkout-submit-btn" data-en="Continue to Payment" data-ro="Continua spre plata">Continue to Payment</button>
-            </div>
           </form>
         </div>
 
         <div class="cart-summary">
           <h3 data-en="Order Summary" data-ro="Sumar Comanda">Order Summary</h3>
           <div data-order-summary></div>
-
-          <div id="revolut-widget-container" class="hidden" style="margin-top:20px;">
+          <div class="checkout-payment-panel">
+            <h3 data-en="Payment" data-ro="Plata">Payment</h3>
+            <div id="checkout-order-error" class="checkout-error-banner hidden"></div>
+            <p class="payment-ready-status" data-payment-ready-status data-en="Complete the delivery details and rate to activate secure payment." data-ro="Completeaza datele si tariful de livrare pentru a activa plata securizata.">Complete the delivery details and rate to activate secure payment.</p>
+          </div>
+          <div id="revolut-widget-container">
             <div id="revolut-embedded-target"></div>
           </div>
         </div>
@@ -221,7 +229,7 @@
 
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
-<script src="/studio/assets/js/checkout.js?v=20261113-sameday"></script>
+<script src="/studio/assets/js/checkout.js?v=20261113-checkout-map"></script>
 <script src="/studio/assets/js/main.js?v=20261107-account-menu"></script>
 </body>
 </html>

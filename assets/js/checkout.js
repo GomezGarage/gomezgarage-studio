@@ -9,8 +9,9 @@
    (Revolut Pay, Card, Apple Pay, Google Pay) and calls our createOrder()
    callback itself, at the moment the customer actually commits to paying.
    Because it's embedded rather than a popup, there's no user-gesture /
-   Safari-popup-blocker constraint to design around — a single click on
-   "Continua spre plata" is enough.
+   Safari-popup-blocker constraint to design around. The widget is mounted
+   automatically below the order summary as soon as checkout and delivery
+   details are complete.
 
    publicToken here is the *merchant* public key (REVOLUT_PUBLIC_KEY,
    fetched from api/get-checkout-config.php — config.php isn't reachable
@@ -32,7 +33,6 @@
   const SHIPPING_RATES = {
     RO: { eur: 5, label: 'Romania' },
     EU: { eur: 12, label: 'European Union' },
-    UK: { eur: 18, label: 'United Kingdom' },
   };
 
   const EU_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
@@ -45,6 +45,13 @@
   let samedayQuote = null;
   let selectedEasybox = null;
   let currentCart = [];
+  let paymentRefreshTimer = null;
+  let mountedPaymentSignature = '';
+  let paymentMountInFlight = false;
+  let paymentMountGeneration = 0;
+  let easyboxMap = null;
+  let easyboxMarkers = null;
+  let easyboxMapRequest = 0;
 
   // The order_number of the order created by the widget's createOrder()
   // callback, used to build the redirect URLs (Revolut's own callback
@@ -57,7 +64,6 @@
 
   function shippingZoneFor(countryCode) {
     if (countryCode === 'RO') return 'RO';
-    if (countryCode === 'GB') return 'UK';
     return 'EU';
   }
 
@@ -77,6 +83,7 @@
           if (form) {
             updateSamedayVisibility(form);
             renderOrderSummary(currentCart);
+            schedulePaymentRefresh(form);
           }
         }
       })
@@ -98,7 +105,10 @@
     }
 
     renderOrderSummary(cart);
-    document.addEventListener('ggs:currency-changed', () => renderOrderSummary(cart));
+    document.addEventListener('ggs:currency-changed', () => {
+      renderOrderSummary(cart);
+      schedulePaymentRefresh(form);
+    });
     const customerContextReady = preloadCustomerContext(form);
 
     const countrySelect = form.querySelector('[name="country"]');
@@ -107,23 +117,34 @@
       invalidateSamedayQuote(form);
       updateSamedayVisibility(form);
       renderOrderSummary(cart);
+      syncBillingAddress(form);
+      schedulePaymentRefresh(form);
     });
 
     const customerTypeSelect = form.querySelector('[name="customer_type"]');
     if (customerTypeSelect) {
-      customerTypeSelect.addEventListener('change', () => updateFiscalFieldRequirements(form));
+      customerTypeSelect.addEventListener('change', () => {
+        updateFiscalFieldRequirements(form);
+        schedulePaymentRefresh(form);
+      });
     }
+    initBillingAddress(form);
     updateFiscalFieldRequirements(form);
     initSamedayDelivery(form, cart);
 
     preloadCheckoutConfig();
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      customerContextReady.finally(() => {
-        if (!validateCheckoutForm(form)) return;
-        submitOrder(form, cart);
-      });
+    form.addEventListener('submit', (event) => event.preventDefault());
+    form.addEventListener('input', () => {
+      syncBillingAddress(form);
+      schedulePaymentRefresh(form);
+    });
+    form.addEventListener('change', () => {
+      syncBillingAddress(form);
+      schedulePaymentRefresh(form);
+    });
+    customerContextReady.finally(() => {
+      syncBillingAddress(form);
+      schedulePaymentRefresh(form);
     });
   }
 
@@ -198,6 +219,50 @@
     if (field && !field.value && value) field.value = value;
   }
 
+  function initBillingAddress(form) {
+    const same = form.querySelector('[name="billing_same_as_shipping"]');
+    const fields = form.querySelector('[data-billing-fields]');
+    if (!same || !fields) return;
+    const update = () => {
+      fields.classList.toggle('hidden', same.checked);
+      ['billing_street', 'billing_city', 'billing_county', 'billing_postal', 'billing_country'].forEach((name) => {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (field) field.required = !same.checked;
+      });
+      syncBillingAddress(form);
+      schedulePaymentRefresh(form);
+    };
+    same.addEventListener('change', update);
+    update();
+  }
+
+  function syncBillingAddress(form) {
+    const same = form.querySelector('[name="billing_same_as_shipping"]');
+    if (!same || !same.checked) return;
+    const copies = {
+      billing_street: 'street',
+      billing_city: 'city',
+      billing_county: 'county',
+      billing_postal: 'postal',
+      billing_country: 'country',
+    };
+    Object.entries(copies).forEach(([billingName, shippingName]) => {
+      const target = form.querySelector(`[name="${billingName}"]`);
+      const source = form.querySelector(`[name="${shippingName}"]`);
+      if (target && source) target.value = source.value;
+    });
+  }
+
+  function billingAddressFromForm(form) {
+    return {
+      countryCode: form.querySelector('[name="billing_country"]')?.value || '',
+      postcode: form.querySelector('[name="billing_postal"]')?.value.trim() || '',
+      region: form.querySelector('[name="billing_county"]')?.value.trim() || '',
+      city: form.querySelector('[name="billing_city"]')?.value.trim() || '',
+      streetLine1: form.querySelector('[name="billing_street"]')?.value.trim() || '',
+    };
+  }
+
   function updateFiscalFieldRequirements(form) {
     const country = form.querySelector('[name="country"]');
     const county = form.querySelector('[name="county"]');
@@ -260,10 +325,8 @@
   function updateSamedayVisibility(form) {
     const country = form.querySelector('[name="country"]');
     const section = form.querySelector('[data-sameday-delivery]');
-    const badge = form.querySelector('[data-payment-step-badge]');
     const visible = samedayEnabled && country && country.value === 'RO';
     if (section) section.classList.toggle('hidden', !visible);
-    if (badge) badge.textContent = visible ? '3' : '2';
   }
 
   function invalidateSamedayQuote(form) {
@@ -275,6 +338,7 @@
       status.textContent = document.documentElement.lang === 'ro' ? status.getAttribute('data-ro') : status.getAttribute('data-en');
     }
     renderOrderSummary(currentCart);
+    schedulePaymentRefresh(form);
   }
 
   function initSamedayDelivery(form, cart) {
@@ -282,13 +346,26 @@
     const results = form.querySelector('[data-easybox-results]');
     const search = form.querySelector('[data-easybox-search]');
     const searchButton = form.querySelector('[data-easybox-search-btn]');
+    const mapElement = form.querySelector('[data-easybox-map]');
+    const geolocateButton = form.querySelector('[data-easybox-geolocate]');
     const quoteButton = form.querySelector('[data-sameday-quote]');
     const oohInput = form.querySelector('[name="shipping_ooh_id"]');
+    let mapMoveTimer = null;
 
     form.querySelectorAll('[name="shipping_method"]').forEach((radio) => radio.addEventListener('change', () => {
       form.querySelectorAll('[data-shipping-card]').forEach((card) => card.classList.toggle('active', card.dataset.shippingCard === radio.value));
       if (picker) picker.classList.toggle('hidden', radio.value !== 'easybox');
       invalidateSamedayQuote(form);
+      if (radio.value === 'easybox') {
+        window.requestAnimationFrame(() => {
+          initializeEasyboxMap();
+          if (easyboxMap) easyboxMap.invalidateSize();
+          const city = form.querySelector('[name="city"]')?.value.trim() || '';
+          const county = form.querySelector('[name="county"]')?.value.trim() || '';
+          if (search && !search.value.trim()) search.value = city || county;
+          findEasyboxes();
+        });
+      }
     }));
 
     ['street', 'city', 'county', 'postal', 'phone'].forEach((name) => {
@@ -296,48 +373,147 @@
       if (input) input.addEventListener('input', () => invalidateSamedayQuote(form));
     });
 
-    function renderLocations(locations) {
+    function chooseEasybox(location) {
+      selectedEasybox = location;
+      if (oohInput) oohInput.value = String(location.id);
+      const selected = form.querySelector('[data-easybox-selected]');
+      if (selected) {
+        selected.innerHTML = `<strong>${window.GGSUtil.escapeHtml(location.name)}</strong><br><span>${window.GGSUtil.escapeHtml([location.address, location.city, location.county].filter(Boolean).join(', '))}</span>`;
+        selected.classList.remove('hidden');
+      }
+      invalidateSamedayQuote(form);
+      const quoteFields = ['phone', 'street', 'city', 'county', 'postal'];
+      if (quoteFields.every((name) => form.querySelector(`[name="${name}"]`)?.value.trim())) requestSamedayQuote();
+    }
+
+    function popupFor(location) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'easybox-map-popup';
+      const title = document.createElement('strong');
+      title.textContent = location.name;
+      const address = document.createElement('span');
+      address.textContent = [location.address, location.city, location.county].filter(Boolean).join(', ');
+      const choose = document.createElement('button');
+      choose.type = 'button';
+      choose.className = 'btn btn-primary btn-small';
+      choose.textContent = document.documentElement.lang === 'ro' ? 'Alege acest Easybox' : 'Choose this Easybox';
+      choose.addEventListener('click', () => {
+        chooseEasybox(location);
+        if (easyboxMap) easyboxMap.closePopup();
+      });
+      wrapper.append(title, address, choose);
+      return wrapper;
+    }
+
+    function renderLocations(locations, fitMap) {
+      const validLocations = locations.filter((location) => Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng)));
+      if (easyboxMarkers) {
+        easyboxMarkers.clearLayers();
+        validLocations.forEach((location) => {
+          const marker = window.L.marker([Number(location.lat), Number(location.lng)]).bindPopup(popupFor(location));
+          marker.addTo(easyboxMarkers);
+        });
+      }
+      if (fitMap && easyboxMap && validLocations.length) {
+        const bounds = window.L.latLngBounds(validLocations.map((location) => [Number(location.lat), Number(location.lng)]));
+        easyboxMap.fitBounds(bounds.pad(0.12), { maxZoom: 15 });
+      }
       if (!results) return;
       if (!locations.length) {
-        results.innerHTML = '<p class="form-hint" data-en="No Easybox found. Try a city or a shorter search." data-ro="Nu am gasit Easybox. Incearca orasul sau o cautare mai scurta.">No Easybox found. Try a city or a shorter search.</p>';
+        results.innerHTML = '<p class="form-hint" data-en="No Easybox found. Move the map or try a shorter search." data-ro="Nu am gasit Easybox. Muta harta sau incearca o cautare mai scurta.">No Easybox found. Move the map or try a shorter search.</p>';
         return;
       }
-      results.innerHTML = locations.map((location) => `<button type="button" class="sameday-location-option" data-location-id="${location.id}"><strong>${window.GGSUtil.escapeHtml(location.name)}</strong><small>${window.GGSUtil.escapeHtml([location.address, location.city, location.county].filter(Boolean).join(', '))}</small></button>`).join('');
+      results.innerHTML = locations.slice(0, 20).map((location) => `<button type="button" class="sameday-location-option" data-location-id="${location.id}"><strong>${window.GGSUtil.escapeHtml(location.name)}</strong><small>${window.GGSUtil.escapeHtml([location.address, location.city, location.county].filter(Boolean).join(', '))}</small></button>`).join('');
       results.querySelectorAll('[data-location-id]').forEach((button) => button.addEventListener('click', () => {
-        selectedEasybox = locations.find((location) => String(location.id) === button.dataset.locationId) || null;
-        if (!selectedEasybox) return;
-        if (oohInput) oohInput.value = String(selectedEasybox.id);
-        const selected = form.querySelector('[data-easybox-selected]');
-        if (selected) {
-          selected.innerHTML = `<strong>${window.GGSUtil.escapeHtml(selectedEasybox.name)}</strong><br><span>${window.GGSUtil.escapeHtml([selectedEasybox.address, selectedEasybox.city, selectedEasybox.county].filter(Boolean).join(', '))}</span>`;
-          selected.classList.remove('hidden');
+        const location = locations.find((item) => String(item.id) === button.dataset.locationId);
+        if (!location) return;
+        chooseEasybox(location);
+        if (easyboxMap && Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng))) {
+          easyboxMap.setView([Number(location.lat), Number(location.lng)], 16);
         }
-        results.innerHTML = '';
-        invalidateSamedayQuote(form);
       }));
     }
 
-    function findEasyboxes() {
-      const q = search ? search.value.trim() : '';
-      const county = form.querySelector('[name="county"]')?.value.trim() || '';
-      const city = form.querySelector('[name="city"]')?.value.trim() || '';
-      const params = new URLSearchParams({ q, county, city, limit: '30' });
-      if (results) results.innerHTML = '<p class="form-hint">Searching…</p>';
-      fetch(`${API_BASE}/sameday-locations.php?${params}`)
+    function requestLocations(params, fitMap) {
+      const requestId = ++easyboxMapRequest;
+      if (results) results.innerHTML = '<p class="form-hint" data-en="Loading Easybox locations..." data-ro="Se incarca punctele Easybox...">Loading Easybox locations...</p>';
+      return fetch(`${API_BASE}/sameday-locations.php?${params}`)
         .then((response) => response.json())
-        .then((data) => renderLocations(data.success && Array.isArray(data.locations) ? data.locations : []))
-        .catch(() => renderLocations([]));
+        .then((data) => {
+          if (requestId !== easyboxMapRequest) return;
+          renderLocations(data.success && Array.isArray(data.locations) ? data.locations : [], fitMap);
+        })
+        .catch(() => {
+          if (requestId === easyboxMapRequest) renderLocations([], false);
+        });
+    }
+
+    function loadMapBounds() {
+      if (!easyboxMap) return;
+      const bounds = easyboxMap.getBounds();
+      const params = new URLSearchParams({
+        south: bounds.getSouth().toFixed(6),
+        west: bounds.getWest().toFixed(6),
+        north: bounds.getNorth().toFixed(6),
+        east: bounds.getEast().toFixed(6),
+        limit: '500',
+      });
+      requestLocations(params, false);
+    }
+
+    function initializeEasyboxMap() {
+      if (easyboxMap || !mapElement) return;
+      if (!window.L) {
+        mapElement.innerHTML = '<p class="form-hint">Harta nu a putut fi incarcata. Foloseste cautarea de mai sus.</p>';
+        return;
+      }
+      easyboxMap = window.L.map(mapElement, { scrollWheelZoom: false }).setView([45.9432, 24.9668], 7);
+      window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(easyboxMap);
+      easyboxMarkers = window.L.layerGroup().addTo(easyboxMap);
+      easyboxMap.on('moveend', () => {
+        window.clearTimeout(mapMoveTimer);
+        mapMoveTimer = window.setTimeout(loadMapBounds, 250);
+      });
+      loadMapBounds();
+    }
+
+    function findEasyboxes() {
+      initializeEasyboxMap();
+      const fallback = form.querySelector('[name="city"]')?.value.trim() || form.querySelector('[name="county"]')?.value.trim() || '';
+      const q = search && search.value.trim() ? search.value.trim() : fallback;
+      if (!q) {
+        loadMapBounds();
+        return;
+      }
+      const params = new URLSearchParams({ q, limit: '100' });
+      requestLocations(params, true);
     }
     if (searchButton) searchButton.addEventListener('click', findEasyboxes);
     if (search) search.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); findEasyboxes(); } });
+    if (geolocateButton) geolocateButton.addEventListener('click', () => {
+      initializeEasyboxMap();
+      if (!navigator.geolocation || !easyboxMap) return;
+      geolocateButton.disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          easyboxMap.setView([position.coords.latitude, position.coords.longitude], 14);
+          geolocateButton.disabled = false;
+        },
+        () => { geolocateButton.disabled = false; },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      );
+    });
 
-    if (quoteButton) quoteButton.addEventListener('click', () => {
+    function requestSamedayQuote() {
       const method = form.querySelector('[name="shipping_method"]:checked')?.value || 'home';
       const error = document.getElementById('sameday-quote-error');
       if (error) error.classList.add('hidden');
       if (method === 'easybox' && !selectedEasybox) {
         if (error) { error.textContent = document.documentElement.lang === 'ro' ? 'Alege un Easybox.' : 'Choose an Easybox.'; error.classList.remove('hidden'); }
-        return;
+        return Promise.resolve();
       }
       const payload = {
         shipping_method: method,
@@ -353,7 +529,7 @@
         items: cart.map((item) => ({ product_id: item.product_id, qty: item.qty })),
       };
       quoteButton.disabled = true;
-      fetch(`${API_BASE}/sameday-quote.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      return fetch(`${API_BASE}/sameday-quote.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         .then((response) => response.json())
         .then((data) => {
           if (!data.success) throw new Error(data.error || 'Quote failed');
@@ -365,14 +541,17 @@
             status.textContent = document.documentElement.lang === 'ro' ? status.getAttribute('data-ro') : status.getAttribute('data-en');
           }
           renderOrderSummary(cart);
+          schedulePaymentRefresh(form);
         })
         .catch((requestError) => {
           samedayQuote = null;
           if (error) { error.textContent = requestError.message; error.classList.remove('hidden'); }
           renderOrderSummary(cart);
+          schedulePaymentRefresh(form);
         })
         .finally(() => { quoteButton.disabled = false; });
-    });
+    }
+    if (quoteButton) quoteButton.addEventListener('click', requestSamedayQuote);
     updateSamedayVisibility(form);
   }
 
@@ -420,6 +599,11 @@
           valid = false;
         }
       });
+      const companyCountry = form.querySelector('[name="company_country"]');
+      if (companyCountry && companyCountry.value.trim() && !EU_COUNTRIES.includes(companyCountry.value.trim().toUpperCase())) {
+        showFieldError(companyCountry, 'Company invoice country must be in the EU.', 'Tara de facturare a firmei trebuie sa fie in UE.');
+        valid = false;
+      }
     }
 
     const emailInput = form.querySelector('[name="email"]');
@@ -443,6 +627,27 @@
           isRomania ? 'Romanian postal code must be exactly 6 digits.' : 'Enter a valid postal code (at least 3 letters/digits).',
           isRomania ? 'Codul postal trebuie sa aiba exact 6 cifre.' : 'Introdu un cod postal valid (minim 3 litere/cifre).'
         );
+        valid = false;
+      }
+    }
+
+    if (countryInput && !EU_COUNTRIES.includes(countryInput.value)) {
+      showFieldError(countryInput, 'Delivery is available only within the European Union.', 'Livrarea este disponibila doar in Uniunea Europeana.');
+      valid = false;
+    }
+
+    const sameBilling = form.querySelector('[name="billing_same_as_shipping"]');
+    if (sameBilling && !sameBilling.checked) {
+      ['billing_street', 'billing_city', 'billing_postal', 'billing_country'].forEach((name) => {
+        const input = form.querySelector(`[name="${name}"]`);
+        if (input && !input.value.trim()) {
+          showFieldError(input, 'This billing field is required.', 'Acest camp de facturare este obligatoriu.');
+          valid = false;
+        }
+      });
+      const billingCountry = form.querySelector('[name="billing_country"]');
+      if (billingCountry && !EU_COUNTRIES.includes(billingCountry.value)) {
+        showFieldError(billingCountry, 'Choose an EU billing country.', 'Alege o tara din Uniunea Europeana.');
         valid = false;
       }
     }
@@ -483,26 +688,9 @@
     if (el) el.classList.add('hidden');
   }
 
-  function resetSubmitButton() {
-    const submitBtn = document.getElementById('checkout-submit-btn');
-    if (!submitBtn) return;
-    submitBtn.disabled = false;
-    submitBtn.textContent = document.documentElement.lang === 'ro'
-      ? submitBtn.getAttribute('data-ro')
-      : submitBtn.getAttribute('data-en');
-  }
-
-  /* ======================= Submit ======================= */
-
-  function submitOrder(form, cart) {
-    const submitBtn = document.getElementById('checkout-submit-btn');
-    hideCheckoutError();
-    resetPaymentWidget();
-    submitBtn.disabled = true;
-    submitBtn.textContent = document.documentElement.lang === 'ro' ? 'Se proceseaza…' : 'Processing…';
-
+  function buildCheckoutPayload(form, cart) {
     const formData = new FormData(form);
-    const payload = {
+    return {
       first_name: formData.get('first_name'),
       last_name: formData.get('last_name'),
       email: formData.get('email'),
@@ -528,34 +716,92 @@
       shipping_method: samedayEnabled && formData.get('country') === 'RO' ? (formData.get('shipping_method') || 'home') : 'standard',
       shipping_ooh_id: samedayEnabled && formData.get('country') === 'RO' && formData.get('shipping_method') === 'easybox' ? Number(formData.get('shipping_ooh_id')) : null,
       payment_method: 'card',
-      // Charge in whatever currency the customer was just shown in the
-      // order summary, so the payment form matches (not always EUR).
       currency: window.GGSCurrency ? window.GGSCurrency.current : 'EUR',
+      billing_address: billingAddressFromForm(form),
     };
+  }
 
-    // Mount the embedded widget right here. The order itself is
-    // created lazily by createOrder() below, called by the widget once the
-    // customer actually picks a payment method — not before.
-    mountEmbeddedCheckout(payload);
+  function paymentFormIsReady(form) {
+    const value = (name) => form.querySelector(`[name="${name}"]`)?.value.trim() || '';
+    if (REQUIRED_FIELDS.some((name) => !value(name))) return false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value('email'))) return false;
+    if (!EU_COUNTRIES.includes(value('country'))) return false;
+    if (value('country') === 'RO' && !/^\d{6}$/.test(value('postal'))) return false;
+    if (value('country') !== 'RO' && !/^[a-zA-Z0-9][a-zA-Z0-9\s-]{2,}$/.test(value('postal'))) return false;
+    if (value('country') === 'RO' && !value('county')) return false;
+
+    if (value('customer_type') === 'pj') {
+      const companyRequired = ['company_name', 'company_cui', 'company_address', 'company_city', 'company_county', 'company_postal', 'company_country'];
+      if (companyRequired.some((name) => !value(name))) return false;
+      if (!EU_COUNTRIES.includes(value('company_country').toUpperCase())) return false;
+    }
+    const billing = billingAddressFromForm(form);
+    if (!billing.streetLine1 || !billing.city || !billing.postcode || !EU_COUNTRIES.includes(billing.countryCode)) return false;
+
+    if (samedayEnabled && value('country') === 'RO') {
+      const method = form.querySelector('[name="shipping_method"]:checked')?.value || 'home';
+      if (method === 'easybox' && !selectedEasybox) return false;
+      if (!samedayQuote) return false;
+    }
+    return true;
+  }
+
+  function setPaymentReadyStatus(messageEn, messageRo, hidden) {
+    const status = document.querySelector('[data-payment-ready-status]');
+    if (!status) return;
+    status.classList.toggle('hidden', Boolean(hidden));
+    if (hidden) return;
+    status.setAttribute('data-en', messageEn);
+    status.setAttribute('data-ro', messageRo);
+    status.textContent = document.documentElement.lang === 'ro' ? messageRo : messageEn;
+  }
+
+  function schedulePaymentRefresh(form) {
+    window.clearTimeout(paymentRefreshTimer);
+    paymentRefreshTimer = window.setTimeout(() => refreshPaymentModule(form), 450);
+  }
+
+  function refreshPaymentModule(form) {
+    if (!form || !paymentFormIsReady(form)) {
+      if (embeddedInstance || mountedPaymentSignature) resetPaymentWidget();
+      setPaymentReadyStatus(
+        'Complete the delivery details and rate to activate secure payment.',
+        'Completeaza datele si tariful de livrare pentru a activa plata securizata.',
+        false
+      );
+      return;
+    }
+    if (!revolutPublicKey || !window.RevolutCheckout || !window.RevolutCheckout.embeddedCheckout) {
+      setPaymentReadyStatus('Secure payment is loading...', 'Se incarca plata securizata...', false);
+      return;
+    }
+    const payload = buildCheckoutPayload(form, currentCart);
+    const signature = JSON.stringify(payload);
+    if ((embeddedInstance || paymentMountInFlight) && signature === mountedPaymentSignature) return;
+    resetPaymentWidget();
+    hideCheckoutError();
+    setPaymentReadyStatus('Secure payment is loading...', 'Se incarca plata securizata...', false);
+    mountedPaymentSignature = signature;
+    mountEmbeddedCheckout(payload, signature, form);
   }
 
   /* ======================= Embedded Revolut Checkout ======================= */
 
   function resetPaymentWidget() {
+    paymentMountGeneration += 1;
     if (embeddedInstance && typeof embeddedInstance.destroy === 'function') {
       embeddedInstance.destroy();
     }
     embeddedInstance = null;
+    paymentMountInFlight = false;
+    mountedPaymentSignature = '';
     lastOrderNumber = null;
-    const container = document.getElementById('revolut-widget-container');
-    if (container) container.classList.add('hidden');
     const target = document.getElementById('revolut-embedded-target');
     if (target) target.innerHTML = '';
   }
 
-  function mountEmbeddedCheckout(payload) {
+  function mountEmbeddedCheckout(payload, signature, form) {
     if (!revolutPublicKey || !window.RevolutCheckout || !window.RevolutCheckout.embeddedCheckout) {
-      resetSubmitButton();
       showCheckoutError(
         'Unable to reach the payment service. Please refresh and try again.',
         'Serviciul de plata nu este disponibil. Reincarca pagina si incearca din nou.'
@@ -563,16 +809,39 @@
       return;
     }
 
-    const container = document.getElementById('revolut-widget-container');
     const target = document.getElementById('revolut-embedded-target');
-    if (container) container.classList.remove('hidden');
+    const subtotalEur = currentCart.reduce((sum, item) => sum + Number(item.price_eur) * item.qty, 0);
+    const totalEur = subtotalEur + Number(payload.shipping_eur || 0);
+    const conversion = payload.currency === 'RON' && window.GGSCurrency ? window.GGSCurrency.rate : 1;
+    const totalMinor = Math.round(totalEur * conversion * 100);
+    const shippingMinor = Math.round(Number(payload.shipping_eur || 0) * conversion * 100);
+    const shippingLabel = payload.shipping_method === 'easybox'
+      ? 'Sameday Easybox'
+      : (payload.shipping_method === 'home' ? 'Sameday home delivery' : 'Standard delivery');
+    const shippingOptions = [{ id: payload.shipping_method || 'standard', label: shippingLabel, amount: shippingMinor }];
+    const mountGeneration = paymentMountGeneration;
+    paymentMountInFlight = true;
 
     window.RevolutCheckout.embeddedCheckout({
       publicToken: revolutPublicKey,
       mode: revolutMode,
       target,
       email: payload.email,
+      billingAddress: payload.billing_address,
+      shippingOptions,
+      onShippingAddressChange(address) {
+        const country = String(address && address.countryCode || '').toUpperCase();
+        return Promise.resolve({
+          status: EU_COUNTRIES.includes(country) ? 'success' : 'fail',
+          shippingOptions,
+          total: { amount: totalMinor, label: 'Total' },
+        });
+      },
+      onShippingOptionChange() {
+        return Promise.resolve({ status: 'success', total: { amount: totalMinor, label: 'Total' } });
+      },
       createOrder() {
+        if (!validateCheckoutForm(form)) return Promise.reject(new Error('Checkout details are incomplete'));
         return fetch(`${API_BASE}/create-order.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(customerCsrfToken ? { 'X-CSRF-Token': customerCsrfToken } : {}) },
@@ -594,17 +863,28 @@
         window.location.href = `/studio/order-failed.html?order=${lastOrderNumber || ''}`;
       },
       onCancel() {
-        // Customer backed out without paying — tear down the widget and
-        // re-enable the submit button so they can retry.
         resetPaymentWidget();
-        resetSubmitButton();
+        schedulePaymentRefresh(form);
       },
     })
       .then((instance) => {
+        if (mountGeneration !== paymentMountGeneration) {
+          if (instance && typeof instance.destroy === 'function') instance.destroy();
+          return;
+        }
         embeddedInstance = instance;
+        paymentMountInFlight = false;
+        mountedPaymentSignature = signature;
+        setPaymentReadyStatus('', '', true);
       })
       .catch(() => {
-        resetSubmitButton();
+        if (mountGeneration !== paymentMountGeneration) return;
+        resetPaymentWidget();
+        setPaymentReadyStatus(
+          'Secure payment could not be loaded. Check the details or refresh the page.',
+          'Plata securizata nu a putut fi incarcata. Verifica datele sau reincarca pagina.',
+          false
+        );
         showCheckoutError(
           "We couldn't load the payment form. Please refresh and try again.",
           'Nu am putut incarca formularul de plata. Reincarca pagina si incearca din nou.'

@@ -121,7 +121,7 @@ gomezgarage.eu/studio/
 
 4. **BRAND STORY** (sectiunea scurta)
    - 2-3 fraze despre cine esti si cum faci produsele
-   - 3 iconite cu valori: "Designed from scratch" / "Printed in-house" / "Ships EU & UK"
+   - 3 iconite cu valori: "Designed from scratch" / "Printed in-house" / "Ships EU"
    - Link: "More about the process" → about.html
 
 5. **PROCESS TEASER** (3 pasi vizuali)
@@ -196,7 +196,7 @@ gomezgarage.eu/studio/
 - Prenume + Nume
 - Email
 - Telefon (optional)
-- Adresa livrare: strada, oras, judet/regiune, cod postal, tara (dropdown EU+UK)
+- Adresa livrare: strada, oras, judet/regiune, cod postal, tara (dropdown UE)
 - Tip factura PF/PJ; pentru PJ se colecteaza datele fiscale si adresa sediului
 - Nota pentru comanda (textarea optional)
 
@@ -204,7 +204,7 @@ gomezgarage.eu/studio/
 - Revolut Checkout Widget embedded
 - Afiseaza: sumar comanda + total cu shipping estimat
 - Plata este exclusiv online; rambursul nu este oferit.
-- Shipping: calculat simplu — Romania X RON, EU Y EUR, UK Z EUR (hardcodat initial)
+- Shipping: Sameday in Romania si tarif configurabil pentru restul UE
 
 ---
 
@@ -275,7 +275,7 @@ gomezgarage.eu/studio/
 - Email notificari comenzi noi (adresa ta)
 - Email notificari stoc scazut
 - Prag stoc global default
-- Shipping rates: Romania / EU / UK (RON/EUR)
+- Shipping rates: Romania / EU (RON/EUR)
 - Revolut API keys (public + secret) — stocate in config.php, nu in DB
 - Moneda default
 

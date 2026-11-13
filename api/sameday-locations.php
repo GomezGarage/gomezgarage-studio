@@ -13,22 +13,49 @@ if (!ggs_sameday_enabled()) {
 }
 
 $query = trim((string) ($_GET['q'] ?? ''));
-$county = trim((string) ($_GET['county'] ?? ''));
-$city = trim((string) ($_GET['city'] ?? ''));
-$limit = min(50, max(1, (int) ($_GET['limit'] ?? 20)));
-if (mb_strlen($query) > 100 || mb_strlen($county) > 120 || mb_strlen($city) > 120) {
+$limit = min(500, max(1, (int) ($_GET['limit'] ?? 50)));
+$bounds = [];
+foreach (['south', 'west', 'north', 'east'] as $coordinate) {
+  if (isset($_GET[$coordinate]) && $_GET[$coordinate] !== '' && is_numeric($_GET[$coordinate])) {
+    $bounds[$coordinate] = (float) $_GET[$coordinate];
+  }
+}
+if (mb_strlen($query) > 100) {
   ggs_json_response(['success' => false, 'error' => 'Search value is too long'], 422);
+}
+if ($bounds && count($bounds) !== 4) {
+  ggs_json_response(['success' => false, 'error' => 'Incomplete map bounds'], 422);
+}
+if ($bounds && ($bounds['south'] < -90 || $bounds['north'] > 90 || $bounds['west'] < -180 || $bounds['east'] > 180 || $bounds['south'] > $bounds['north'])) {
+  ggs_json_response(['success' => false, 'error' => 'Invalid map bounds'], 422);
 }
 
 $where = ['active = 1', 'client_visible = 1', 'ooh_type = 0'];
 $params = [];
 if ($query !== '') {
-  $where[] = '(name LIKE ? OR address LIKE ? OR city LIKE ? OR county LIKE ?)';
-  $needle = '%' . $query . '%';
-  array_push($params, $needle, $needle, $needle, $needle);
+  $needles = ['%' . $query . '%'];
+  if (preg_match('/^sector(?:ul)?\s*([1-6])$/iu', $query, $matches)) {
+    $needles[] = '%Sectorul ' . $matches[1] . '%';
+  }
+  $searchParts = [];
+  foreach ($needles as $needle) {
+    $searchParts[] = '(name LIKE ? OR address LIKE ? OR city LIKE ? OR county LIKE ?)';
+    array_push($params, $needle, $needle, $needle, $needle);
+  }
+  $where[] = '(' . implode(' OR ', $searchParts) . ')';
 }
-if ($county !== '') { $where[] = 'county LIKE ?'; $params[] = '%' . $county . '%'; }
-if ($city !== '') { $where[] = 'city LIKE ?'; $params[] = '%' . $city . '%'; }
+if ($bounds) {
+  $where[] = 'latitude IS NOT NULL AND longitude IS NOT NULL';
+  $where[] = 'latitude BETWEEN ? AND ?';
+  array_push($params, $bounds['south'], $bounds['north']);
+  if ($bounds['west'] <= $bounds['east']) {
+    $where[] = 'longitude BETWEEN ? AND ?';
+    array_push($params, $bounds['west'], $bounds['east']);
+  } else {
+    $where[] = '(longitude >= ? OR longitude <= ?)';
+    array_push($params, $bounds['west'], $bounds['east']);
+  }
+}
 
 $sql = 'SELECT ooh_id, name, county, city, address, postal_code, latitude, longitude FROM sameday_ooh_locations WHERE ' . implode(' AND ', $where) . ' ORDER BY county, city, name LIMIT ' . $limit;
 $stmt = ggs_db()->prepare($sql);
