@@ -61,7 +61,9 @@ try {
   ggs_json_response(['success' => true, 'amount' => $quote['amount'], 'currency' => $quote['currency'], 'amount_eur' => $amountEur, 'service_id' => $quote['service_id'], 'used_package_defaults' => !empty($quote['package']['used_defaults'])]);
 } catch (Throwable $error) {
   error_log('GGS Sameday quote failed: ' . $error->getMessage());
-  $message = str_starts_with($error->getMessage(), 'PDO is enabled')
+  $safeProviderError = $error instanceof GgsSamedayException
+    && str_starts_with($error->getMessage(), 'Sameday quote failed:');
+  $message = (str_starts_with($error->getMessage(), 'PDO is enabled') || $safeProviderError)
     ? $error->getMessage()
     : 'Sameday could not calculate this delivery. Check the address and try again.';
   ggs_json_response(['success' => false, 'error' => $message], 502);

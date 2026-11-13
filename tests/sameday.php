@@ -75,6 +75,12 @@ $transport = static function (string $method, string $url, array $headers, ?stri
 };
 $quote = ggs_sameday_estimate($db, $order, 'easybox', 174, $transport);
 sdCheck($quote['amount'] === 19.5 && $quote['currency'] === 'RON', 'quote mapping');
+$estimateCall = current(array_values(array_filter($calls, static fn(array $call): bool => str_ends_with($call[1], '/api/awb/estimate-cost'))));
+$estimateForm = [];
+parse_str((string) $estimateCall[3], $estimateForm);
+sdCheck(($estimateForm['serviceTaxes'][0] ?? null) === '991001', 'estimate uses PDO tax ID array');
+sdCheck(!isset($estimateForm['oohLastMile']) && !isset($estimateForm['clientInternalReference']), 'estimate excludes AWB-only fields');
+sdCheck(($estimateForm['awbRecipient']['address'] ?? '') === 'Synthetic 1', 'estimate includes complete recipient address');
 $issued = ggs_sameday_create_awb($db, $order + ['shipping_method' => 'easybox', 'shipping_ooh_id' => 174], $transport);
 sdCheck($issued['awb_number'] === '1SDY12345' && count($issued['parcels']) === 1, 'AWB mapping');
 sdCheck(count(array_filter($calls, static fn(array $call): bool => str_ends_with($call[1], '/api/authenticate'))) === 1, 'authentication token reused');

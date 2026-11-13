@@ -533,14 +533,35 @@ function ggs_sameday_build_payload(PDO $db, array $order, string $method, ?int $
     }
     $pdoTaxId = ggs_sameday_pdo_tax_id($db, $service, $packageType);
     if ($pdoTaxId > 0) $payload['serviceTaxes'] = 'PDO ' . $pdoTaxId;
-    return ['payload' => $payload, 'package' => $package, 'service_id' => $service];
+    return ['payload' => $payload, 'package' => $package, 'service_id' => $service, 'pdo_tax_id' => $pdoTaxId];
 }
 
 /** @return array{amount:float,currency:string,time:mixed,service_id:int,package:array} */
 function ggs_sameday_estimate(PDO $db, array $order, string $method, ?int $oohId = null, ?callable $transport = null): array
 {
     $built = ggs_sameday_build_payload($db, $order, $method, $oohId);
-    $response = ggs_sameday_request($db, 'POST', '/api/awb/estimate-cost', [], $built['payload'], false, $transport);
+    // Sameday's estimate endpoint has an older, narrower contract than AWB
+    // creation: it accepts tax IDs as an array, requires a complete recipient
+    // address and does not accept oohLastMile/client reference/observations.
+    // AWB creation keeps the newer Locker/PDO payload documented for v3.6.
+    $address = is_array($order['shipping_address'] ?? null)
+        ? $order['shipping_address']
+        : json_decode((string) ($order['shipping_address'] ?? ''), true);
+    $estimatePayload = array_intersect_key($built['payload'], array_flip([
+        'pickupPoint', 'contactPerson', 'packageType', 'packageNumber',
+        'packageWeight', 'service', 'awbPayment', 'cashOnDelivery',
+        'insuredValue', 'thirdPartyPickup', 'awbRecipient', 'parcels',
+    ]));
+    if (is_array($address)) {
+        $estimatePayload['awbRecipient'] += [
+            'countyString' => trim((string) ($address['county'] ?? '')),
+            'cityString' => trim((string) ($address['city'] ?? '')),
+            'address' => trim((string) ($address['street'] ?? '')),
+            'postalCode' => trim((string) ($address['postal'] ?? '')),
+        ];
+    }
+    if ($built['pdo_tax_id'] > 0) $estimatePayload['serviceTaxes'] = [$built['pdo_tax_id']];
+    $response = ggs_sameday_request($db, 'POST', '/api/awb/estimate-cost', [], $estimatePayload, false, $transport);
     $data = json_decode($response['body'], true);
     if ($response['status'] >= 400 || !is_array($data) || !isset($data['amount'])) throw new GgsSamedayException('Sameday quote failed: ' . ggs_sameday_error_message($data, $response['status']));
     return ['amount' => round((float) $data['amount'], 2), 'currency' => strtoupper((string) ($data['currency'] ?? 'RON')), 'time' => $data['time'] ?? null, 'service_id' => $built['service_id'], 'package' => $built['package']];
