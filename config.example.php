@@ -62,3 +62,26 @@ define('INVOICE_SERIES', 'GGS3D');
 define('INVOICE_START', 1524);
 define('INVOICE_MAX', 9999);
 define('VAT_REGISTERED', false);
+
+// ---------------------------------------------------------------------
+// SmartBill Cloud API (disabled until the production account is ready)
+// https://api.smartbill.ro/
+//
+// Create/confirm the GGS3D invoice series in SmartBill with next number 1524
+// before enabling this integration. LL is reserved for manual/off-site
+// invoices and must never be configured here. The email/token come from
+// SmartBill Cloud > Contul meu > Integrari > API. Keep them only in the
+// ignored config.php file on the server.
+// ---------------------------------------------------------------------
+define('SMARTBILL_ENABLED', false);
+define('SMARTBILL_API_BASE', 'https://ws.smartbill.ro/SBORO/api');
+define('SMARTBILL_EMAIL', 'REPLACE_WITH_SMARTBILL_EMAIL');
+define('SMARTBILL_API_TOKEN', 'REPLACE_WITH_SMARTBILL_API_TOKEN');
+define('SMARTBILL_COMPANY_VAT_CODE', COMPANY_CUI);
+define('SMARTBILL_INVOICE_SERIES', INVOICE_SERIES);
+define('SMARTBILL_MEASURING_UNIT', 'buc');
+define('SMARTBILL_USE_PRODUCT_CODES', true);
+// Must match the exact zero-VAT rate name configured in this SmartBill account.
+define('SMARTBILL_TAX_NAME', 'REPLACE_WITH_EXACT_SMARTBILL_ZERO_VAT_RATE_NAME');
+define('SMARTBILL_TAX_PERCENTAGE', 0.0);
+define('SMARTBILL_TIMEOUT_SECONDS', 20);

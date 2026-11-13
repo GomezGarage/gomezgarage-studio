@@ -196,12 +196,14 @@ gomezgarage.eu/studio/
 - Prenume + Nume
 - Email
 - Telefon (optional)
-- Adresa livrare: strada, oras, cod postal, tara (dropdown EU+UK)
+- Adresa livrare: strada, oras, judet/regiune, cod postal, tara (dropdown EU+UK)
+- Tip factura PF/PJ; pentru PJ se colecteaza datele fiscale si adresa sediului
 - Nota pentru comanda (textarea optional)
 
 **Pasul 2 — Plata:**
 - Revolut Checkout Widget embedded
 - Afiseaza: sumar comanda + total cu shipping estimat
+- Plata este exclusiv online; rambursul nu este oferit.
 - Shipping: calculat simplu — Romania X RON, EU Y EUR, UK Z EUR (hardcodat initial)
 
 ---

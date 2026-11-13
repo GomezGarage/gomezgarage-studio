@@ -13,7 +13,7 @@ if (!$account) {
   ggs_json_response(['success' => true, 'authenticated' => false, 'csrf_token' => ggs_customer_csrf_token()]);
 }
 
-$stmt = ggs_db()->prepare('SELECT id, label, recipient_name, phone, street, city, postal, country, is_default FROM customer_addresses WHERE customer_account_id = ? ORDER BY is_default DESC, created_at DESC');
+$stmt = ggs_db()->prepare('SELECT id, label, recipient_name, phone, street, city, county, postal, country, is_default FROM customer_addresses WHERE customer_account_id = ? ORDER BY is_default DESC, created_at DESC');
 $stmt->execute([$account['id']]);
 ggs_json_response([
   'success' => true,

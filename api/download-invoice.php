@@ -20,7 +20,7 @@ if (!preg_match('/^GGS-\d{4}-\d{4,}$/', $orderNumber)) {
 }
 
 $db = ggs_db();
-$stmt = $db->prepare('SELECT invoice_number FROM orders WHERE order_number = ? LIMIT 1');
+$stmt = $db->prepare('SELECT invoice_number, invoice_view_url FROM orders WHERE order_number = ? LIMIT 1');
 $stmt->execute([$orderNumber]);
 $row = $stmt->fetch();
 
@@ -33,6 +33,13 @@ if (!$row || !$row['invoice_number'] || !preg_match('/^[A-Za-z0-9]+-\d{4}$/', $r
 $path = __DIR__ . '/../invoices/' . $row['invoice_number'] . '.pdf';
 
 if (!is_file($path)) {
+  $viewUrl = (string) ($row['invoice_view_url'] ?? '');
+  $parts = $viewUrl !== '' ? parse_url($viewUrl) : false;
+  $host = is_array($parts) ? strtolower((string) ($parts['host'] ?? '')) : '';
+  if (is_array($parts) && ($parts['scheme'] ?? '') === 'https' && ($host === 'smartbill.ro' || str_ends_with($host, '.smartbill.ro'))) {
+    header('Location: ' . $viewUrl, true, 302);
+    exit;
+  }
   http_response_code(404);
   header('Content-Type: text/plain');
   exit('Invoice not found.');

@@ -76,13 +76,34 @@ require __DIR__ . '/../includes/admin-header.php';
   <span class="status-pill status-<?= htmlspecialchars($order['status']) ?>"><?= htmlspecialchars($order['status']) ?></span>
 </div>
 
+<?php if (array_key_exists('invoice_status', $order)): ?>
+<div class="admin-panel">
+  <h3>Invoice</h3>
+  <p>
+    Provider: <strong><?= htmlspecialchars($order['invoice_provider'] ?: 'not selected') ?></strong><br>
+    Status: <strong><?= htmlspecialchars($order['invoice_status'] ?: 'not issued') ?></strong><br>
+    <?php if ($order['invoice_number']): ?>Number: <span class="mono"><?= htmlspecialchars($order['invoice_number']) ?></span><br><?php endif; ?>
+    <?php if ($order['invoice_currency']): ?>Currency: <?= htmlspecialchars($order['invoice_currency']) ?><br><?php endif; ?>
+    <?php if ($order['invoice_view_url']): ?><a href="<?= htmlspecialchars($order['invoice_view_url']) ?>" target="_blank" rel="noopener noreferrer">Open SmartBill invoice</a><?php endif; ?>
+  </p>
+  <?php if ($order['invoice_error']): ?><div class="alert-banner"><?= htmlspecialchars($order['invoice_error']) ?></div><?php endif; ?>
+</div>
+<?php endif; ?>
+
 <?php if ($notice): ?><div class="alert-banner" style="border-color:var(--success);color:var(--success);"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
 
 <div class="admin-panel">
   <h3>Customer</h3>
   <p><strong><?= htmlspecialchars($order['customer_name']) ?></strong></p>
   <p><?= htmlspecialchars($order['customer_email']) ?><?= $order['customer_phone'] ? ' · ' . htmlspecialchars($order['customer_phone']) : '' ?></p>
-  <p><?= htmlspecialchars($address['street'] ?? '') ?>, <?= htmlspecialchars($address['city'] ?? '') ?>, <?= htmlspecialchars($address['postal'] ?? '') ?>, <?= htmlspecialchars($address['country'] ?? '') ?></p>
+  <p><?= htmlspecialchars($address['street'] ?? '') ?>, <?= htmlspecialchars($address['city'] ?? '') ?><?= !empty($address['county']) ? ', ' . htmlspecialchars($address['county']) : '' ?>, <?= htmlspecialchars($address['postal'] ?? '') ?>, <?= htmlspecialchars($address['country'] ?? '') ?></p>
+  <?php if (($order['customer_type'] ?? 'pf') === 'pj'): ?>
+    <p><strong>Company invoice:</strong> <?= htmlspecialchars($order['company_name'] ?? '') ?><br>
+      CUI/CIF: <?= htmlspecialchars($order['company_cui'] ?? '') ?><?= !empty($order['company_reg']) ? ' · Reg. Com: ' . htmlspecialchars($order['company_reg']) : '' ?><br>
+      <?= htmlspecialchars($order['company_address'] ?? '') ?>, <?= htmlspecialchars($order['company_city'] ?? '') ?>, <?= htmlspecialchars($order['company_county'] ?? '') ?>, <?= htmlspecialchars($order['company_postal'] ?? '') ?>, <?= htmlspecialchars($order['company_country'] ?? '') ?><br>
+      VAT registered: <?= !empty($order['company_vat_payer']) ? 'yes' : 'no' ?>
+    </p>
+  <?php endif; ?>
   <?php if ($order['customer_note']): ?>
     <p class="form-hint">Note: <?= nl2br(htmlspecialchars($order['customer_note'])) ?></p>
   <?php endif; ?>

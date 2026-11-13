@@ -4,19 +4,16 @@
  * ARCHITECTURE.md section 6.3, step 2:
  *   - validate customer + cart data
  *   - save order in MySQL with status 'pending'
- *   - Online payment (payment_method 'card'): create the matching order via
+ *   - Online payment: create the matching order via
  *     the Revolut Merchant API and return the public_id so the client can
  *     mount the embedded Checkout Widget.
- *   - Cash on Delivery (payment_method 'cod'): no payment gateway involved —
- *     the order is confirmed at placement, so stock is decremented and the
- *     confirmation/notification emails go out immediately instead of
- *     waiting on api/webhook.php.
  */
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/customer-auth.php';
+require_once __DIR__ . '/../includes/product-content.php';
 
 ggs_cors_headers();
 
@@ -25,6 +22,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 }
 
 $body = ggs_read_json_body();
+
+if (($body['payment_method'] ?? 'card') !== 'card') {
+  ggs_json_response(['success' => false, 'error' => 'Only online payment is supported'], 422);
+}
 
 $required = ['first_name', 'last_name', 'email', 'street', 'city', 'postal', 'country', 'items'];
 foreach ($required as $field) {
@@ -66,6 +67,7 @@ foreach ($body['items'] as $item) {
   if (!$product) {
     ggs_json_response(['success' => false, 'error' => 'Product unavailable: ' . $item['product_id']], 422);
   }
+  $product = ggs_with_product_content($db, [$product])[0];
 
   $qty = max(1, (int) $item['qty']);
   if ($product['stock'] < $qty) {
@@ -75,6 +77,7 @@ foreach ($body['items'] as $item) {
   $orderItems[] = [
     'product_id' => (int) $product['id'],
     'name' => $product['name_en'],
+    'sku' => trim((string) ($product['sku'] ?? '')),
     'price_eur' => (float) $product['price_eur'],
     'qty' => $qty,
   ];
@@ -84,6 +87,27 @@ foreach ($body['items'] as $item) {
 // Shipping — Romania / EU / UK, rates from admin settings (section 5.5 / 6.3).
 $euCountries = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
 $country = strtoupper(substr((string) $body['country'], 0, 2));
+$county = trim((string) ($body['county'] ?? ''));
+$customerType = (($body['customer_type'] ?? 'pf') === 'pj') ? 'pj' : 'pf';
+$companyName = trim((string) ($body['company_name'] ?? ''));
+$companyCui = strtoupper(preg_replace('/\s+/', '', trim((string) ($body['company_cui'] ?? ''))));
+$companyReg = trim((string) ($body['company_reg'] ?? ''));
+$companyAddress = trim((string) ($body['company_address'] ?? ''));
+$companyCity = trim((string) ($body['company_city'] ?? ''));
+$companyCounty = trim((string) ($body['company_county'] ?? ''));
+$companyPostal = trim((string) ($body['company_postal'] ?? ''));
+$companyCountry = strtoupper(trim((string) ($body['company_country'] ?? '')));
+$companyVatPayer = !empty($body['company_vat_payer']) || str_starts_with($companyCui, 'RO');
+
+if ($country === 'RO' && $county === '') {
+  ggs_json_response(['success' => false, 'error' => 'County is required for Romanian fiscal invoices'], 422);
+}
+if ($customerType === 'pj' && ($companyName === '' || $companyCui === '' || $companyAddress === '' || $companyCity === '' || $companyCounty === '' || $companyPostal === '' || !preg_match('/^[A-Z]{2}$/', $companyCountry))) {
+  ggs_json_response(['success' => false, 'error' => 'Complete all required company invoice fields'], 422);
+}
+if (strlen($companyName) > 200 || strlen($companyCui) > 20 || strlen($companyReg) > 50 || strlen($companyAddress) > 500 || strlen($companyCity) > 120 || strlen($companyCounty) > 120 || strlen($companyPostal) > 30) {
+  ggs_json_response(['success' => false, 'error' => 'Company invoice details are too long'], 422);
+}
 
 if ($country === 'RO') {
   $shippingEur = (float) ggs_get_setting('shipping_ro_eur', '5.00');
@@ -97,11 +121,12 @@ if ($country === 'RO') {
 
 $totalEur = round($subtotalEur + $shippingEur, 2);
 $orderNumber = ggs_generate_order_number();
-$paymentMethod = (($body['payment_method'] ?? '') === 'cod') ? 'cod' : 'card';
+$paymentMethod = 'card';
 
 $shippingAddress = [
   'street' => $body['street'],
   'city' => $body['city'],
+  'county' => $county,
   'postal' => $body['postal'],
   'country' => $country,
 ];
@@ -110,13 +135,23 @@ $customerPhone = $body['phone'] ?? '';
 
 $stmt = $db->prepare(
   'INSERT INTO orders
-    (order_number, customer_account_id, status, payment_method, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, total_eur)
-   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    (order_number, customer_account_id, status, payment_method, customer_type, company_name, company_cui, company_reg, company_address, company_city, company_county, company_postal, company_country, company_vat_payer, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, total_eur)
+   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->execute([
   $orderNumber,
   $customerAccountId,
   $paymentMethod,
+  $customerType,
+  $customerType === 'pj' ? $companyName : null,
+  $customerType === 'pj' ? $companyCui : null,
+  $customerType === 'pj' ? ($companyReg ?: null) : null,
+  $customerType === 'pj' ? $companyAddress : null,
+  $customerType === 'pj' ? $companyCity : null,
+  $customerType === 'pj' ? $companyCounty : null,
+  $customerType === 'pj' ? $companyPostal : null,
+  $customerType === 'pj' ? $companyCountry : null,
+  $customerType === 'pj' ? ($companyVatPayer ? 1 : 0) : 0,
   $customerName,
   $body['email'],
   $customerPhone,
@@ -130,39 +165,6 @@ $stmt->execute([
 $orderId = (int) $db->lastInsertId();
 $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
   ->execute([$orderId, 'pending', 'Order placed']);
-
-if ($paymentMethod === 'cod') {
-  // No payment gateway in the loop — the order is confirmed the moment it's
-  // placed, so reserve stock and notify both sides right away.
-  foreach ($orderItems as $item) {
-    $db->prepare('UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id = ?')
-      ->execute([$item['qty'], $item['product_id']]);
-
-    $productStmt = $db->prepare('SELECT * FROM products WHERE id = ?');
-    $productStmt->execute([$item['product_id']]);
-    $product = $productStmt->fetch();
-    if ($product && $product['stock'] <= $product['stock_threshold']) {
-      ggs_notify_low_stock($product);
-    }
-  }
-
-  $orderRow = [
-    'id' => $orderId,
-    'order_number' => $orderNumber,
-    'customer_account_id' => $customerAccountId,
-    'customer_name' => $customerName,
-    'customer_email' => $body['email'],
-    'shipping_address' => json_encode($shippingAddress),
-    'items' => json_encode($orderItems),
-    'subtotal_eur' => $subtotalEur,
-    'shipping_eur' => $shippingEur,
-    'total_eur' => $totalEur,
-  ];
-  ggs_notify_new_order($orderRow);
-  ggs_send_order_confirmation($orderRow);
-
-  ggs_json_response(['success' => true, 'order_number' => $orderNumber]);
-}
 
 // Charge in whatever currency the customer was actually shown on the
 // checkout page (the order summary), not always EUR — otherwise the
@@ -184,8 +186,8 @@ if (!$revolut['success']) {
   ggs_json_response(['success' => false, 'error' => $revolut['error'], 'order_number' => $orderNumber], 502);
 }
 
-$update = $db->prepare('UPDATE orders SET revolut_order_id = ? WHERE id = ?');
-$update->execute([$revolut['id'], $orderId]);
+$update = $db->prepare('UPDATE orders SET revolut_order_id = ?, payment_currency = ?, payment_amount = ? WHERE id = ?');
+$update->execute([$revolut['id'], $chargeCurrency, $chargeAmount, $orderId]);
 
 ggs_json_response([
   'success' => true,

@@ -70,11 +70,17 @@
               <div class="form-group"><label data-en="Street address" data-ro="Adresa">Street address</label><input type="text" name="street"></div>
               <div class="form-row">
                 <div class="form-group"><label data-en="City" data-ro="Oras">City</label><input type="text" name="city"></div>
-                <div class="form-group"><label data-en="Postal code" data-ro="Cod postal">Postal code</label><input type="text" name="postal"></div>
+                <div class="form-group">
+                  <label data-en="County / region" data-ro="Judet / regiune">County / region</label>
+                  <input type="text" name="county" maxlength="120" aria-describedby="county-hint">
+                  <small class="form-hint" id="county-hint" data-en="Required for Romanian fiscal invoices. For Bucharest, use Bucuresti and enter the sector as the city." data-ro="Obligatoriu pentru facturile din Romania. Pentru Bucuresti, trece Bucuresti la judet si sectorul la oras.">Required for Romanian fiscal invoices. For Bucharest, use Bucuresti and enter the sector as the city.</small>
+                </div>
               </div>
-              <div class="form-group">
-                <label data-en="Country" data-ro="Tara">Country</label>
-                <select name="country">
+              <div class="form-row">
+                <div class="form-group"><label data-en="Postal code" data-ro="Cod postal">Postal code</label><input type="text" name="postal"></div>
+                <div class="form-group">
+                  <label data-en="Country" data-ro="Tara">Country</label>
+                  <select name="country">
                   <option value="RO">Romania</option>
                   <option value="GB">United Kingdom</option>
                   <option value="AT">Austria</option>
@@ -103,7 +109,32 @@
                   <option value="SI">Slovenia</option>
                   <option value="ES">Spain</option>
                   <option value="SE">Sweden</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label data-en="Invoice type" data-ro="Tip factura">Invoice type</label>
+                <select name="customer_type">
+                  <option value="pf" data-en="Individual" data-ro="Persoana fizica">Individual</option>
+                  <option value="pj" data-en="Company" data-ro="Persoana juridica">Company</option>
                 </select>
+              </div>
+              <div class="hidden" data-company-fields>
+                <div class="form-row">
+                  <div class="form-group"><label data-en="Company name" data-ro="Denumire firma">Company name</label><input type="text" name="company_name" maxlength="200"></div>
+                  <div class="form-group"><label data-en="VAT / fiscal code" data-ro="CUI / CIF">VAT / fiscal code</label><input type="text" name="company_cui" maxlength="20"></div>
+                </div>
+                <div class="form-group"><label data-en="Trade registry number (optional)" data-ro="Nr. Registrul Comertului (optional)">Trade registry number (optional)</label><input type="text" name="company_reg" maxlength="50"></div>
+                <label class="customer-checkbox"><input type="checkbox" name="company_vat_payer" value="1"><span data-en="Company is VAT registered" data-ro="Firma este platitoare de TVA">Company is VAT registered</span></label>
+                <div class="form-group"><label data-en="Registered office street" data-ro="Adresa sediului social">Registered office street</label><input type="text" name="company_address" maxlength="500"></div>
+                <div class="form-row">
+                  <div class="form-group"><label data-en="Registered office city" data-ro="Oras sediu social">Registered office city</label><input type="text" name="company_city" maxlength="120"></div>
+                  <div class="form-group"><label data-en="Registered office county / region" data-ro="Judet / regiune sediu social">Registered office county / region</label><input type="text" name="company_county" maxlength="120"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label data-en="Registered office postal code" data-ro="Cod postal sediu social">Registered office postal code</label><input type="text" name="company_postal" maxlength="30"></div>
+                  <div class="form-group"><label data-en="Registered office country code" data-ro="Cod tara sediu social">Registered office country code</label><input type="text" name="company_country" maxlength="2" placeholder="RO"></div>
+                </div>
               </div>
               <div class="form-group">
                 <label data-en="Order note (optional)" data-ro="Nota comanda (optional)">Order note (optional)</label>
@@ -115,11 +146,9 @@
               <h3><span class="step-badge">2</span><span data-en="Payment" data-ro="Plata">Payment</span></h3>
 
               <div class="payment-method-selector">
-                <label class="payment-option-card active" data-payment-option="online">
-                  <input type="radio" name="payment_method" value="online" checked>
+                <div class="payment-option-card active">
                   <div class="payment-option-head">
                     <span class="payment-option-title" data-en="Online Payment" data-ro="Plata online">Online Payment</span>
-                    <span class="payment-option-radio-dot"></span>
                   </div>
                   <div class="payment-option-methods">
                     <span class="badge mono">Card</span>
@@ -127,19 +156,8 @@
                     <span class="badge mono">Google Pay</span>
                     <span class="badge mono">Revolut Pay</span>
                   </div>
-                </label>
-
-                <label class="payment-option-card" data-payment-option="cod">
-                  <input type="radio" name="payment_method" value="cod">
-                  <div class="payment-option-head">
-                    <span class="payment-option-title" data-en="Cash on Delivery" data-ro="Ramburs">Cash on Delivery</span>
-                    <span class="payment-option-radio-dot"></span>
-                  </div>
-                  <p class="payment-option-desc" data-en="Pay in cash or by card when your order arrives." data-ro="Platesti cash sau cu cardul la livrare.">Pay in cash or by card when your order arrives.</p>
-                </label>
+                </div>
               </div>
-
-              <p class="cod-note hidden" id="cod-note" data-en="You'll pay on delivery. Cash-on-delivery fee: 10 RON." data-ro="Vei plati la livrare. Taxa ramburs: 10 RON.">You'll pay on delivery. Cash-on-delivery fee: 10 RON.</p>
 
               <div id="checkout-order-error" class="checkout-error-banner hidden"></div>
 
@@ -176,7 +194,7 @@
 
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
-<script src="/studio/assets/js/checkout.js"></script>
+<script src="/studio/assets/js/checkout.js?v=20261113-smartbill"></script>
 <script src="/studio/assets/js/main.js?v=20261107-account-menu"></script>
 </body>
 </html>

@@ -1,7 +1,6 @@
 /* ==========================================================================
    GOMEZ GARAGE STUDIO — checkout.js
-   Checkout form -> Revolut embedded Checkout (all payment methods) or
-   straight to order-success.html for Cash on Delivery.
+   Checkout form -> Revolut embedded Checkout (online payment methods only).
 
    window.RevolutCheckout.embeddedCheckout({ publicToken, target,
    createOrder, onSuccess, onError, onCancel }) mounts an embedded widget
@@ -92,16 +91,24 @@
     const customerContextReady = preloadCustomerContext(form);
 
     const countrySelect = form.querySelector('[name="country"]');
-    countrySelect.addEventListener('change', () => renderOrderSummary(cart));
+    countrySelect.addEventListener('change', () => {
+      updateFiscalFieldRequirements(form);
+      renderOrderSummary(cart);
+    });
 
-    initPaymentMethodSelector(form);
+    const customerTypeSelect = form.querySelector('[name="customer_type"]');
+    if (customerTypeSelect) {
+      customerTypeSelect.addEventListener('change', () => updateFiscalFieldRequirements(form));
+    }
+    updateFiscalFieldRequirements(form);
+
     preloadCheckoutConfig();
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       customerContextReady.finally(() => {
         if (!validateCheckoutForm(form)) return;
-        submitOrder(form, cart, getSelectedPaymentMethod(form));
+        submitOrder(form, cart);
       });
     });
   }
@@ -152,8 +159,10 @@
           setIfBlank(form, 'phone', address.phone || '');
           form.querySelector('[name="street"]').value = address.street || '';
           form.querySelector('[name="city"]').value = address.city || '';
+          form.querySelector('[name="county"]').value = address.county || '';
           form.querySelector('[name="postal"]').value = address.postal || '';
           form.querySelector('[name="country"]').value = address.country || 'RO';
+          updateFiscalFieldRequirements(form);
           const recipientName = String(address.recipient_name || data.customer.name || '').trim().split(/\s+/);
           form.querySelector('[name="first_name"]').value = recipientName.shift() || '';
           form.querySelector('[name="last_name"]').value = recipientName.join(' ');
@@ -173,6 +182,35 @@
   function setIfBlank(form, name, value) {
     const field = form.querySelector(`[name="${name}"]`);
     if (field && !field.value && value) field.value = value;
+  }
+
+  function updateFiscalFieldRequirements(form) {
+    const country = form.querySelector('[name="country"]');
+    const county = form.querySelector('[name="county"]');
+    if (county) county.required = Boolean(country && country.value === 'RO');
+
+    const customerType = form.querySelector('[name="customer_type"]');
+    const companyFields = form.querySelector('[data-company-fields]');
+    const isCompany = Boolean(customerType && customerType.value === 'pj');
+    if (companyFields) companyFields.classList.toggle('hidden', !isCompany);
+    ['company_name', 'company_cui', 'company_address', 'company_city', 'company_county', 'company_postal', 'company_country'].forEach((name) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      if (field) field.required = isCompany;
+    });
+    if (isCompany) {
+      const copies = {
+        company_address: 'street',
+        company_city: 'city',
+        company_county: 'county',
+        company_postal: 'postal',
+        company_country: 'country',
+      };
+      Object.entries(copies).forEach(([companyName, shippingName]) => {
+        const target = form.querySelector(`[name="${companyName}"]`);
+        const source = form.querySelector(`[name="${shippingName}"]`);
+        if (target && source && !target.value.trim()) target.value = source.value;
+      });
+    }
   }
 
   function currentShippingEur(form) {
@@ -198,51 +236,6 @@
       </div>
     `;
     if (window.GGSLang) window.GGSLang.refresh();
-  }
-
-  /* ======================= Payment method selector ======================= */
-
-  function getSelectedPaymentMethod(form) {
-    const checked = form.querySelector('input[name="payment_method"]:checked');
-    return checked && checked.value === 'cod' ? 'cod' : 'online';
-  }
-
-  function initPaymentMethodSelector(form) {
-    const cards = form.querySelectorAll('[data-payment-option]');
-    const codNote = document.getElementById('cod-note');
-    const submitBtn = document.getElementById('checkout-submit-btn');
-
-    function updateUI() {
-      const method = getSelectedPaymentMethod(form);
-
-      cards.forEach((card) => {
-        card.classList.toggle('active', card.getAttribute('data-payment-option') === method);
-      });
-
-      if (codNote) codNote.classList.toggle('hidden', method !== 'cod');
-
-      if (submitBtn) {
-        submitBtn.setAttribute('data-en', method === 'cod' ? 'Place Order' : 'Continue to Payment');
-        submitBtn.setAttribute('data-ro', method === 'cod' ? 'Plaseaza Comanda' : 'Continua spre plata');
-        submitBtn.textContent = document.documentElement.lang === 'ro'
-          ? submitBtn.getAttribute('data-ro')
-          : submitBtn.getAttribute('data-en');
-      }
-
-      // Switching away from Online should tear down any mounted widget
-      // from a previous attempt.
-      if (method !== 'online') resetPaymentWidget();
-    }
-
-    cards.forEach((card) => {
-      card.addEventListener('click', () => {
-        const radio = card.querySelector('input[type="radio"]');
-        radio.checked = true;
-        updateUI();
-      });
-    });
-
-    updateUI();
   }
 
   /* ======================= Validation ======================= */
@@ -274,6 +267,24 @@
         valid = false;
       }
     });
+
+    const countryForInvoice = form.querySelector('[name="country"]');
+    const countyInput = form.querySelector('[name="county"]');
+    if (countryForInvoice && countryForInvoice.value === 'RO' && countyInput && !countyInput.value.trim()) {
+      showFieldError(countyInput, 'County is required for Romanian fiscal invoices.', 'Judetul este obligatoriu pentru facturile din Romania.');
+      valid = false;
+    }
+
+    const customerType = form.querySelector('[name="customer_type"]');
+    if (customerType && customerType.value === 'pj') {
+      ['company_name', 'company_cui', 'company_address', 'company_city', 'company_county', 'company_postal', 'company_country'].forEach((name) => {
+        const input = form.querySelector(`[name="${name}"]`);
+        if (input && !input.value.trim()) {
+          showFieldError(input, 'This company field is required.', 'Acest camp al firmei este obligatoriu.');
+          valid = false;
+        }
+      });
+    }
 
     const emailInput = form.querySelector('[name="email"]');
     if (emailInput && emailInput.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim())) {
@@ -335,7 +346,7 @@
 
   /* ======================= Submit ======================= */
 
-  function submitOrder(form, cart, method) {
+  function submitOrder(form, cart) {
     const submitBtn = document.getElementById('checkout-submit-btn');
     hideCheckoutError();
     resetPaymentWidget();
@@ -350,40 +361,29 @@
       phone: formData.get('phone') || '',
       street: formData.get('street'),
       city: formData.get('city'),
+      county: formData.get('county') || '',
       postal: formData.get('postal'),
       country: formData.get('country'),
+      customer_type: formData.get('customer_type') === 'pj' ? 'pj' : 'pf',
+      company_name: formData.get('company_name') || '',
+      company_cui: formData.get('company_cui') || '',
+      company_reg: formData.get('company_reg') || '',
+      company_address: formData.get('company_address') || '',
+      company_city: formData.get('company_city') || '',
+      company_county: formData.get('company_county') || '',
+      company_postal: formData.get('company_postal') || '',
+      company_country: formData.get('company_country') || '',
+      company_vat_payer: formData.get('company_vat_payer') === '1',
       note: formData.get('note') || '',
       items: cart.map((i) => ({ product_id: i.product_id, name: i.name_en, price_eur: i.price_eur, qty: i.qty })),
       shipping_eur: currentShippingEur(form),
-      payment_method: method === 'cod' ? 'cod' : 'card',
+      payment_method: 'card',
       // Charge in whatever currency the customer was just shown in the
       // order summary, so the payment form matches (not always EUR).
       currency: window.GGSCurrency ? window.GGSCurrency.current : 'EUR',
     };
 
-    if (method === 'cod') {
-      fetch(`${API_BASE}/create-order.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(customerCsrfToken ? { 'X-CSRF-Token': customerCsrfToken } : {}) },
-        body: JSON.stringify(payload),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (!data.success) throw new Error(data.error || 'Order creation failed');
-          window.GGSCart.clearCart();
-          window.location.href = `/studio/order-success.html?order=${data.order_number}`;
-        })
-        .catch(() => {
-          resetSubmitButton();
-          showCheckoutError(
-            "We couldn't place your order. Please check your details and try again.",
-            'Nu am putut plasa comanda. Verifica datele si incearca din nou.'
-          );
-        });
-      return;
-    }
-
-    // Online: mount the embedded widget right here. The order itself is
+    // Mount the embedded widget right here. The order itself is
     // created lazily by createOrder() below, called by the widget once the
     // customer actually picks a payment method — not before.
     mountEmbeddedCheckout(payload);

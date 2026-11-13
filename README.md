@@ -64,6 +64,10 @@ full design decisions, page structure, schema and payment flow.
   If an import stopped partway through, use
   [the recovery migration](database/migrations/20261107_customer_accounts_recovery.sql)
   instead of re-running the original file.
+- SmartBill fiscal invoicing is prepared as a disabled-by-default provider. Read
+  [the SmartBill deployment guide](docs/SMARTBILL.md), back up the production
+  database, and run its dedicated migration before enabling the API flag. Never
+  place the SmartBill token in the repository.
 - Apache renders `product.html`, `products.html` and `sitemap.xml` through their PHP
   counterparts. Product copy/metadata and published catalog links are available in
   initial HTML; the sitemap follows published products automatically. Existing product

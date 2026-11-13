@@ -91,12 +91,19 @@ function ggs_generate_invoice_pdf(array $order): string
   ]));
 
   if ($isCompany) {
+    $companyAddress = implode(', ', array_filter([
+      $order['company_address'] ?? '',
+      $order['company_city'] ?? '',
+      $order['company_county'] ?? '',
+      $order['company_postal'] ?? '',
+      $order['company_country'] ?? '',
+    ]));
     $clientLine = sprintf(
       'Cumparator: %s, CUI: %s, Reg. Com: %s, %s',
       $order['company_name'] ?? '',
       $order['company_cui'] ?? '',
       $order['company_reg'] ?? '',
-      $order['company_address'] ?: $addressLine
+      $companyAddress ?: $addressLine
     );
   } else {
     $clientLine = sprintf('Cumparator: %s, %s', $order['customer_name'], $addressLine);

@@ -18,6 +18,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/invoice.php';
+require_once __DIR__ . '/../includes/smartbill.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
   ggs_json_response(['success' => false, 'error' => 'Method not allowed'], 405);
@@ -54,13 +55,16 @@ if ($order['status'] !== 'pending') {
 }
 
 if (in_array($event['event'], $paidEvents, true)) {
-  $invoiceNumber = ggs_generate_invoice_number($db);
-  $db->prepare('UPDATE orders SET invoice_number = ?, status = "paid" WHERE revolut_order_id = ?')
-    ->execute([$invoiceNumber, $event['order_id']]);
+  // Atomically claim the pending order. Two simultaneous Revolut deliveries
+  // must never decrement stock or emit two invoices.
+  $claim = $db->prepare('UPDATE orders SET status = "paid" WHERE id = ? AND status = "pending"');
+  $claim->execute([(int) $order['id']]);
+  if ($claim->rowCount() !== 1) {
+    ggs_json_response(['success' => true, 'note' => 'Already processed']);
+  }
   $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
     ->execute([(int) $order['id'], 'paid', 'Payment confirmed']);
   $order['status'] = 'paid';
-  $order['invoice_number'] = $invoiceNumber;
 
   foreach (json_decode($order['items'], true) as $item) {
     $db->prepare('UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id = ?')
@@ -75,13 +79,54 @@ if (in_array($event['event'], $paidEvents, true)) {
     }
   }
 
-  // Invoicing is best-effort: a PDF hiccup shouldn't stop the payment from
-  // being acknowledged or the confirmation email from going out.
+  // Invoicing is best-effort: payment processing and stock remain authoritative
+  // even when the external fiscal service needs manual reconciliation.
   $invoicePath = null;
-  try {
-    $invoicePath = ggs_generate_invoice_pdf($order);
-  } catch (Throwable $e) {
-    error_log('GGS invoice generation failed for ' . $order['order_number'] . ': ' . $e->getMessage());
+  if (ggs_smartbill_enabled()) {
+    try {
+      $db->prepare('UPDATE orders SET invoice_provider = "smartbill", invoice_status = "issuing", invoice_error = NULL WHERE id = ?')
+        ->execute([(int) $order['id']]);
+      $invoiceRate = (float) ggs_get_setting('eur_ron_rate', '5.00');
+      // If Revolut charged RON, use the exact effective checkout rate so the
+      // fiscal document and the captured card amount cannot drift apart if an
+      // administrator changes the configured rate between order and webhook.
+      if (($order['payment_currency'] ?? '') === 'RON' && (float) ($order['payment_amount'] ?? 0) > 0 && (float) ($order['total_eur'] ?? 0) > 0) {
+        $invoiceRate = (float) $order['payment_amount'] / (float) $order['total_eur'];
+      }
+      $built = ggs_smartbill_build_invoice($order, $invoiceRate);
+      $issued = ggs_smartbill_issue($built['payload']);
+      $invoiceNumber = $issued['series'] . '-' . $issued['number'];
+      $db->prepare('UPDATE orders SET invoice_number = ?, invoice_status = "issued", invoice_currency = ?, invoice_exchange_rate = ?, invoice_document_id = ?, invoice_view_url = ?, invoice_issued_at = NOW(), invoice_error = NULL WHERE id = ?')
+        ->execute([$invoiceNumber, $built['currency'], $built['exchange_rate'], $issued['document_id'], $issued['view_url'], (int) $order['id']]);
+      $order['invoice_number'] = $invoiceNumber;
+      $order['invoice_view_url'] = $issued['view_url'];
+      $invoicePath = __DIR__ . '/../invoices/' . $invoiceNumber . '.pdf';
+      try {
+        ggs_smartbill_download_pdf($issued['series'], $issued['number'], $invoicePath);
+      } catch (Throwable $pdfError) {
+        $invoicePath = null;
+        error_log('GGS SmartBill PDF download failed for ' . $order['order_number'] . ': ' . $pdfError->getMessage());
+      }
+    } catch (GgsSmartBillException $e) {
+      $invoiceStatus = $e->isUncertain() ? 'uncertain' : 'failed';
+      $db->prepare('UPDATE orders SET invoice_status = ?, invoice_error = ? WHERE id = ?')
+        ->execute([$invoiceStatus, substr($e->getMessage(), 0, 500), (int) $order['id']]);
+      error_log('GGS SmartBill invoice failed for ' . $order['order_number'] . ': ' . $e->getMessage());
+    } catch (Throwable $e) {
+      $db->prepare('UPDATE orders SET invoice_status = "failed", invoice_error = ? WHERE id = ?')
+        ->execute([substr($e->getMessage(), 0, 500), (int) $order['id']]);
+      error_log('GGS SmartBill invoice failed for ' . $order['order_number'] . ': ' . $e->getMessage());
+    }
+  } else {
+    try {
+      $invoiceNumber = ggs_generate_invoice_number($db);
+      $db->prepare('UPDATE orders SET invoice_number = ?, invoice_provider = "local", invoice_status = "issued", invoice_currency = "RON", invoice_issued_at = NOW() WHERE id = ?')
+        ->execute([$invoiceNumber, (int) $order['id']]);
+      $order['invoice_number'] = $invoiceNumber;
+      $invoicePath = ggs_generate_invoice_pdf($order);
+    } catch (Throwable $e) {
+      error_log('GGS invoice generation failed for ' . $order['order_number'] . ': ' . $e->getMessage());
+    }
   }
 
   ggs_notify_new_order($order);

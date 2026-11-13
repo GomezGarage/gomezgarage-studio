@@ -91,6 +91,10 @@ function ggs_send_order_confirmation(array $order, ?string $invoicePath = null):
   }
 
   $invoiceLine = $invoicePath ? '<p>Your invoice is attached to this email.</p>' : '';
+  if (!$invoicePath && !empty($order['invoice_view_url'])) {
+    $invoiceUrl = htmlspecialchars((string) $order['invoice_view_url'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $invoiceLine = '<p><a href="' . $invoiceUrl . '">View your fiscal invoice</a>.</p>';
+  }
   $accountLine = !empty($order['customer_account_id'])
     ? '<p><a href="' . SITE_URL . '/account/">View your order history in your account</a>.</p>'
     : '<p>Create an account with this email to keep this and future orders together: <a href="' . SITE_URL . '/account/register.php">Create an account</a>.</p>';

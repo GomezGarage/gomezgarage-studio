@@ -39,13 +39,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $phone = trim((string) ($_POST['phone'] ?? ''));
       $street = trim((string) ($_POST['street'] ?? ''));
       $city = trim((string) ($_POST['city'] ?? ''));
+      $county = trim((string) ($_POST['county'] ?? ''));
       $postal = trim((string) ($_POST['postal'] ?? ''));
       $country = strtoupper(trim((string) ($_POST['country'] ?? '')));
-      if (!$name || !$street || !$city || !$postal || !in_array($country, $countries, true)) {
+      if (!$name || !$street || !$city || !$postal || ($country === 'RO' && !$county) || !in_array($country, $countries, true)) {
         $error = 'Complete the required address fields and select a supported country.';
       } elseif ($id > 0) {
-        $db->prepare('UPDATE customer_addresses SET label = ?, recipient_name = ?, phone = ?, street = ?, city = ?, postal = ?, country = ? WHERE id = ? AND customer_account_id = ?')
-          ->execute([$label, $name, $phone, $street, $city, $postal, $country, $id, $account['id']]);
+        $db->prepare('UPDATE customer_addresses SET label = ?, recipient_name = ?, phone = ?, street = ?, city = ?, county = ?, postal = ?, country = ? WHERE id = ? AND customer_account_id = ?')
+          ->execute([$label, $name, $phone, $street, $city, $county, $postal, $country, $id, $account['id']]);
         $notice = 'Address updated.';
       } else {
         $countStmt = $db->prepare('SELECT COUNT(*) FROM customer_addresses WHERE customer_account_id = ?');
@@ -56,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
           $default = isset($_POST['is_default']) || $addressCount === 0;
           if ($default) $db->prepare('UPDATE customer_addresses SET is_default = 0 WHERE customer_account_id = ?')->execute([$account['id']]);
-          $db->prepare('INSERT INTO customer_addresses (customer_account_id, label, recipient_name, phone, street, city, postal, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-            ->execute([$account['id'], $label, $name, $phone, $street, $city, $postal, $country, $default ? 1 : 0]);
+          $db->prepare('INSERT INTO customer_addresses (customer_account_id, label, recipient_name, phone, street, city, county, postal, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$account['id'], $label, $name, $phone, $street, $city, $county, $postal, $country, $default ? 1 : 0]);
           $notice = 'Address saved.';
         }
       }
@@ -86,7 +87,7 @@ require __DIR__ . '/../includes/customer-layout.php';
   <?php foreach ($addresses as $address): ?>
     <article class="customer-address-card">
       <?php if ((int) $address['is_default'] === 1): ?><span class="customer-default-label" data-en="Default address" data-ro="Adresa implicita">Default address</span><?php endif; ?>
-      <h3><?= ggs_customer_escape($address['label']) ?></h3><p><strong><?= ggs_customer_escape($address['recipient_name']) ?></strong></p><p><?= ggs_customer_escape($address['street']) ?></p><p><?= ggs_customer_escape($address['postal'] . ' ' . $address['city']) ?></p><p><?= ggs_customer_escape(ggs_customer_country_name($address['country'])) ?></p><?php if ($address['phone']): ?><p><?= ggs_customer_escape($address['phone']) ?></p><?php endif; ?>
+      <h3><?= ggs_customer_escape($address['label']) ?></h3><p><strong><?= ggs_customer_escape($address['recipient_name']) ?></strong></p><p><?= ggs_customer_escape($address['street']) ?></p><p><?= ggs_customer_escape($address['postal'] . ' ' . $address['city'] . ($address['county'] ? ', ' . $address['county'] : '')) ?></p><p><?= ggs_customer_escape(ggs_customer_country_name($address['country'])) ?></p><?php if ($address['phone']): ?><p><?= ggs_customer_escape($address['phone']) ?></p><?php endif; ?>
       <div class="customer-link-row"><a href="/studio/account/addresses.php?edit=<?= (int) $address['id'] ?>" data-en="Edit" data-ro="Editeaza">Edit</a>
       <?php if ((int) $address['is_default'] !== 1): ?><form method="post"><input type="hidden" name="csrf_token" value="<?= ggs_customer_escape(ggs_customer_csrf_token()) ?>"><input type="hidden" name="action" value="default"><input type="hidden" name="address_id" value="<?= (int) $address['id'] ?>"><button class="btn btn-outline btn-sm" type="submit" data-en="Set default" data-ro="Seteaza implicita">Set default</button></form><?php endif; ?>
       <form method="post" onsubmit="return confirm('Remove this saved address?');"><input type="hidden" name="csrf_token" value="<?= ggs_customer_escape(ggs_customer_csrf_token()) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="address_id" value="<?= (int) $address['id'] ?>"><button class="btn btn-outline btn-sm" type="submit" data-en="Remove" data-ro="Sterge">Remove</button></form></div>
@@ -99,7 +100,8 @@ require __DIR__ . '/../includes/customer-layout.php';
     <div class="form-row"><div class="form-group"><label for="label" data-en="Address label" data-ro="Eticheta adresei">Address label</label><input id="label" name="label" maxlength="80" value="<?= ggs_customer_escape($editing['label'] ?? '') ?>" placeholder="Home"></div><div class="form-group"><label for="recipient_name" data-en="Recipient name" data-ro="Numele destinatarului">Recipient name</label><input id="recipient_name" name="recipient_name" required maxlength="200" value="<?= ggs_customer_escape($editing['recipient_name'] ?? $account['full_name']) ?>"></div></div>
     <div class="form-group"><label for="phone" data-en="Phone" data-ro="Telefon">Phone</label><input id="phone" name="phone" type="tel" maxlength="50" value="<?= ggs_customer_escape($editing['phone'] ?? '') ?>"></div>
     <div class="form-group"><label for="street" data-en="Street address" data-ro="Adresa">Street address</label><input id="street" name="street" required maxlength="255" value="<?= ggs_customer_escape($editing['street'] ?? '') ?>"></div>
-    <div class="form-row"><div class="form-group"><label for="city" data-en="City" data-ro="Oras">City</label><input id="city" name="city" required maxlength="120" value="<?= ggs_customer_escape($editing['city'] ?? '') ?>"></div><div class="form-group"><label for="postal" data-en="Postal code" data-ro="Cod postal">Postal code</label><input id="postal" name="postal" required maxlength="30" value="<?= ggs_customer_escape($editing['postal'] ?? '') ?>"></div></div>
+    <div class="form-row"><div class="form-group"><label for="city" data-en="City" data-ro="Oras">City</label><input id="city" name="city" required maxlength="120" value="<?= ggs_customer_escape($editing['city'] ?? '') ?>"></div><div class="form-group"><label for="county" data-en="County / region" data-ro="Judet / regiune">County / region</label><input id="county" name="county" maxlength="120" value="<?= ggs_customer_escape($editing['county'] ?? '') ?>"><small class="form-hint" data-en="Required for Romanian fiscal invoices." data-ro="Obligatoriu pentru facturile din Romania.">Required for Romanian fiscal invoices.</small></div></div>
+    <div class="form-group"><label for="postal" data-en="Postal code" data-ro="Cod postal">Postal code</label><input id="postal" name="postal" required maxlength="30" value="<?= ggs_customer_escape($editing['postal'] ?? '') ?>"></div>
     <div class="form-group"><label for="country" data-en="Country" data-ro="Tara">Country</label><select id="country" name="country" required><?php foreach ($countries as $country): ?><option value="<?= $country ?>" <?= ($editing['country'] ?? 'RO') === $country ? 'selected' : '' ?>><?= ggs_customer_escape(ggs_customer_country_name($country)) ?></option><?php endforeach; ?></select></div>
     <?php if (!$editing): ?><label class="customer-checkbox"><input type="checkbox" name="is_default" value="1"><span data-en="Make this my default address" data-ro="Foloseste ca adresa implicita">Make this my default address</span></label><?php endif; ?>
     <div class="customer-form-actions"><button class="btn btn-primary" type="submit" data-en="Save address" data-ro="Salveaza adresa">Save address</button><?php if ($editing): ?><a class="btn btn-outline" href="/studio/account/addresses.php" data-en="Cancel" data-ro="Anuleaza">Cancel</a><?php endif; ?></div>
