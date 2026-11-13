@@ -46,7 +46,7 @@ function ggs_smartbill_assert_storefront_series(string $series): void
  * Validate the protected SmartBill credentials and fiscal configuration using
  * read-only API calls. No document is created, changed or deleted.
  *
- * @return array{series:array,tax:array}
+ * @return array{series:array,tax:?array}
  */
 function ggs_smartbill_check_configuration(?string $expectedNext = null, ?callable $transport = null): array
 {
@@ -71,13 +71,16 @@ function ggs_smartbill_check_configuration(?string $expectedNext = null, ?callab
 
     $query = ['cif' => (string) SMARTBILL_COMPANY_VAT_CODE];
     $seriesResponse = $fetchJson('/series', $query + ['type' => 'f']);
-    $taxResponse = $fetchJson('/tax', $query);
+    $vatRegistered = defined('VAT_REGISTERED') && VAT_REGISTERED === true;
+    $taxResponse = $vatRegistered ? $fetchJson('/tax', $query) : null;
     $seriesList = is_array($seriesResponse['list'] ?? null)
         ? $seriesResponse['list']
         : (array_is_list($seriesResponse) ? $seriesResponse : []);
-    $taxList = is_array($taxResponse['taxes'] ?? null)
-        ? $taxResponse['taxes']
-        : (is_array($taxResponse['list'] ?? null) ? $taxResponse['list'] : (array_is_list($taxResponse) ? $taxResponse : []));
+    $taxList = is_array($taxResponse)
+        ? (is_array($taxResponse['taxes'] ?? null)
+            ? $taxResponse['taxes']
+            : (is_array($taxResponse['list'] ?? null) ? $taxResponse['list'] : (array_is_list($taxResponse) ? $taxResponse : [])))
+        : [];
 
     $matchingSeries = null;
     foreach ($seriesList as $item) {
@@ -90,26 +93,28 @@ function ggs_smartbill_check_configuration(?string $expectedNext = null, ?callab
         throw new RuntimeException('Configured storefront invoice series was not found in SmartBill.');
     }
 
-    $configuredTaxName = defined('SMARTBILL_TAX_NAME') ? trim((string) SMARTBILL_TAX_NAME) : '';
-    $configuredTaxPercentage = defined('SMARTBILL_TAX_PERCENTAGE') ? (float) SMARTBILL_TAX_PERCENTAGE : 0.0;
     $matchingTax = null;
-    if ($configuredTaxName !== '' && !str_starts_with($configuredTaxName, 'REPLACE_WITH_')) {
-        foreach ($taxList as $item) {
-            if (is_array($item) && strcasecmp((string) ($item['name'] ?? ''), $configuredTaxName) === 0 && (float) ($item['percentage'] ?? -1) === $configuredTaxPercentage) {
-                $matchingTax = $item;
-                break;
+    if ($vatRegistered) {
+        $configuredTaxName = defined('SMARTBILL_TAX_NAME') ? trim((string) SMARTBILL_TAX_NAME) : '';
+        $configuredTaxPercentage = defined('SMARTBILL_TAX_PERCENTAGE') ? (float) SMARTBILL_TAX_PERCENTAGE : 0.0;
+        if ($configuredTaxName !== '' && !str_starts_with($configuredTaxName, 'REPLACE_WITH_')) {
+            foreach ($taxList as $item) {
+                if (is_array($item) && strcasecmp((string) ($item['name'] ?? ''), $configuredTaxName) === 0 && (float) ($item['percentage'] ?? -1) === $configuredTaxPercentage) {
+                    $matchingTax = $item;
+                    break;
+                }
             }
         }
-    }
-    if ($matchingTax === null) {
-        $zeroTaxNames = [];
-        foreach ($taxList as $item) {
-            if (is_array($item) && (float) ($item['percentage'] ?? -1) === 0.0 && trim((string) ($item['name'] ?? '')) !== '') {
-                $zeroTaxNames[] = trim((string) $item['name']);
+        if ($matchingTax === null) {
+            $zeroTaxNames = [];
+            foreach ($taxList as $item) {
+                if (is_array($item) && (float) ($item['percentage'] ?? -1) === 0.0 && trim((string) ($item['name'] ?? '')) !== '') {
+                    $zeroTaxNames[] = trim((string) $item['name']);
+                }
             }
+            $available = $zeroTaxNames ? implode(', ', array_unique($zeroTaxNames)) : 'none reported';
+            throw new RuntimeException('Configure SMARTBILL_TAX_NAME with the exact 0% rate name. Available 0% names: ' . $available);
         }
-        $available = $zeroTaxNames ? implode(', ', array_unique($zeroTaxNames)) : 'none reported';
-        throw new RuntimeException('Configure SMARTBILL_TAX_NAME with the exact 0% rate name. Available 0% names: ' . $available);
     }
 
     if ($expectedNext !== null && (!ctype_digit($expectedNext) || (string) ($matchingSeries['nextNumber'] ?? '') !== $expectedNext)) {
@@ -170,9 +175,10 @@ function ggs_smartbill_build_invoice(array $order, float $eurRonRate): array
     $currency = $country === 'RO' ? 'RON' : (in_array($paidCurrency, ['RON', 'EUR'], true) ? $paidCurrency : 'EUR');
     $factor = $currency === 'RON' ? $eurRonRate : 1.0;
 
+    $vatRegistered = defined('VAT_REGISTERED') && VAT_REGISTERED === true;
     $taxName = defined('SMARTBILL_TAX_NAME') ? trim((string) SMARTBILL_TAX_NAME) : '';
-    if ($taxName === '' || str_starts_with($taxName, 'REPLACE_WITH_')) {
-        throw new InvalidArgumentException('Configure the exact SmartBill zero-VAT rate name before issuing invoices.');
+    if ($vatRegistered && ($taxName === '' || str_starts_with($taxName, 'REPLACE_WITH_'))) {
+        throw new InvalidArgumentException('Configure the exact SmartBill VAT rate name before issuing invoices.');
     }
     $taxPercentage = defined('SMARTBILL_TAX_PERCENTAGE') ? (float) SMARTBILL_TAX_PERCENTAGE : 0.0;
     $unit = defined('SMARTBILL_MEASURING_UNIT') ? trim((string) SMARTBILL_MEASURING_UNIT) : 'buc';
@@ -193,12 +199,14 @@ function ggs_smartbill_build_invoice(array $order, float $eurRonRate): array
             'price' => $price,
             'currency' => $currency,
             'measuringUnitName' => $unit,
-            'taxName' => $taxName,
-            'taxPercentage' => $taxPercentage,
-            'isTaxIncluded' => true,
             'isService' => false,
             'saveToDb' => false,
         ];
+        if ($vatRegistered) {
+            $line['taxName'] = $taxName;
+            $line['taxPercentage'] = $taxPercentage;
+            $line['isTaxIncluded'] = true;
+        }
         $sku = trim((string) ($item['sku'] ?? ''));
         if (defined('SMARTBILL_USE_PRODUCT_CODES') && SMARTBILL_USE_PRODUCT_CODES === true && $sku === '') {
             throw new InvalidArgumentException('Every invoiced product must have a SKU when SmartBill product codes are enabled.');
@@ -370,7 +378,9 @@ function ggs_smartbill_request(string $method, string $path, array $query = [], 
 {
     $base = rtrim((string) SMARTBILL_API_BASE, '/');
     $url = $base . $path . ($query ? '?' . http_build_query($query) : '');
-    $accept = $path === '/invoice/pdf' ? 'application/pdf' : 'application/json';
+    // SmartBill explicitly rejects application/pdf on this endpoint even
+    // though the successful body is a PDF binary.
+    $accept = $path === '/invoice/pdf' ? 'application/octet-stream' : 'application/json';
     $headers = ['Content-Type: application/json', 'Accept: ' . $accept];
     if ($transport !== null) {
         $result = $transport($method, $url, $headers, $body);

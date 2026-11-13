@@ -122,7 +122,7 @@ require __DIR__ . '/../includes/admin-header.php';
 
 <div class="admin-panel" style="margin-top:24px;">
   <h3>SmartBill API</h3>
-  <p class="form-hint">The check below only reads the invoice series and tax rates. It cannot create, change or delete an invoice.</p>
+  <p class="form-hint">The check below reads the invoice series and, only for VAT-registered issuers, tax rates. It cannot create, change or delete an invoice.</p>
 
   <?php if ($smartBillCheck): ?>
     <div class="alert-banner" style="border-color:var(--success);color:var(--success);">
@@ -137,10 +137,10 @@ require __DIR__ . '/../includes/admin-header.php';
   <table class="specs-table">
     <tr><td>Automatic invoicing</td><td class="mono"><?= ggs_smartbill_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
     <tr><td>Series</td><td class="mono"><?= htmlspecialchars(defined('SMARTBILL_INVOICE_SERIES') ? (string) SMARTBILL_INVOICE_SERIES : 'not configured') ?></td></tr>
-    <tr><td>Tax</td><td class="mono"><?= htmlspecialchars(defined('SMARTBILL_TAX_NAME') ? (string) SMARTBILL_TAX_NAME : 'not configured') ?></td></tr>
+    <tr><td>VAT</td><td class="mono"><?= defined('VAT_REGISTERED') && VAT_REGISTERED === true ? htmlspecialchars(defined('SMARTBILL_TAX_NAME') ? (string) SMARTBILL_TAX_NAME : 'not configured') : 'Not applicable (company is not VAT registered)' ?></td></tr>
     <?php if ($smartBillCheck): ?>
       <tr><td>SmartBill next number</td><td class="mono"><?= htmlspecialchars((string) ($smartBillCheck['series']['nextNumber'] ?? 'unknown')) ?></td></tr>
-      <tr><td>Verified tax rate</td><td class="mono"><?= htmlspecialchars((string) ($smartBillCheck['tax']['name'] ?? 'unknown')) ?> (<?= htmlspecialchars((string) ($smartBillCheck['tax']['percentage'] ?? 'unknown')) ?>%)</td></tr>
+      <?php if ($smartBillCheck['tax']): ?><tr><td>Verified tax rate</td><td class="mono"><?= htmlspecialchars((string) ($smartBillCheck['tax']['name'] ?? 'unknown')) ?> (<?= htmlspecialchars((string) ($smartBillCheck['tax']['percentage'] ?? 'unknown')) ?>%)</td></tr><?php endif; ?>
     <?php endif; ?>
   </table>
 

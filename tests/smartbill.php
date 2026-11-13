@@ -11,6 +11,7 @@ define('SMARTBILL_MEASURING_UNIT', 'buc');
 define('SMARTBILL_USE_PRODUCT_CODES', true);
 define('SMARTBILL_TAX_NAME', 'Neplatitor TVA');
 define('SMARTBILL_TAX_PERCENTAGE', 0.0);
+define('VAT_REGISTERED', false);
 require __DIR__ . '/../includes/smartbill.php';
 
 $checks = 0;
@@ -33,7 +34,7 @@ sbCheck($ro['payload']['products'][0]['price'] === 51.0, 'RON line converted onc
 sbCheck($ro['payload']['payment']['type'] === 'Card online' && $ro['payload']['payment']['value'] === 127.50, 'online card receipt recorded');
 sbCheck($ro['payload']['issueDate'] === $ro['payload']['paymentDate'] && preg_match('/^\d{4}-\d{2}-\d{2}$/', $ro['payload']['issueDate']) === 1, 'Romanian fiscal date explicit');
 sbCheck($ro['payload']['useStock'] === false && $ro['payload']['products'][0]['saveToDb'] === false, 'shop remains stock authority');
-sbCheck($ro['payload']['products'][0]['taxPercentage'] === 0.0 && $ro['payload']['products'][0]['taxName'] === 'Neplatitor TVA', 'zero VAT explicit');
+sbCheck(!isset($ro['payload']['products'][0]['taxPercentage'], $ro['payload']['products'][0]['taxName'], $ro['payload']['products'][0]['isTaxIncluded']), 'non-VAT issuer omits product tax fields');
 
 $de = ggs_smartbill_build_invoice(fixtureOrder('DE'), 5.10);
 sbCheck($de['currency'] === 'EUR' && $de['total'] === 25.0, 'foreign EUR invoice keeps EUR');
@@ -79,16 +80,11 @@ $configuration = ggs_smartbill_check_configuration('1524', static function ($met
             ['name' => 'GGS3D', 'nextNumber' => '1524'],
         ]])];
     }
-    if (str_contains($url, '/tax?')) {
-        return ['status' => 200, 'body' => json_encode(['taxes' => [
-            ['name' => 'Neplatitor TVA', 'percentage' => 0],
-        ]])];
-    }
     return ['status' => 404, 'body' => '{}'];
 });
 sbCheck($configuration['series']['name'] === 'GGS3D' && $configuration['series']['nextNumber'] === '1524', 'read-only check finds storefront series');
-sbCheck($configuration['tax']['name'] === 'Neplatitor TVA', 'read-only check finds configured tax');
-sbCheck(count($configurationCalls) === 2 && array_column($configurationCalls, 0) === ['GET', 'GET'], 'configuration check uses only two GET requests');
+sbCheck($configuration['tax'] === null, 'non-VAT issuer does not require a tax rate');
+sbCheck(count($configurationCalls) === 1 && array_column($configurationCalls, 0) === ['GET'], 'non-VAT configuration check uses only the series GET request');
 
 $issued = ggs_smartbill_issue($de['payload'], static function ($method, $url, $headers, $body) {
     sbCheck($method === 'POST' && str_ends_with($url, '/invoice/v2'), 'invoice endpoint');
@@ -103,7 +99,7 @@ sbCheck(ggs_smartbill_safe_url('https://smartbill.ro.example.invalid/document') 
 $pdfDestination = sys_get_temp_dir() . '/ggs-smartbill-' . bin2hex(random_bytes(4)) . '.pdf';
 ggs_smartbill_download_pdf('GGS3D', '1524', $pdfDestination, static function ($method, $url, $headers) {
     sbCheck($method === 'GET' && str_contains($url, '/invoice/pdf?'), 'invoice PDF endpoint');
-    sbCheck(in_array('Accept: application/pdf', $headers, true), 'invoice PDF requests PDF responses');
+    sbCheck(in_array('Accept: application/octet-stream', $headers, true), 'invoice PDF requests supported binary response');
     return ['status' => 200, 'body' => "%PDF-1.4\nsynthetic"];
 });
 sbCheck(is_file($pdfDestination), 'invoice PDF stored atomically');

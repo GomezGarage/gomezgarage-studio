@@ -23,7 +23,9 @@ try {
 
     echo 'PASS: SmartBill credentials and read-only configuration are valid.' . PHP_EOL;
     echo 'Invoice series: ' . $matchingSeries['name'] . '; next number: ' . ($matchingSeries['nextNumber'] ?? 'unknown') . PHP_EOL;
-    echo 'Tax: ' . $matchingTax['name'] . '; percentage: ' . $matchingTax['percentage'] . PHP_EOL;
+    echo $matchingTax
+        ? 'Tax: ' . $matchingTax['name'] . '; percentage: ' . $matchingTax['percentage'] . PHP_EOL
+        : 'Tax: not applicable; company is not VAT registered.' . PHP_EOL;
     echo 'No invoice or other document was created.' . PHP_EOL;
 } catch (Throwable $error) {
     fwrite(STDERR, 'FAIL: ' . $error->getMessage() . PHP_EOL);
