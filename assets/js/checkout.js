@@ -351,6 +351,7 @@
     const quoteButton = form.querySelector('[data-sameday-quote]');
     const oohInput = form.querySelector('[name="shipping_ooh_id"]');
     let mapMoveTimer = null;
+    let easyboxProgrammaticMoveUntil = 0;
 
     form.querySelectorAll('[name="shipping_method"]').forEach((radio) => radio.addEventListener('change', () => {
       form.querySelectorAll('[data-shipping-card]').forEach((card) => card.classList.toggle('active', card.dataset.shippingCard === radio.value));
@@ -410,13 +411,20 @@
       if (easyboxMarkers) {
         easyboxMarkers.clearLayers();
         validLocations.forEach((location) => {
-          const marker = window.L.marker([Number(location.lat), Number(location.lng)]).bindPopup(popupFor(location));
+          const marker = window.L.circleMarker([Number(location.lat), Number(location.lng)], {
+            radius: 7,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: '#e63b2e',
+            fillOpacity: 0.95,
+          }).bindPopup(popupFor(location));
           marker.addTo(easyboxMarkers);
         });
       }
       if (fitMap && easyboxMap && validLocations.length) {
         const bounds = window.L.latLngBounds(validLocations.map((location) => [Number(location.lat), Number(location.lng)]));
-        easyboxMap.fitBounds(bounds.pad(0.12), { maxZoom: 15 });
+        easyboxProgrammaticMoveUntil = Date.now() + 750;
+        easyboxMap.fitBounds(bounds.pad(0.12), { maxZoom: 15, animate: false });
       }
       if (!results) return;
       if (!locations.length) {
@@ -429,7 +437,8 @@
         if (!location) return;
         chooseEasybox(location);
         if (easyboxMap && Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng))) {
-          easyboxMap.setView([Number(location.lat), Number(location.lng)], 16);
+          easyboxProgrammaticMoveUntil = Date.now() + 750;
+          easyboxMap.setView([Number(location.lat), Number(location.lng)], 16, { animate: false });
         }
       }));
     }
@@ -474,10 +483,10 @@
       }).addTo(easyboxMap);
       easyboxMarkers = window.L.layerGroup().addTo(easyboxMap);
       easyboxMap.on('moveend', () => {
+        if (Date.now() < easyboxProgrammaticMoveUntil) return;
         window.clearTimeout(mapMoveTimer);
         mapMoveTimer = window.setTimeout(loadMapBounds, 250);
       });
-      loadMapBounds();
     }
 
     function findEasyboxes() {

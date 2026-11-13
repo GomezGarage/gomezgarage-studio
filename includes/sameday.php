@@ -399,6 +399,80 @@ function ggs_sameday_package_type(float $weight): int
     return 0;
 }
 
+function ggs_sameday_personal_dropoff_enabled(): bool
+{
+    return defined('SAMEDAY_PERSONAL_DROPOFF_ENABLED') && SAMEDAY_PERSONAL_DROPOFF_ENABLED === true;
+}
+
+/**
+ * Collect Personal Drop-Off taxes from one synchronized service response.
+ * Sameday assigns a different PDO tax ID per client, service and package
+ * type, so an ID from another service must never be reused blindly.
+ *
+ * @param array<int,array{id:int,package_type:?int,name:string}> $found
+ */
+function ggs_sameday_collect_pdo_taxes(mixed $value, ?int $inheritedPackageType, array &$found): void
+{
+    if (!is_array($value)) return;
+    $packageType = $inheritedPackageType;
+    foreach (['packageType', 'package_type', 'packageTypeId', 'package_type_id', 'parcelType', 'parcel_type'] as $key) {
+        if (isset($value[$key]) && is_numeric($value[$key])) {
+            $candidate = (int) $value[$key];
+            if (in_array($candidate, [0, 1, 2], true)) $packageType = $candidate;
+        }
+    }
+
+    $scalars = [];
+    foreach ($value as $item) if (is_scalar($item)) $scalars[] = (string) $item;
+    $text = mb_strtoupper(implode(' ', $scalars));
+    $isPdo = str_contains($text, 'PDO')
+        || str_contains($text, 'PREDARE PERSONALA')
+        || str_contains($text, 'PREDARE PERSONALĂ')
+        || (str_contains($text, 'PERSONAL') && str_contains($text, 'DROP'));
+    if ($isPdo && isset($value['id']) && is_numeric($value['id']) && (int) $value['id'] > 0) {
+        $found[] = [
+            'id' => (int) $value['id'],
+            'package_type' => $packageType,
+            'name' => trim((string) ($value['name'] ?? $value['code'] ?? 'PDO')),
+        ];
+    }
+    foreach ($value as $child) if (is_array($child)) ggs_sameday_collect_pdo_taxes($child, $packageType, $found);
+}
+
+function ggs_sameday_pdo_tax_id(PDO $db, int $serviceId, int $packageType): int
+{
+    if (!ggs_sameday_personal_dropoff_enabled()) return 0;
+
+    // An explicit map is available for unusual account responses. Supported
+    // keys are "service:package", package type, or its string equivalent.
+    if (defined('SAMEDAY_PDO_SERVICE_TAX_IDS') && is_array(SAMEDAY_PDO_SERVICE_TAX_IDS)) {
+        $map = SAMEDAY_PDO_SERVICE_TAX_IDS;
+        foreach ([$serviceId . ':' . $packageType, $packageType, (string) $packageType] as $key) {
+            if (isset($map[$key]) && (int) $map[$key] > 0) return (int) $map[$key];
+        }
+    }
+
+    // Backward-compatible single-ID override. It is safe only when all shop
+    // parcels use the one package type assigned to that ID.
+    if (defined('SAMEDAY_PDO_SERVICE_TAX_ID') && (int) SAMEDAY_PDO_SERVICE_TAX_ID > 0) {
+        return (int) SAMEDAY_PDO_SERVICE_TAX_ID;
+    }
+
+    $stmt = $db->prepare('SELECT raw_json FROM sameday_services WHERE service_id = ? LIMIT 1');
+    $stmt->execute([$serviceId]);
+    $raw = json_decode((string) $stmt->fetchColumn(), true);
+    if (!is_array($raw)) {
+        throw new RuntimeException('PDO is enabled, but the synchronized Sameday service details are missing. Synchronize services again.');
+    }
+    $candidates = [];
+    ggs_sameday_collect_pdo_taxes($raw, null, $candidates);
+    $candidates = array_values(array_filter($candidates, static fn(array $item): bool => $item['package_type'] === $packageType));
+    $ids = array_values(array_unique(array_map(static fn(array $item): int => $item['id'], $candidates)));
+    if (count($ids) === 1) return $ids[0];
+
+    throw new RuntimeException('PDO is enabled, but Sameday did not expose one unambiguous Personal Drop-Off tax for service #' . $serviceId . ' and package type ' . $packageType . '. Synchronize the account or configure SAMEDAY_PDO_SERVICE_TAX_IDS.');
+}
+
 /** Build the common estimate/AWB payload from an order-like array. */
 function ggs_sameday_build_payload(PDO $db, array $order, string $method, ?int $oohId = null): array
 {
@@ -412,9 +486,24 @@ function ggs_sameday_build_payload(PDO $db, array $order, string $method, ?int $
     $pickup = ggs_sameday_pickup($db);
     $package = ggs_sameday_package_from_items($items);
     $service = ggs_sameday_service_id($db, $method);
+    $packageType = ggs_sameday_package_type($package['weight']);
+    $recipient = [
+        'name' => trim((string) ($order['customer_name'] ?? '')),
+        'phoneNumber' => $phone,
+        'personType' => (($order['customer_type'] ?? 'pf') === 'pj') ? 1 : 0,
+        'email' => trim((string) ($order['customer_email'] ?? '')),
+    ];
+    if ($method === 'home') {
+        $recipient += [
+            'countyString' => trim((string) ($address['county'] ?? '')),
+            'cityString' => trim((string) ($address['city'] ?? '')),
+            'address' => trim((string) ($address['street'] ?? '')),
+            'postalCode' => trim((string) ($address['postal'] ?? '')),
+        ];
+    }
     $payload = [
         'pickupPoint' => $pickup['pickup_point_id'],
-        'packageType' => ggs_sameday_package_type($package['weight']),
+        'packageType' => $packageType,
         'packageNumber' => 1,
         'packageWeight' => $package['weight'],
         'service' => $service,
@@ -423,16 +512,7 @@ function ggs_sameday_build_payload(PDO $db, array $order, string $method, ?int $
         'cashOnDeliveryReturns' => 0,
         'insuredValue' => 0,
         'thirdPartyPickup' => 0,
-        'awbRecipient' => [
-            'countyString' => trim((string) ($address['county'] ?? '')),
-            'cityString' => trim((string) ($address['city'] ?? '')),
-            'address' => trim((string) ($address['street'] ?? '')),
-            'name' => trim((string) ($order['customer_name'] ?? '')),
-            'phoneNumber' => $phone,
-            'postalCode' => trim((string) ($address['postal'] ?? '')),
-            'personType' => (($order['customer_type'] ?? 'pf') === 'pj') ? 1 : 0,
-            'email' => trim((string) ($order['customer_email'] ?? '')),
-        ],
+        'awbRecipient' => $recipient,
         'parcels' => [[
             'weight' => $package['weight'],
             'width' => $package['width'],
@@ -451,9 +531,8 @@ function ggs_sameday_build_payload(PDO $db, array $order, string $method, ?int $
         if (!$location || (int) $location['ooh_type'] !== 0 || !(int) $location['active'] || !(int) $location['client_visible']) throw new InvalidArgumentException('The selected Easybox is unavailable.');
         $payload['oohLastMile'] = $oohId;
     }
-    if (defined('SAMEDAY_PDO_SERVICE_TAX_ID') && (int) SAMEDAY_PDO_SERVICE_TAX_ID > 0) {
-        $payload['serviceTaxes'] = [(int) SAMEDAY_PDO_SERVICE_TAX_ID];
-    }
+    $pdoTaxId = ggs_sameday_pdo_tax_id($db, $service, $packageType);
+    if ($pdoTaxId > 0) $payload['serviceTaxes'] = 'PDO ' . $pdoTaxId;
     return ['payload' => $payload, 'package' => $package, 'service_id' => $service];
 }
 

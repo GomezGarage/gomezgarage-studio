@@ -110,9 +110,15 @@ define('SAMEDAY_CONTACT_PERSON_ID', 0);
 define('SAMEDAY_HOME_SERVICE_ID', 0);
 define('SAMEDAY_LOCKER_SERVICE_ID', 0);
 
-// Optional Personal Drop-Off (PDO) extra-service ID, unique to this Sameday
-// account and package type. Keep 0 for courier pickup; enter the account's
-// synchronized PDO ID to drop parcels personally at an Easybox/Sameday point.
+// Personal Drop-Off (PDO): when enabled, the sender takes every parcel to a
+// Sameday/Easybox point instead of requesting courier pickup. The correct
+// account-specific tax ID is resolved from the synchronized service and the
+// package type. Keep false for courier pickup.
+define('SAMEDAY_PERSONAL_DROPOFF_ENABLED', false);
+// Optional explicit overrides for non-standard Sameday account responses.
+// Keys may be package types (0, 1, 2) or "serviceId:packageType".
+define('SAMEDAY_PDO_SERVICE_TAX_IDS', []);
+// Deprecated single-ID fallback; use only if every parcel has one package type.
 define('SAMEDAY_PDO_SERVICE_TAX_ID', 0);
 
 // Safe package fallbacks used only when a product is missing packed shipping

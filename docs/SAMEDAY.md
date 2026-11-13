@@ -29,9 +29,14 @@ tracking and recovery by `clientInternalReference`.
 8. Home delivery and Locker Nextday service IDs are discovered from the
    synchronized account. Explicit service-ID constants are available only as
    an override.
-9. Personal drop-off is an account-specific extra option. If Sameday assigned
-   PDO to this contract, enter its exact package-type tax ID in
-   `SAMEDAY_PDO_SERVICE_TAX_ID`. Keep `0` for normal courier pickup.
+9. Personal drop-off is an account-specific extra option. To take every parcel
+   personally to an Easybox/Sameday point instead of requesting courier pickup,
+   set `SAMEDAY_PERSONAL_DROPOFF_ENABLED` to `true`. The site resolves the PDO
+   tax ID from the synchronized service and the actual package type and sends
+   the documented `PDO <id>` value. Re-run synchronization after Sameday
+   changes the contract. `SAMEDAY_PDO_SERVICE_TAX_IDS` is only a fail-safe
+   override for a non-standard account response; never guess an ID from a
+   different service or package type.
 10. Complete the packed dimensions and weight for every published product.
     Safe fallback values exist, and the admin/quote data records when they were
     necessary, but exact packed measurements produce the correct price.
@@ -45,6 +50,10 @@ tracking and recovery by `clientInternalReference`.
   creating the payment order. Client-supplied prices are ignored.
 - The selected service, OOH location, quote and package snapshot are stored on
   the order.
+- When Personal Drop-Off is enabled, both the quote and the final AWB include
+  the package-specific PDO tax. Easybox deliveries send only the recipient
+  identity plus `oohLastMile`; the customer's street is not submitted as the
+  locker destination.
 - After the Revolut `ORDER_COMPLETED` webhook atomically marks the order paid,
   the site asks Sameday for an existing AWB with the unique store order number.
   It creates an AWB only if none exists.
