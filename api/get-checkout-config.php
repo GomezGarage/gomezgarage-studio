@@ -11,6 +11,7 @@
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/sameday.php';
 
 ggs_cors_headers();
 
@@ -18,5 +19,5 @@ ggs_json_response([
   'success' => true,
   'public_key' => REVOLUT_PUBLIC_KEY,
   'mode' => APP_ENV === 'sandbox' ? 'sandbox' : 'prod',
-  'sameday_enabled' => defined('SAMEDAY_ENABLED') && SAMEDAY_ENABLED === true,
+  'sameday_enabled' => ggs_sameday_enabled(),
 ]);

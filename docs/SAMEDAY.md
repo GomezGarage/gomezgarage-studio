@@ -10,6 +10,15 @@ merchant account (v3.6, 28 September 2026): authentication tokens, account
 pickup points and services, OOH locations, quote, AWB, PDF, cancellation,
 tracking and recovery by `clientInternalReference`.
 
+## Provider master gate
+
+Sameday is currently parked behind `SAMEDAY_INTEGRATION_ACTIVE`. The provider
+is available only when both `SAMEDAY_INTEGRATION_ACTIVE` and
+`SAMEDAY_ENABLED` are explicitly `true` in the ignored production
+`config.php`. Leaving the master gate absent or `false` hides Sameday from
+checkout and blocks quote and AWB creation while preserving the implementation
+and historical order data for a possible rollback.
+
 ## Production deployment
 
 1. Back up the production database and pull the matching Git revision.
@@ -18,7 +27,8 @@ tracking and recovery by `clientInternalReference`.
 3. Import `database/migrations/20261113_sameday_shipping.sql` once. A Git pull
    does not run this migration.
 4. Add the Sameday block from `config.example.php` to the ignored production
-   `config.php`. Keep `SAMEDAY_ENABLED` set to `false` initially.
+   `config.php`. Keep `SAMEDAY_INTEGRATION_ACTIVE` and `SAMEDAY_ENABLED` set
+   to `false` initially.
 5. In **Admin > Settings > Sameday Courier API**, run the read-only connection
    check. It creates no AWB.
 6. Run **Synchronize services, pickup & OOH**. Confirm that the pickup point in
@@ -40,7 +50,9 @@ tracking and recovery by `clientInternalReference`.
 10. Complete the packed dimensions and weight for every published product.
     Safe fallback values exist, and the admin/quote data records when they were
     necessary, but exact packed measurements produce the correct price.
-11. Set `SAMEDAY_ENABLED` to `true` only after the account data is synchronized.
+11. Set both `SAMEDAY_INTEGRATION_ACTIVE` and `SAMEDAY_ENABLED` to `true` only
+    after the account data is synchronized and a deliberate reactivation is
+    approved.
 
 ## Checkout and AWB lifecycle
 

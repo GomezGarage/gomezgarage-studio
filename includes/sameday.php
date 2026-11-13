@@ -25,7 +25,13 @@ final class GgsSamedayException extends RuntimeException
 
 function ggs_sameday_enabled(): bool
 {
-    return defined('SAMEDAY_ENABLED') && SAMEDAY_ENABLED === true;
+    // SAMEDAY_INTEGRATION_ACTIVE is a repository-level master gate. Requiring
+    // both flags lets us park the provider safely even when an existing
+    // production config.php still has the older SAMEDAY_ENABLED=true value.
+    return defined('SAMEDAY_INTEGRATION_ACTIVE')
+        && SAMEDAY_INTEGRATION_ACTIVE === true
+        && defined('SAMEDAY_ENABLED')
+        && SAMEDAY_ENABLED === true;
 }
 
 function ggs_sameday_configured(): bool

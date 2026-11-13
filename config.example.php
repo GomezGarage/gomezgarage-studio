@@ -94,6 +94,10 @@ define('SMARTBILL_TIMEOUT_SECONDS', 20);
 // use Admin > Settings to verify the connection and synchronize services,
 // pickup points and Easybox/PUDO locations before changing ENABLED to true.
 // ---------------------------------------------------------------------
+// Master provider gate. Both this and SAMEDAY_ENABLED must be true. Keeping
+// this false parks every Sameday checkout, quote and AWB path even if an older
+// production config.php still has SAMEDAY_ENABLED=true.
+define('SAMEDAY_INTEGRATION_ACTIVE', false);
 define('SAMEDAY_ENABLED', false);
 define('SAMEDAY_API_BASE', APP_ENV === 'sandbox'
   ? 'https://sameday-api.demo.zitec.com'

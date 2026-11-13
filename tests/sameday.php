@@ -1,5 +1,6 @@
 <?php
 /** Pure/offline Sameday integration tests. No config.php and no network. */
+define('SAMEDAY_INTEGRATION_ACTIVE', true);
 define('SAMEDAY_ENABLED', true);
 define('SAMEDAY_API_BASE', 'https://synthetic.invalid');
 define('SAMEDAY_USERNAME', 'fixture@example.invalid');

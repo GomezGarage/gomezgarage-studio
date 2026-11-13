@@ -8,8 +8,9 @@ $css = file_get_contents($root . '/assets/css/shop.css');
 $locations = file_get_contents($root . '/api/sameday-locations.php');
 $orders = file_get_contents($root . '/api/create-order.php');
 $sameday = file_get_contents($root . '/includes/sameday.php');
+$checkoutConfig = file_get_contents($root . '/api/get-checkout-config.php');
 
-if ($html === false || $js === false || $css === false || $locations === false || $orders === false || $sameday === false) {
+if ($html === false || $js === false || $css === false || $locations === false || $orders === false || $sameday === false || $checkoutConfig === false) {
     throw new RuntimeException('Checkout sources could not be read.');
 }
 
@@ -47,5 +48,7 @@ $check(str_contains($orders, 'Company invoice country must be within the Europea
 $check(str_contains($sameday, "'%Locker%Nextday%'"), 'Easybox quote uses locker service');
 $check(str_contains($sameday, "\$payload['oohLastMile'] = \$oohId"), 'selected locker reaches Sameday payload');
 $check(str_contains($sameday, "'serviceTaxes'] = 'PDO '"), 'PDO tax uses documented payload format');
+$check(str_contains($sameday, "defined('SAMEDAY_INTEGRATION_ACTIVE')"), 'Sameday provider has a master gate');
+$check(str_contains($checkoutConfig, "'sameday_enabled' => ggs_sameday_enabled()"), 'checkout respects the Sameday master gate');
 
 echo "PASS: {$checks} isolated checkout, payment and Easybox regression checks.\n";
