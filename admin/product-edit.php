@@ -21,6 +21,7 @@ $product = [
   'how_made_en' => '', 'how_made_ro' => '',
   'material' => '', 'category' => 'desk',
   'price_eur' => '', 'stock' => 0, 'stock_threshold' => 3,
+  'shipping_length_cm' => '', 'shipping_width_cm' => '', 'shipping_height_cm' => '', 'shipping_weight_kg' => '',
   'images' => [], 'specs' => [],
   'status' => 'draft', 'featured' => 0,
 ];
@@ -62,6 +63,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
   $product['price_eur'] = (float) ($_POST['price_eur'] ?? 0);
   $product['stock'] = max(0, (int) ($_POST['stock'] ?? 0));
   $product['stock_threshold'] = max(0, (int) ($_POST['stock_threshold'] ?? 3));
+  foreach ([
+    'shipping_length_cm' => 'Parcel length',
+    'shipping_width_cm' => 'Parcel width',
+    'shipping_height_cm' => 'Parcel height',
+    'shipping_weight_kg' => 'Packed parcel weight',
+  ] as $field => $label) {
+    $raw = trim((string) ($_POST[$field] ?? ''));
+    if ($raw === '') {
+      $product[$field] = null;
+      continue;
+    }
+    if (!is_numeric($raw) || !is_finite((float) $raw) || (float) $raw <= 0) {
+      $errors[] = $label . ' must be a number greater than zero.';
+      $product[$field] = $raw;
+      continue;
+    }
+    $product[$field] = (float) $raw;
+  }
+  $parcelValues = array_map(static fn($field) => $product[$field], [
+    'shipping_length_cm', 'shipping_width_cm', 'shipping_height_cm', 'shipping_weight_kg',
+  ]);
+  if (count(array_filter($parcelValues, static fn($value) => $value !== null)) !== 0
+      && count(array_filter($parcelValues, static fn($value) => $value !== null)) !== 4) {
+    $errors[] = 'Enter all four parcel measurements together, or leave all of them blank.';
+  }
   $product['status'] = ($_POST['status'] ?? 'draft') === 'published' ? 'published' : 'draft';
   $product['featured'] = !empty($_POST['featured']) ? 1 : 0;
 
@@ -176,8 +202,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
       $stmt = $db->prepare(
         'INSERT INTO products
           (slug, name_en, name_ro, desc_short_en, desc_short_ro, desc_long_en, desc_long_ro, how_made_en, how_made_ro,
-           material, category, price_eur, stock, stock_threshold, images, specs, status, featured)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+           material, category, price_eur, stock, stock_threshold, shipping_length_cm, shipping_width_cm, shipping_height_cm,
+           shipping_weight_kg, images, specs, status, featured)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
       );
       $stmt->execute([
         $product['slug'], $product['name_en'], $product['name_ro'],
@@ -185,7 +212,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
         $product['desc_long_en'], $product['desc_long_ro'],
         $product['how_made_en'], $product['how_made_ro'],
         $product['material'], $product['category'], $product['price_eur'],
-        $product['stock'], $product['stock_threshold'],
+        $product['stock'], $product['stock_threshold'], $product['shipping_length_cm'], $product['shipping_width_cm'],
+        $product['shipping_height_cm'], $product['shipping_weight_kg'],
         json_encode($product['images']), json_encode($product['specs']),
         $product['status'], $product['featured'],
       ]);
@@ -194,6 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
       $stmt = $db->prepare(
         'UPDATE products SET name_en=?, name_ro=?, desc_short_en=?, desc_short_ro=?, desc_long_en=?, desc_long_ro=?,
            how_made_en=?, how_made_ro=?, material=?, category=?, price_eur=?, stock=?, stock_threshold=?,
+           shipping_length_cm=?, shipping_width_cm=?, shipping_height_cm=?, shipping_weight_kg=?,
            images=?, specs=?, status=?, featured=? WHERE id=?'
       );
       $stmt->execute([
@@ -202,7 +231,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? 'save') === 's
         $product['desc_long_en'], $product['desc_long_ro'],
         $product['how_made_en'], $product['how_made_ro'],
         $product['material'], $product['category'], $product['price_eur'],
-        $product['stock'], $product['stock_threshold'],
+        $product['stock'], $product['stock_threshold'], $product['shipping_length_cm'], $product['shipping_width_cm'],
+        $product['shipping_height_cm'], $product['shipping_weight_kg'],
         json_encode($product['images']), json_encode($product['specs']),
         $product['status'], $product['featured'], $id,
       ]);
@@ -312,6 +342,19 @@ require __DIR__ . '/../includes/admin-header.php';
           <label for="featured" style="margin:0;">Show on homepage</label>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="admin-panel">
+    <h3>Shipping parcel</h3>
+    <p class="form-hint">Enter the outer dimensions and gross weight of the packed parcel for one unit. Include the box and protective paper. These measurements are sent to the carrier API for live quotes; they do not set a shipping price.</p>
+    <div class="form-row">
+      <div class="form-group"><label>Length (cm)</label><input type="number" name="shipping_length_cm" min="0.1" step="0.1" value="<?= htmlspecialchars((string) ($product['shipping_length_cm'] ?? '')) ?>"></div>
+      <div class="form-group"><label>Width (cm)</label><input type="number" name="shipping_width_cm" min="0.1" step="0.1" value="<?= htmlspecialchars((string) ($product['shipping_width_cm'] ?? '')) ?>"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Height (cm)</label><input type="number" name="shipping_height_cm" min="0.1" step="0.1" value="<?= htmlspecialchars((string) ($product['shipping_height_cm'] ?? '')) ?>"></div>
+      <div class="form-group"><label>Gross packed weight (kg)</label><input type="number" name="shipping_weight_kg" min="0.001" step="0.001" value="<?= htmlspecialchars((string) ($product['shipping_weight_kg'] ?? '')) ?>"></div>
     </div>
   </div>
 

@@ -18,4 +18,5 @@ ggs_json_response([
   'success' => true,
   'public_key' => REVOLUT_PUBLIC_KEY,
   'mode' => APP_ENV === 'sandbox' ? 'sandbox' : 'prod',
+  'sameday_enabled' => defined('SAMEDAY_ENABLED') && SAMEDAY_ENABLED === true,
 ]);

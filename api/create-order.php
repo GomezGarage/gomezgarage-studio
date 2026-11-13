@@ -14,6 +14,7 @@ require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/customer-auth.php';
 require_once __DIR__ . '/../includes/product-content.php';
+require_once __DIR__ . '/../includes/sameday.php';
 
 ggs_cors_headers();
 
@@ -60,7 +61,7 @@ foreach ($body['items'] as $item) {
     ggs_json_response(['success' => false, 'error' => 'Malformed cart item'], 422);
   }
 
-  $stmt = $db->prepare('SELECT id, name_en, price_eur, stock FROM products WHERE id = ? AND status = ?');
+  $stmt = $db->prepare('SELECT id, name_en, price_eur, stock, shipping_length_cm, shipping_width_cm, shipping_height_cm, shipping_weight_kg FROM products WHERE id = ? AND status = ?');
   $stmt->execute([(int) $item['product_id'], 'published']);
   $product = $stmt->fetch();
 
@@ -80,6 +81,10 @@ foreach ($body['items'] as $item) {
     'sku' => trim((string) ($product['sku'] ?? '')),
     'price_eur' => (float) $product['price_eur'],
     'qty' => $qty,
+    'shipping_length_cm' => $product['shipping_length_cm'] !== null ? (float) $product['shipping_length_cm'] : null,
+    'shipping_width_cm' => $product['shipping_width_cm'] !== null ? (float) $product['shipping_width_cm'] : null,
+    'shipping_height_cm' => $product['shipping_height_cm'] !== null ? (float) $product['shipping_height_cm'] : null,
+    'shipping_weight_kg' => $product['shipping_weight_kg'] !== null ? (float) $product['shipping_weight_kg'] : null,
   ];
   $subtotalEur += (float) $product['price_eur'] * $qty;
 }
@@ -109,7 +114,56 @@ if (strlen($companyName) > 200 || strlen($companyCui) > 20 || strlen($companyReg
   ggs_json_response(['success' => false, 'error' => 'Company invoice details are too long'], 422);
 }
 
-if ($country === 'RO') {
+$shippingProvider = 'manual';
+$shippingMethod = 'standard';
+$shippingServiceId = null;
+$shippingServiceName = null;
+$shippingOohId = null;
+$shippingOohName = null;
+$shippingOohAddress = null;
+$shippingQuoteAmount = null;
+$shippingQuoteCurrency = null;
+$shippingPackage = null;
+
+if ($country === 'RO' && ggs_sameday_enabled()) {
+  if (!ggs_sameday_configured()) ggs_json_response(['success' => false, 'error' => 'Sameday is enabled but its credentials are not configured'], 503);
+  $shippingMethod = (string) ($body['shipping_method'] ?? '');
+  if (!in_array($shippingMethod, ['home', 'easybox'], true)) ggs_json_response(['success' => false, 'error' => 'Choose a Sameday delivery method'], 422);
+  $shippingOohId = $shippingMethod === 'easybox' ? (int) ($body['shipping_ooh_id'] ?? 0) : null;
+  if ($shippingMethod === 'easybox' && !$shippingOohId) ggs_json_response(['success' => false, 'error' => 'Choose an Easybox'], 422);
+
+  $quoteOrder = [
+    'order_number' => 'CHECKOUT-' . bin2hex(random_bytes(6)),
+    'customer_type' => $customerType,
+    'customer_name' => trim((string) $body['first_name'] . ' ' . (string) $body['last_name']),
+    'customer_email' => (string) $body['email'],
+    'customer_phone' => (string) ($body['phone'] ?? ''),
+    'shipping_address' => ['street' => (string) $body['street'], 'city' => (string) $body['city'], 'county' => $county, 'postal' => (string) $body['postal'], 'country' => $country],
+    'items' => $orderItems,
+  ];
+  try {
+    $quote = ggs_sameday_estimate($db, $quoteOrder, $shippingMethod, $shippingOohId);
+  } catch (Throwable $error) {
+    error_log('GGS Sameday checkout quote failed: ' . $error->getMessage());
+    ggs_json_response(['success' => false, 'error' => 'Sameday could not calculate this delivery. Check the address and try again.'], 502);
+  }
+  $rate = (float) ggs_get_setting('eur_ron_rate', '5.00');
+  $shippingEur = $quote['currency'] === 'RON' ? round($quote['amount'] / max($rate, 0.0001), 2) : round($quote['amount'], 2);
+  $shippingProvider = 'sameday';
+  $shippingServiceId = (int) $quote['service_id'];
+  $shippingServiceName = $shippingMethod === 'easybox' ? 'Sameday Easybox' : 'Sameday home delivery';
+  $shippingQuoteAmount = (float) $quote['amount'];
+  $shippingQuoteCurrency = (string) $quote['currency'];
+  $shippingPackage = $quote['package'];
+  if ($shippingOohId) {
+    $locationStmt = $db->prepare('SELECT name, address, city, county FROM sameday_ooh_locations WHERE ooh_id = ? AND active = 1 AND client_visible = 1 AND ooh_type = 0 LIMIT 1');
+    $locationStmt->execute([$shippingOohId]);
+    $location = $locationStmt->fetch();
+    if (!$location) ggs_json_response(['success' => false, 'error' => 'The selected Easybox is no longer available'], 422);
+    $shippingOohName = (string) $location['name'];
+    $shippingOohAddress = trim((string) $location['address'] . ', ' . (string) $location['city'] . ', ' . (string) $location['county'], ', ');
+  }
+} elseif ($country === 'RO') {
   $shippingEur = (float) ggs_get_setting('shipping_ro_eur', '5.00');
 } elseif ($country === 'GB') {
   $shippingEur = (float) ggs_get_setting('shipping_uk_eur', '18.00');
@@ -135,8 +189,8 @@ $customerPhone = $body['phone'] ?? '';
 
 $stmt = $db->prepare(
   'INSERT INTO orders
-    (order_number, customer_account_id, status, payment_method, customer_type, company_name, company_cui, company_reg, company_address, company_city, company_county, company_postal, company_country, company_vat_payer, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, total_eur)
-   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    (order_number, customer_account_id, status, payment_method, customer_type, company_name, company_cui, company_reg, company_address, company_city, company_county, company_postal, company_country, company_vat_payer, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, shipping_provider, shipping_method, shipping_service_id, shipping_service_name, shipping_ooh_id, shipping_ooh_name, shipping_ooh_address, shipping_quote_amount, shipping_quote_currency, shipping_package, total_eur)
+   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->execute([
   $orderNumber,
@@ -160,6 +214,16 @@ $stmt->execute([
   json_encode($orderItems),
   $subtotalEur,
   $shippingEur,
+  $shippingProvider,
+  $shippingMethod,
+  $shippingServiceId,
+  $shippingServiceName,
+  $shippingOohId,
+  $shippingOohName,
+  $shippingOohAddress,
+  $shippingQuoteAmount,
+  $shippingQuoteCurrency,
+  $shippingPackage ? json_encode($shippingPackage, JSON_UNESCAPED_UNICODE) : null,
   $totalEur,
 ]);
 $orderId = (int) $db->lastInsertId();

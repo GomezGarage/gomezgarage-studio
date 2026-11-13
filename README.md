@@ -64,10 +64,21 @@ full design decisions, page structure, schema and payment flow.
   If an import stopped partway through, use
   [the recovery migration](database/migrations/20261107_customer_accounts_recovery.sql)
   instead of re-running the original file.
+- Product shipping measurements use
+  [the shipping package migration](database/migrations/20261112_shipping_package_data.sql).
+  Run it once on an existing installation before deploying the matching admin code.
+  Measurements are for one fully packed product (outer box and packing material
+  included); carrier APIs will provide the shipping quotes. Do not enter shipping
+  prices here.
 - SmartBill fiscal invoicing is prepared as a disabled-by-default provider. Read
   [the SmartBill deployment guide](docs/SMARTBILL.md), back up the production
   database, and run its dedicated migration before enabling the API flag. Never
   place the SmartBill token in the repository.
+- Sameday home/Easybox shipping, live quotes and automatic paid-order AWBs are
+  prepared as a disabled-by-default provider. Read
+  [the Sameday deployment guide](docs/SAMEDAY.md), import its dedicated
+  migration and synchronize the account nomenclatures before enabling it.
+  Never place the eAWB password in the repository.
 - Apache renders `product.html`, `products.html` and `sitemap.xml` through their PHP
   counterparts. Product copy/metadata and published catalog links are available in
   initial HTML; the sitemap follows published products automatically. Existing product

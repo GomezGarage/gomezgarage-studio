@@ -390,6 +390,17 @@
   border-color: var(--accent);
   background: linear-gradient(135deg, var(--surface) 0%, #170b0a 100%);
 }
+
+.sameday-methods { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.sameday-methods .payment-option-card { cursor:pointer; }
+.sameday-methods input[type="radio"] { accent-color:var(--accent); }
+.sameday-location-results { display:grid; gap:8px; max-height:300px; overflow:auto; margin:10px 0; }
+.sameday-location-option { width:100%; text-align:left; border:1px solid var(--border); background:var(--surface); color:var(--text); padding:12px; border-radius:8px; cursor:pointer; }
+.sameday-location-option:hover { border-color:var(--accent); }
+.sameday-location-option strong { display:block; }
+.sameday-location-option small { color:var(--text-muted); }
+.sameday-selected { margin:10px 0 14px; border:1px solid var(--accent); padding:12px; border-radius:8px; }
+@media (max-width:680px) { .sameday-methods { grid-template-columns:1fr; } }
 .payment-option-head {
   display: flex;
   align-items: center;

@@ -19,6 +19,7 @@ require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/invoice.php';
 require_once __DIR__ . '/../includes/smartbill.php';
+require_once __DIR__ . '/../includes/sameday.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
   ggs_json_response(['success' => false, 'error' => 'Method not allowed'], 405);
@@ -128,6 +129,23 @@ if (in_array($event['event'], $paidEvents, true)) {
       $invoicePath = ggs_generate_invoice_pdf($order);
     } catch (Throwable $e) {
       error_log('GGS invoice generation failed for ' . $order['order_number'] . ': ' . $e->getMessage());
+    }
+  }
+
+  // Courier booking is best-effort and idempotent. A paid order remains paid
+  // even if Sameday is temporarily unavailable; admin can retry the same
+  // clientInternalReference without creating a duplicate AWB.
+  if (ggs_sameday_enabled() && ($order['shipping_provider'] ?? '') === 'sameday') {
+    try {
+      $awb = ggs_sameday_issue_order_awb($db, (int) $order['id']);
+      $order['tracking_number'] = $awb['awb_number'];
+      $order['sameday_awb_number'] = $awb['awb_number'];
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+        ->execute([(int) $order['id'], 'paid', 'Sameday AWB generated automatically: ' . $awb['awb_number']]);
+    } catch (Throwable $awbError) {
+      error_log('GGS Sameday AWB failed for ' . $order['order_number'] . ': ' . $awbError->getMessage());
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+        ->execute([(int) $order['id'], 'paid', 'Automatic Sameday AWB generation needs an admin retry.']);
     }
   }
 

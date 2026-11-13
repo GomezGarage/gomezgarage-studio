@@ -85,3 +85,39 @@ define('SMARTBILL_USE_PRODUCT_CODES', true);
 define('SMARTBILL_TAX_NAME', 'REPLACE_WITH_EXACT_SMARTBILL_ZERO_VAT_RATE_NAME');
 define('SMARTBILL_TAX_PERCENTAGE', 0.0);
 define('SMARTBILL_TIMEOUT_SECONDS', 20);
+
+// ---------------------------------------------------------------------
+// Sameday Courier API (disabled until credentials and account data are ready)
+//
+// Production credentials are the eAWB account credentials. Keep the password
+// only in the ignored config.php file. After importing the Sameday migration,
+// use Admin > Settings to verify the connection and synchronize services,
+// pickup points and Easybox/PUDO locations before changing ENABLED to true.
+// ---------------------------------------------------------------------
+define('SAMEDAY_ENABLED', false);
+define('SAMEDAY_API_BASE', APP_ENV === 'sandbox'
+  ? 'https://sameday-api.demo.zitec.com'
+  : 'https://api.sameday.ro');
+define('SAMEDAY_USERNAME', 'REPLACE_WITH_SAMEDAY_USERNAME');
+define('SAMEDAY_PASSWORD', 'REPLACE_WITH_SAMEDAY_PASSWORD');
+define('SAMEDAY_TIMEOUT_SECONDS', 25);
+
+// Leave these at 0 to use the first synchronized account value. If the
+// account has multiple pickup points or contacts, set the exact IDs shown in
+// Admin > Settings after synchronization.
+define('SAMEDAY_PICKUP_POINT_ID', 0);
+define('SAMEDAY_CONTACT_PERSON_ID', 0);
+define('SAMEDAY_HOME_SERVICE_ID', 0);
+define('SAMEDAY_LOCKER_SERVICE_ID', 0);
+
+// Optional Personal Drop-Off (PDO) extra-service ID, unique to this Sameday
+// account and package type. Keep 0 for courier pickup; enter the account's
+// synchronized PDO ID to drop parcels personally at an Easybox/Sameday point.
+define('SAMEDAY_PDO_SERVICE_TAX_ID', 0);
+
+// Safe package fallbacks used only when a product is missing packed shipping
+// measurements. The admin AWB panel clearly reports that defaults were used.
+define('SAMEDAY_DEFAULT_LENGTH_CM', 30.0);
+define('SAMEDAY_DEFAULT_WIDTH_CM', 20.0);
+define('SAMEDAY_DEFAULT_HEIGHT_CM', 10.0);
+define('SAMEDAY_DEFAULT_WEIGHT_KG', 1.0);

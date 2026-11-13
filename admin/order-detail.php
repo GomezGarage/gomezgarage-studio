@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/sameday.php';
 
 ggs_require_admin();
 
@@ -19,6 +20,8 @@ if (!$order) {
 
 $validStatuses = ['pending','paid','processing','printing','shipped','delivered','cancelled'];
 $notice = '';
+$noticeError = false;
+$samedayHistory = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $action = $_POST['action'] ?? '';
@@ -57,11 +60,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } elseif ($action === 'send_update') {
     ggs_send_order_update($order);
     $notice = 'Update email sent to customer.';
+  } elseif ($action === 'generate_sameday_awb') {
+    try {
+      $issued = ggs_sameday_issue_order_awb($db, $id);
+      $notice = (!empty($issued['existing']) ? 'Existing' : 'New') . ' Sameday AWB: ' . $issued['awb_number'];
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note, created_by_admin_id) VALUES (?, ?, ?, ?)')
+        ->execute([$id, $order['status'], 'Sameday AWB available: ' . $issued['awb_number'], $_SESSION['admin_id'] ?? null]);
+    } catch (Throwable $error) {
+      $notice = $error->getMessage();
+      $noticeError = true;
+    }
+  } elseif ($action === 'refresh_sameday_status') {
+    try {
+      $awb = trim((string) ($order['sameday_awb_number'] ?? $order['tracking_number'] ?? ''));
+      $samedayHistory = ggs_sameday_awb_history($db, $awb);
+      $events = is_array($samedayHistory['data'] ?? null) ? $samedayHistory['data'] : (array_is_list($samedayHistory) ? $samedayHistory : []);
+      $last = $events ? end($events) : null;
+      $lastStatus = is_array($last) ? trim((string) ($last['status'] ?? $last['name'] ?? $last['statusName'] ?? '')) : '';
+      if ($lastStatus !== '') {
+        $db->prepare('UPDATE orders SET sameday_last_status = ?, sameday_last_status_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$lastStatus, $id]);
+      }
+      $notice = 'Sameday tracking refreshed.';
+    } catch (Throwable $error) {
+      $notice = $error->getMessage();
+      $noticeError = true;
+    }
+  } elseif ($action === 'cancel_sameday_awb') {
+    try {
+      $awb = trim((string) ($order['sameday_awb_number'] ?? ''));
+      ggs_sameday_cancel_awb($db, $awb);
+      $db->prepare('UPDATE orders SET sameday_awb_status = "cancelled", sameday_cancelled_at = UTC_TIMESTAMP(), sameday_error = NULL WHERE id = ?')->execute([$id]);
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note, created_by_admin_id) VALUES (?, ?, ?, ?)')
+        ->execute([$id, $order['status'], 'Sameday AWB cancelled: ' . $awb, $_SESSION['admin_id'] ?? null]);
+      $notice = 'Sameday AWB cancelled.';
+    } catch (Throwable $error) {
+      $notice = $error->getMessage();
+      $noticeError = true;
+    }
   }
+
+  $stmt = $db->prepare('SELECT * FROM orders WHERE id = ?');
+  $stmt->execute([$id]);
+  $order = $stmt->fetch();
 }
 
 $items = json_decode($order['items'], true) ?: [];
 $address = json_decode($order['shipping_address'], true) ?: [];
+$shippingPackage = json_decode((string) ($order['shipping_package'] ?? ''), true) ?: [];
 
 $pageTitle = 'Order ' . $order['order_number'];
 $activeNav = 'orders';
@@ -90,7 +135,7 @@ require __DIR__ . '/../includes/admin-header.php';
 </div>
 <?php endif; ?>
 
-<?php if ($notice): ?><div class="alert-banner" style="border-color:var(--success);color:var(--success);"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
+<?php if ($notice): ?><div class="alert-banner" style="border-color:var(--<?= $noticeError ? 'danger' : 'success' ?>);color:var(--<?= $noticeError ? 'danger' : 'success' ?>);"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
 
 <div class="admin-panel">
   <h3>Customer</h3>
@@ -108,6 +153,37 @@ require __DIR__ . '/../includes/admin-header.php';
     <p class="form-hint">Note: <?= nl2br(htmlspecialchars($order['customer_note'])) ?></p>
   <?php endif; ?>
 </div>
+
+<?php if (array_key_exists('shipping_provider', $order)): ?>
+<div class="admin-panel">
+  <h3>Sameday delivery</h3>
+  <p>
+    Provider: <strong><?= htmlspecialchars($order['shipping_provider'] ?: 'manual') ?></strong><br>
+    Method: <strong><?= htmlspecialchars($order['shipping_method'] ?: 'standard') ?></strong><br>
+    <?php if ($order['shipping_service_name']): ?>Service: <?= htmlspecialchars($order['shipping_service_name']) ?><?= $order['shipping_service_id'] ? ' (#' . (int) $order['shipping_service_id'] . ')' : '' ?><br><?php endif; ?>
+    <?php if ($order['shipping_ooh_name']): ?>Easybox: <strong><?= htmlspecialchars($order['shipping_ooh_name']) ?></strong><br><?= htmlspecialchars($order['shipping_ooh_address'] ?? '') ?><br><?php endif; ?>
+    <?php if ($order['shipping_quote_amount'] !== null): ?>Quoted shipping: <?= number_format((float) $order['shipping_quote_amount'], 2) ?> <?= htmlspecialchars($order['shipping_quote_currency'] ?: 'RON') ?><br><?php endif; ?>
+    <?php if ($shippingPackage): ?>Package: <?= number_format((float) ($shippingPackage['length'] ?? 0), 1) ?> × <?= number_format((float) ($shippingPackage['width'] ?? 0), 1) ?> × <?= number_format((float) ($shippingPackage['height'] ?? 0), 1) ?> cm · <?= number_format((float) ($shippingPackage['weight'] ?? 0), 3) ?> kg<?= !empty($shippingPackage['used_defaults']) ? ' (contains fallback measurements)' : '' ?><br><?php endif; ?>
+    AWB status: <strong><?= htmlspecialchars($order['sameday_awb_status'] ?: 'not generated') ?></strong><br>
+    <?php if ($order['sameday_awb_number']): ?>AWB: <span class="mono"><?= htmlspecialchars($order['sameday_awb_number']) ?></span> · <a href="<?= htmlspecialchars(ggs_sameday_tracking_url((string) $order['sameday_awb_number'])) ?>" target="_blank" rel="noopener noreferrer">Track at Sameday</a><br><?php endif; ?>
+    <?php if ($order['sameday_last_status']): ?>Last Sameday status: <?= htmlspecialchars($order['sameday_last_status']) ?><br><?php endif; ?>
+  </p>
+  <?php if ($order['sameday_error']): ?><div class="alert-banner" style="border-color:var(--danger);color:var(--danger);"><?= htmlspecialchars($order['sameday_error']) ?></div><?php endif; ?>
+
+  <?php if (($order['shipping_provider'] ?? '') === 'sameday'): ?>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <?php if (!$order['sameday_awb_number']): ?>
+        <form method="post"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><input type="hidden" name="action" value="generate_sameday_awb"><button type="submit" class="btn btn-primary">Generate / recover AWB</button></form>
+      <?php else: ?>
+        <a class="btn btn-primary" href="/studio/admin/sameday-awb.php?id=<?= (int) $id ?>&amp;format=A6">Download A6 label</a>
+        <a class="btn btn-outline" href="/studio/admin/sameday-awb.php?id=<?= (int) $id ?>&amp;format=A4">Download A4 label</a>
+        <form method="post"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><input type="hidden" name="action" value="refresh_sameday_status"><button type="submit" class="btn btn-outline">Refresh tracking</button></form>
+        <?php if (($order['sameday_awb_status'] ?? '') !== 'cancelled'): ?><form method="post" onsubmit="return confirm('Cancel this Sameday AWB?');"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><input type="hidden" name="action" value="cancel_sameday_awb"><button type="submit" class="btn btn-outline">Cancel AWB</button></form><?php endif; ?>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <div class="admin-panel">
   <h3>Items</h3>

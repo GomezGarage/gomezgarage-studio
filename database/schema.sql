@@ -41,6 +41,10 @@ CREATE TABLE IF NOT EXISTS products (
   stock_threshold INT DEFAULT 3,
   images JSON,                    -- array de paths
   specs JSON,                     -- array de {key, value}
+  shipping_length_cm DECIMAL(7,2) NULL,
+  shipping_width_cm DECIMAL(7,2) NULL,
+  shipping_height_cm DECIMAL(7,2) NULL,
+  shipping_weight_kg DECIMAL(7,3) NULL,
   status ENUM('published','draft') DEFAULT 'draft',
   featured TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -133,6 +137,16 @@ CREATE TABLE IF NOT EXISTS orders (
   items JSON,                       -- [{product_id, name, price_eur, qty}]
   subtotal_eur DECIMAL(10,2),
   shipping_eur DECIMAL(10,2),
+  shipping_provider VARCHAR(20) NULL,
+  shipping_method VARCHAR(20) NULL,
+  shipping_service_id INT NULL,
+  shipping_service_name VARCHAR(120) NULL,
+  shipping_ooh_id BIGINT NULL,
+  shipping_ooh_name VARCHAR(200) NULL,
+  shipping_ooh_address VARCHAR(500) NULL,
+  shipping_quote_amount DECIMAL(10,2) NULL,
+  shipping_quote_currency CHAR(3) NULL,
+  shipping_package JSON NULL,
   total_eur DECIMAL(10,2),
   invoice_provider VARCHAR(20) NULL,
   invoice_status ENUM('pending','issuing','issued','failed','uncertain') NULL,
@@ -143,9 +157,21 @@ CREATE TABLE IF NOT EXISTS orders (
   invoice_error VARCHAR(500) NULL,
   invoice_issued_at DATETIME NULL,
   tracking_number VARCHAR(100),
+  sameday_awb_number VARCHAR(100) NULL,
+  sameday_awb_status VARCHAR(20) NULL,
+  sameday_awb_cost DECIMAL(10,2) NULL,
+  sameday_awb_currency CHAR(3) NULL,
+  sameday_parcels JSON NULL,
+  sameday_last_status VARCHAR(200) NULL,
+  sameday_last_status_at DATETIME NULL,
+  sameday_error VARCHAR(500) NULL,
+  sameday_attempted_at DATETIME NULL,
+  sameday_created_at DATETIME NULL,
+  sameday_cancelled_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_orders_customer_account (customer_account_id),
+  UNIQUE KEY uq_orders_sameday_awb (sameday_awb_number),
   CONSTRAINT fk_orders_customer_account FOREIGN KEY (customer_account_id) REFERENCES customer_accounts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -206,6 +232,58 @@ CREATE TABLE IF NOT EXISTS settings (
   key_name VARCHAR(100) PRIMARY KEY,
   value TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------------------------
+-- Sameday courier account nomenclatures and local Easybox/PUDO cache
+-- --------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sameday_api_cache (
+  cache_key VARCHAR(100) NOT NULL PRIMARY KEY,
+  cache_value TEXT NOT NULL,
+  expires_at DATETIME NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_sameday_api_cache_expiry (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sameday_services (
+  service_id INT NOT NULL PRIMARY KEY,
+  name VARCHAR(160) NOT NULL,
+  raw_json JSON NOT NULL,
+  synced_at DATETIME NOT NULL,
+  KEY idx_sameday_services_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sameday_pickup_points (
+  pickup_point_id INT NOT NULL PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  address VARCHAR(500) NOT NULL DEFAULT '',
+  city VARCHAR(120) NOT NULL DEFAULT '',
+  county VARCHAR(120) NOT NULL DEFAULT '',
+  postal_code VARCHAR(30) NOT NULL DEFAULT '',
+  contact_person_id INT NULL,
+  raw_json JSON NOT NULL,
+  synced_at DATETIME NOT NULL,
+  KEY idx_sameday_pickup_location (county, city)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sameday_ooh_locations (
+  ooh_id BIGINT NOT NULL PRIMARY KEY,
+  ooh_type TINYINT NOT NULL DEFAULT 0,
+  name VARCHAR(200) NOT NULL,
+  country VARCHAR(100) NOT NULL DEFAULT 'Romania',
+  county VARCHAR(120) NOT NULL DEFAULT '',
+  city VARCHAR(120) NOT NULL DEFAULT '',
+  address VARCHAR(500) NOT NULL DEFAULT '',
+  postal_code VARCHAR(30) NOT NULL DEFAULT '',
+  latitude DECIMAL(10,7) NULL,
+  longitude DECIMAL(10,7) NULL,
+  supported_payment TINYINT(1) NOT NULL DEFAULT 0,
+  client_visible TINYINT(1) NOT NULL DEFAULT 1,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  raw_json JSON NOT NULL,
+  synced_at DATETIME NOT NULL,
+  KEY idx_sameday_ooh_search (active, ooh_type, county, city),
+  KEY idx_sameday_ooh_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

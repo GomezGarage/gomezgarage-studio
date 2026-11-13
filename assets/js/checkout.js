@@ -41,6 +41,10 @@
   let revolutPublicKey = null;
   let revolutMode = 'prod';
   let customerCsrfToken = '';
+  let samedayEnabled = false;
+  let samedayQuote = null;
+  let selectedEasybox = null;
+  let currentCart = [];
 
   // The order_number of the order created by the widget's createOrder()
   // callback, used to build the redirect URLs (Revolut's own callback
@@ -68,6 +72,12 @@
         if (data.success) {
           revolutPublicKey = data.public_key;
           revolutMode = data.mode;
+          samedayEnabled = Boolean(data.sameday_enabled);
+          const form = document.querySelector('[data-checkout-form]');
+          if (form) {
+            updateSamedayVisibility(form);
+            renderOrderSummary(currentCart);
+          }
         }
       })
       .catch(() => {
@@ -81,6 +91,7 @@
     if (!form) return;
 
     const cart = window.GGSCart.readCart();
+    currentCart = cart;
     if (!cart.length) {
       window.location.href = '/studio/cart.html';
       return;
@@ -93,6 +104,8 @@
     const countrySelect = form.querySelector('[name="country"]');
     countrySelect.addEventListener('change', () => {
       updateFiscalFieldRequirements(form);
+      invalidateSamedayQuote(form);
+      updateSamedayVisibility(form);
       renderOrderSummary(cart);
     });
 
@@ -101,6 +114,7 @@
       customerTypeSelect.addEventListener('change', () => updateFiscalFieldRequirements(form));
     }
     updateFiscalFieldRequirements(form);
+    initSamedayDelivery(form, cart);
 
     preloadCheckoutConfig();
 
@@ -215,6 +229,7 @@
 
   function currentShippingEur(form) {
     const country = form ? form.querySelector('[name="country"]').value : 'RO';
+    if (samedayEnabled && country === 'RO') return samedayQuote ? samedayQuote.amount_eur : null;
     const zone = shippingZoneFor(country);
     return SHIPPING_RATES[zone].eur;
   }
@@ -225,20 +240,141 @@
     const form = document.querySelector('[data-checkout-form]');
     const subtotal = cart.reduce((sum, i) => sum + i.qty * Number(i.price_eur), 0);
     const shipping = currentShippingEur(form);
-    const total = subtotal + shipping;
+    const total = subtotal + (shipping === null ? 0 : shipping);
+    const shippingDisplay = shipping === null ? '—' : money(shipping);
+    const totalDisplay = shipping === null ? money(subtotal) + ' +' : money(total);
 
     container.innerHTML = `
       <div class="order-summary-mini">
         ${cart.map((i) => `<div class="summary-item"><span>${window.GGSUtil.escapeHtml(i.name_en)} × ${i.qty}</span><span>${money(i.qty * i.price_eur)}</span></div>`).join('')}
         <div class="summary-row"><span data-en="Subtotal" data-ro="Subtotal">Subtotal</span><span>${money(subtotal)}</span></div>
-        <div class="summary-row"><span data-en="Shipping" data-ro="Livrare">Shipping</span><span>${money(shipping)}</span></div>
-        <div class="summary-row total"><span data-en="Total" data-ro="Total">Total</span><span>${money(total)}</span></div>
+        <div class="summary-row"><span data-en="Shipping" data-ro="Livrare">Shipping</span><span>${shippingDisplay}</span></div>
+        <div class="summary-row total"><span data-en="Total" data-ro="Total">Total</span><span>${totalDisplay}</span></div>
       </div>
     `;
     if (window.GGSLang) window.GGSLang.refresh();
   }
 
   /* ======================= Validation ======================= */
+
+  function updateSamedayVisibility(form) {
+    const country = form.querySelector('[name="country"]');
+    const section = form.querySelector('[data-sameday-delivery]');
+    const badge = form.querySelector('[data-payment-step-badge]');
+    const visible = samedayEnabled && country && country.value === 'RO';
+    if (section) section.classList.toggle('hidden', !visible);
+    if (badge) badge.textContent = visible ? '3' : '2';
+  }
+
+  function invalidateSamedayQuote(form) {
+    samedayQuote = null;
+    const status = form.querySelector('[data-sameday-quote-status]');
+    if (status) {
+      status.setAttribute('data-en', 'Complete the Romanian delivery address, then calculate the exact Sameday rate.');
+      status.setAttribute('data-ro', 'Completeaza adresa din Romania, apoi calculeaza tariful exact Sameday.');
+      status.textContent = document.documentElement.lang === 'ro' ? status.getAttribute('data-ro') : status.getAttribute('data-en');
+    }
+    renderOrderSummary(currentCart);
+  }
+
+  function initSamedayDelivery(form, cart) {
+    const picker = form.querySelector('[data-easybox-picker]');
+    const results = form.querySelector('[data-easybox-results]');
+    const search = form.querySelector('[data-easybox-search]');
+    const searchButton = form.querySelector('[data-easybox-search-btn]');
+    const quoteButton = form.querySelector('[data-sameday-quote]');
+    const oohInput = form.querySelector('[name="shipping_ooh_id"]');
+
+    form.querySelectorAll('[name="shipping_method"]').forEach((radio) => radio.addEventListener('change', () => {
+      form.querySelectorAll('[data-shipping-card]').forEach((card) => card.classList.toggle('active', card.dataset.shippingCard === radio.value));
+      if (picker) picker.classList.toggle('hidden', radio.value !== 'easybox');
+      invalidateSamedayQuote(form);
+    }));
+
+    ['street', 'city', 'county', 'postal', 'phone'].forEach((name) => {
+      const input = form.querySelector(`[name="${name}"]`);
+      if (input) input.addEventListener('input', () => invalidateSamedayQuote(form));
+    });
+
+    function renderLocations(locations) {
+      if (!results) return;
+      if (!locations.length) {
+        results.innerHTML = '<p class="form-hint" data-en="No Easybox found. Try a city or a shorter search." data-ro="Nu am gasit Easybox. Incearca orasul sau o cautare mai scurta.">No Easybox found. Try a city or a shorter search.</p>';
+        return;
+      }
+      results.innerHTML = locations.map((location) => `<button type="button" class="sameday-location-option" data-location-id="${location.id}"><strong>${window.GGSUtil.escapeHtml(location.name)}</strong><small>${window.GGSUtil.escapeHtml([location.address, location.city, location.county].filter(Boolean).join(', '))}</small></button>`).join('');
+      results.querySelectorAll('[data-location-id]').forEach((button) => button.addEventListener('click', () => {
+        selectedEasybox = locations.find((location) => String(location.id) === button.dataset.locationId) || null;
+        if (!selectedEasybox) return;
+        if (oohInput) oohInput.value = String(selectedEasybox.id);
+        const selected = form.querySelector('[data-easybox-selected]');
+        if (selected) {
+          selected.innerHTML = `<strong>${window.GGSUtil.escapeHtml(selectedEasybox.name)}</strong><br><span>${window.GGSUtil.escapeHtml([selectedEasybox.address, selectedEasybox.city, selectedEasybox.county].filter(Boolean).join(', '))}</span>`;
+          selected.classList.remove('hidden');
+        }
+        results.innerHTML = '';
+        invalidateSamedayQuote(form);
+      }));
+    }
+
+    function findEasyboxes() {
+      const q = search ? search.value.trim() : '';
+      const county = form.querySelector('[name="county"]')?.value.trim() || '';
+      const city = form.querySelector('[name="city"]')?.value.trim() || '';
+      const params = new URLSearchParams({ q, county, city, limit: '30' });
+      if (results) results.innerHTML = '<p class="form-hint">Searching…</p>';
+      fetch(`${API_BASE}/sameday-locations.php?${params}`)
+        .then((response) => response.json())
+        .then((data) => renderLocations(data.success && Array.isArray(data.locations) ? data.locations : []))
+        .catch(() => renderLocations([]));
+    }
+    if (searchButton) searchButton.addEventListener('click', findEasyboxes);
+    if (search) search.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); findEasyboxes(); } });
+
+    if (quoteButton) quoteButton.addEventListener('click', () => {
+      const method = form.querySelector('[name="shipping_method"]:checked')?.value || 'home';
+      const error = document.getElementById('sameday-quote-error');
+      if (error) error.classList.add('hidden');
+      if (method === 'easybox' && !selectedEasybox) {
+        if (error) { error.textContent = document.documentElement.lang === 'ro' ? 'Alege un Easybox.' : 'Choose an Easybox.'; error.classList.remove('hidden'); }
+        return;
+      }
+      const payload = {
+        shipping_method: method,
+        shipping_ooh_id: selectedEasybox ? selectedEasybox.id : null,
+        customer_name: `${form.querySelector('[name="first_name"]').value} ${form.querySelector('[name="last_name"]').value}`.trim(),
+        email: form.querySelector('[name="email"]').value,
+        phone: form.querySelector('[name="phone"]').value,
+        street: form.querySelector('[name="street"]').value,
+        city: form.querySelector('[name="city"]').value,
+        county: form.querySelector('[name="county"]').value,
+        postal: form.querySelector('[name="postal"]').value,
+        country: form.querySelector('[name="country"]').value,
+        items: cart.map((item) => ({ product_id: item.product_id, qty: item.qty })),
+      };
+      quoteButton.disabled = true;
+      fetch(`${API_BASE}/sameday-quote.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.success) throw new Error(data.error || 'Quote failed');
+          samedayQuote = data;
+          const status = form.querySelector('[data-sameday-quote-status]');
+          if (status) {
+            status.setAttribute('data-en', `Exact Sameday rate: ${Number(data.amount).toFixed(2)} ${data.currency}.`);
+            status.setAttribute('data-ro', `Tarif Sameday exact: ${Number(data.amount).toFixed(2)} ${data.currency}.`);
+            status.textContent = document.documentElement.lang === 'ro' ? status.getAttribute('data-ro') : status.getAttribute('data-en');
+          }
+          renderOrderSummary(cart);
+        })
+        .catch((requestError) => {
+          samedayQuote = null;
+          if (error) { error.textContent = requestError.message; error.classList.remove('hidden'); }
+          renderOrderSummary(cart);
+        })
+        .finally(() => { quoteButton.disabled = false; });
+    });
+    updateSamedayVisibility(form);
+  }
 
   function clearFieldErrors(form) {
     form.querySelectorAll('.field-error').forEach((el) => el.remove());
@@ -316,6 +452,18 @@
       if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    const country = form.querySelector('[name="country"]');
+    if (valid && samedayEnabled && country && country.value === 'RO') {
+      const method = form.querySelector('[name="shipping_method"]:checked')?.value || 'home';
+      if (method === 'easybox' && !selectedEasybox) {
+        showCheckoutError('Choose an Easybox before continuing.', 'Alege un Easybox inainte de a continua.');
+        valid = false;
+      } else if (!samedayQuote) {
+        showCheckoutError('Calculate the Sameday delivery rate before continuing.', 'Calculeaza tariful Sameday inainte de a continua.');
+        valid = false;
+      }
+    }
+
     return valid;
   }
 
@@ -377,6 +525,8 @@
       note: formData.get('note') || '',
       items: cart.map((i) => ({ product_id: i.product_id, name: i.name_en, price_eur: i.price_eur, qty: i.qty })),
       shipping_eur: currentShippingEur(form),
+      shipping_method: samedayEnabled && formData.get('country') === 'RO' ? (formData.get('shipping_method') || 'home') : 'standard',
+      shipping_ooh_id: samedayEnabled && formData.get('country') === 'RO' && formData.get('shipping_method') === 'easybox' ? Number(formData.get('shipping_ooh_id')) : null,
       payment_method: 'card',
       // Charge in whatever currency the customer was just shown in the
       // order summary, so the payment form matches (not always EUR).

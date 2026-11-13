@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/smartbill.php';
+require_once __DIR__ . '/../includes/sameday.php';
 require_once __DIR__ . '/../config.php';
 
 ggs_require_admin();
@@ -21,6 +22,9 @@ $notice = '';
 $noticeType = 'success';
 $smartBillCheck = null;
 $smartBillError = '';
+$samedayCheck = null;
+$samedayError = '';
+$samedaySync = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!ggs_admin_verify_csrf()) {
@@ -31,6 +35,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $smartBillCheck = ggs_smartbill_check_configuration();
     } catch (Throwable $error) {
       $smartBillError = $error->getMessage();
+    }
+  } elseif (($_POST['action'] ?? '') === 'check_sameday') {
+    try {
+      $samedayCheck = ggs_sameday_check_configuration(ggs_db());
+    } catch (Throwable $error) {
+      $samedayError = $error->getMessage();
+    }
+  } elseif (($_POST['action'] ?? '') === 'sync_sameday') {
+    try {
+      $accountCounts = ggs_sameday_sync_account(ggs_db());
+      $oohCount = ggs_sameday_sync_ooh(ggs_db());
+      $samedaySync = $accountCounts + ['ooh_locations' => $oohCount];
+    } catch (Throwable $error) {
+      $samedayError = $error->getMessage();
     }
   } else {
     foreach (array_keys($fields) as $key) {
@@ -50,6 +68,16 @@ function ggs_mask_key(string $key): string
 {
   if (strlen($key) <= 8) return str_repeat('•', strlen($key));
   return substr($key, 0, 6) . str_repeat('•', 10) . substr($key, -4);
+}
+
+function ggs_collect_sameday_pdo_ids(mixed $value, array &$found): void
+{
+  if (!is_array($value)) return;
+  $text = strtoupper(implode(' ', array_map(static fn($item): string => is_scalar($item) ? (string) $item : '', $value)));
+  if ((str_contains($text, 'PDO') || str_contains($text, 'PERSONAL') || str_contains($text, 'DROP')) && isset($value['id']) && is_numeric($value['id'])) {
+    $found[(int) $value['id']] = trim((string) ($value['name'] ?? $value['code'] ?? 'PDO'));
+  }
+  foreach ($value as $child) if (is_array($child)) ggs_collect_sameday_pdo_ids($child, $found);
 }
 
 $pageTitle = 'Settings';
@@ -149,6 +177,53 @@ require __DIR__ . '/../includes/admin-header.php';
     <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
     <button type="submit" class="btn btn-secondary">Check SmartBill connection (read-only)</button>
   </form>
+</div>
+
+<div class="admin-panel" style="margin-top:24px;">
+  <h3>Sameday Courier API</h3>
+  <p class="form-hint">Credentials stay in <code>config.php</code>. Connection check and synchronization only read account data; they never create an AWB. Paid Sameday orders receive an AWB automatically when this integration is enabled, with a manual retry available on each order.</p>
+
+  <?php if ($samedayCheck): ?>
+    <div class="alert-banner" style="border-color:var(--success);color:var(--success);">Connection verified. No AWB was created.</div>
+  <?php elseif ($samedaySync): ?>
+    <div class="alert-banner" style="border-color:var(--success);color:var(--success);">Synchronized <?= (int) $samedaySync['services'] ?> services, <?= (int) $samedaySync['pickup_points'] ?> pickup points and <?= (int) $samedaySync['ooh_locations'] ?> Easybox/PUDO locations.</div>
+  <?php elseif ($samedayError): ?>
+    <div class="alert-banner" style="border-color:var(--danger);color:var(--danger);"><?= htmlspecialchars($samedayError) ?></div>
+  <?php endif; ?>
+
+  <?php
+    $samedayCounts = ['services' => 0, 'pickups' => 0, 'ooh' => 0];
+    try {
+      $samedayCounts['services'] = (int) ggs_db()->query('SELECT COUNT(*) FROM sameday_services')->fetchColumn();
+      $samedayCounts['pickups'] = (int) ggs_db()->query('SELECT COUNT(*) FROM sameday_pickup_points')->fetchColumn();
+      $samedayCounts['ooh'] = (int) ggs_db()->query('SELECT COUNT(*) FROM sameday_ooh_locations WHERE active = 1 AND client_visible = 1')->fetchColumn();
+    } catch (Throwable) {}
+    $samedayServices = $samedayPickups = [];
+    $samedayPdoIds = [];
+    try {
+      $samedayServices = ggs_db()->query('SELECT service_id, name, raw_json FROM sameday_services ORDER BY service_id')->fetchAll();
+      $samedayPickups = ggs_db()->query('SELECT pickup_point_id, name, address, city, county, contact_person_id FROM sameday_pickup_points ORDER BY pickup_point_id')->fetchAll();
+      foreach ($samedayServices as $service) {
+        $raw = json_decode((string) $service['raw_json'], true);
+        if (is_array($raw)) ggs_collect_sameday_pdo_ids($raw, $samedayPdoIds);
+      }
+    } catch (Throwable) {}
+  ?>
+  <table class="specs-table">
+    <tr><td>Automatic AWB</td><td class="mono"><?= ggs_sameday_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
+    <tr><td>Credentials</td><td class="mono"><?= ggs_sameday_configured() ? 'configured' : 'missing / placeholder' ?></td></tr>
+    <tr><td>Environment</td><td class="mono"><?= htmlspecialchars(defined('SAMEDAY_API_BASE') ? (string) SAMEDAY_API_BASE : 'not configured') ?></td></tr>
+    <tr><td>Account data</td><td class="mono"><?= $samedayCounts['services'] ?> services · <?= $samedayCounts['pickups'] ?> pickup points · <?= $samedayCounts['ooh'] ?> active OOH</td></tr>
+    <tr><td>Pickup point override</td><td class="mono"><?= defined('SAMEDAY_PICKUP_POINT_ID') && (int) SAMEDAY_PICKUP_POINT_ID > 0 ? (int) SAMEDAY_PICKUP_POINT_ID : 'first synchronized point' ?></td></tr>
+    <tr><td>Personal drop-off (PDO)</td><td class="mono"><?= defined('SAMEDAY_PDO_SERVICE_TAX_ID') && (int) SAMEDAY_PDO_SERVICE_TAX_ID > 0 ? 'tax ID ' . (int) SAMEDAY_PDO_SERVICE_TAX_ID : 'off (courier pickup)' ?></td></tr>
+  </table>
+  <?php if ($samedayServices): ?><p class="form-hint" style="margin-top:12px;"><strong>Active services:</strong> <?= htmlspecialchars(implode(' · ', array_map(static fn(array $row): string => '#' . $row['service_id'] . ' ' . $row['name'], $samedayServices))) ?></p><?php endif; ?>
+  <?php if ($samedayPickups): ?><p class="form-hint"><strong>Pickup points:</strong> <?= htmlspecialchars(implode(' · ', array_map(static fn(array $row): string => '#' . $row['pickup_point_id'] . ' ' . $row['name'] . ' (' . trim($row['address'] . ', ' . $row['city'] . ', ' . $row['county'], ', ') . '; contact #' . ($row['contact_person_id'] ?: '?') . ')', $samedayPickups))) ?></p><?php endif; ?>
+  <?php if ($samedayPdoIds): ?><p class="form-hint"><strong>Detected PDO candidates:</strong> <?= htmlspecialchars(implode(' · ', array_map(static fn(int $id, string $name): string => '#' . $id . ' ' . $name, array_keys($samedayPdoIds), array_values($samedayPdoIds)))) ?>. Confirm the package type in the Sameday account before copying an ID to config.php.</p><?php endif; ?>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+    <form method="post"><input type="hidden" name="action" value="check_sameday"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><button type="submit" class="btn btn-secondary">Check Sameday connection (read-only)</button></form>
+    <form method="post"><input type="hidden" name="action" value="sync_sameday"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><button type="submit" class="btn btn-outline">Synchronize services, pickup &amp; OOH</button></form>
+  </div>
 </div>
 
 <?php require __DIR__ . '/../includes/admin-footer.php'; ?>

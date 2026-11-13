@@ -95,6 +95,12 @@ function ggs_send_order_confirmation(array $order, ?string $invoicePath = null):
     $invoiceUrl = htmlspecialchars((string) $order['invoice_view_url'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $invoiceLine = '<p><a href="' . $invoiceUrl . '">View your fiscal invoice</a>.</p>';
   }
+  $trackingLine = '';
+  if (($order['shipping_provider'] ?? '') === 'sameday' && !empty($order['tracking_number'])) {
+    $trackingNumber = htmlspecialchars((string) $order['tracking_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $trackingUrl = htmlspecialchars('https://sameday.ro/#awb=' . rawurlencode((string) $order['tracking_number']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $trackingLine = '<p><strong>Sameday AWB:</strong> ' . $trackingNumber . ' · <a href="' . $trackingUrl . '">Track the shipment</a>.</p>';
+  }
   $accountLine = !empty($order['customer_account_id'])
     ? '<p><a href="' . SITE_URL . '/account/">View your order history in your account</a>.</p>'
     : '<p>Create an account with this email to keep this and future orders together: <a href="' . SITE_URL . '/account/register.php">Create an account</a>.</p>';
@@ -105,6 +111,7 @@ function ggs_send_order_confirmation(array $order, ?string $invoicePath = null):
     <ul>{$itemsHtml}</ul>
     <p><strong>Total:</strong> {$order['total_eur']} EUR</p>
     <p><strong>Shipping to:</strong> {$address['street']}, {$address['city']}, {$address['postal']}, {$address['country']}</p>
+    {$trackingLine}
     {$invoiceLine}
     {$accountLine}
     <p>Custom and made-to-order items typically ship in 7-14 days. We'll email you again once your order ships.</p>
@@ -131,8 +138,11 @@ function ggs_notify_low_stock(array $product): bool
 function ggs_send_order_update(array $order, string $note = ''): bool
 {
   $subject = sprintf('Update on your Gomez Garage Studio order #%s', $order['order_number']);
+  $trackingUrl = (($order['shipping_provider'] ?? '') === 'sameday' && !empty($order['tracking_number']))
+    ? 'https://sameday.ro/#awb=' . rawurlencode((string) $order['tracking_number'])
+    : '';
   $trackingLine = $order['tracking_number']
-    ? '<p><strong>Tracking number:</strong> ' . htmlspecialchars((string) $order['tracking_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>'
+    ? '<p><strong>Tracking number:</strong> ' . htmlspecialchars((string) $order['tracking_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ($trackingUrl !== '' ? ' · <a href="' . htmlspecialchars($trackingUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">Track at Sameday</a>' : '') . '</p>'
     : '';
   $status = htmlspecialchars(ucfirst((string) $order['status']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
   $noteLine = trim($note) !== '' ? '<p>' . nl2br(htmlspecialchars($note, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) . '</p>' : '';

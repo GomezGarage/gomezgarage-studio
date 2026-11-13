@@ -142,8 +142,35 @@
               </div>
             </div>
 
+            <div class="checkout-step hidden" data-sameday-delivery>
+              <h3><span class="step-badge">2</span><span data-en="Delivery" data-ro="Livrare">Delivery</span></h3>
+              <div class="payment-method-selector sameday-methods">
+                <label class="payment-option-card active" data-shipping-card="home">
+                  <span class="payment-option-head"><input type="radio" name="shipping_method" value="home" checked> <span class="payment-option-title" data-en="Sameday home delivery" data-ro="Livrare Sameday la adresa">Sameday home delivery</span></span>
+                </label>
+                <label class="payment-option-card" data-shipping-card="easybox">
+                  <span class="payment-option-head"><input type="radio" name="shipping_method" value="easybox"> <span class="payment-option-title" data-en="Sameday Easybox" data-ro="Sameday Easybox">Sameday Easybox</span></span>
+                </label>
+              </div>
+              <div class="hidden" data-easybox-picker>
+                <div class="form-group">
+                  <label data-en="Search Easybox by name, city or address" data-ro="Cauta Easybox dupa nume, oras sau adresa">Search Easybox by name, city or address</label>
+                  <div class="form-row" style="align-items:end;">
+                    <input type="search" data-easybox-search placeholder="Balotesti, Magnoliei...">
+                    <button type="button" class="btn btn-outline" data-easybox-search-btn data-en="Search" data-ro="Cauta">Search</button>
+                  </div>
+                </div>
+                <div class="sameday-location-results" data-easybox-results></div>
+                <input type="hidden" name="shipping_ooh_id" value="">
+                <div class="sameday-selected hidden" data-easybox-selected></div>
+              </div>
+              <div id="sameday-quote-error" class="checkout-error-banner hidden"></div>
+              <button type="button" class="btn btn-outline" data-sameday-quote data-en="Calculate delivery" data-ro="Calculeaza livrarea">Calculate delivery</button>
+              <p class="form-hint" data-sameday-quote-status data-en="Complete the Romanian delivery address, then calculate the exact Sameday rate." data-ro="Completeaza adresa din Romania, apoi calculeaza tariful exact Sameday.">Complete the Romanian delivery address, then calculate the exact Sameday rate.</p>
+            </div>
+
             <div class="checkout-step">
-              <h3><span class="step-badge">2</span><span data-en="Payment" data-ro="Plata">Payment</span></h3>
+              <h3><span class="step-badge" data-payment-step-badge>2</span><span data-en="Payment" data-ro="Plata">Payment</span></h3>
 
               <div class="payment-method-selector">
                 <div class="payment-option-card active">
@@ -194,7 +221,7 @@
 
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
-<script src="/studio/assets/js/checkout.js?v=20261113-smartbill"></script>
+<script src="/studio/assets/js/checkout.js?v=20261113-sameday"></script>
 <script src="/studio/assets/js/main.js?v=20261107-account-menu"></script>
 </body>
 </html>
