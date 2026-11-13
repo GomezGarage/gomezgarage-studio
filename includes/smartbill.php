@@ -42,6 +42,86 @@ function ggs_smartbill_assert_storefront_series(string $series): void
     }
 }
 
+/**
+ * Validate the protected SmartBill credentials and fiscal configuration using
+ * read-only API calls. No document is created, changed or deleted.
+ *
+ * @return array{series:array,tax:array}
+ */
+function ggs_smartbill_check_configuration(?string $expectedNext = null, ?callable $transport = null): array
+{
+    foreach (['SMARTBILL_API_BASE', 'SMARTBILL_EMAIL', 'SMARTBILL_API_TOKEN', 'SMARTBILL_COMPANY_VAT_CODE', 'SMARTBILL_INVOICE_SERIES'] as $constant) {
+        $value = defined($constant) ? trim((string) constant($constant)) : '';
+        if ($value === '' || str_starts_with($value, 'REPLACE_WITH_')) {
+            throw new RuntimeException("Missing or placeholder configuration: {$constant}");
+        }
+    }
+
+    ggs_smartbill_assert_storefront_series((string) SMARTBILL_INVOICE_SERIES);
+
+    $fetchJson = static function (string $path, array $query) use ($transport): array {
+        $response = ggs_smartbill_request('GET', $path, $query, null, $transport);
+        $data = json_decode($response['body'], true);
+        if ($response['status'] !== 200 || !is_array($data) || trim((string) ($data['errorText'] ?? '')) !== '') {
+            $message = is_array($data) ? trim((string) ($data['errorText'] ?? '')) : 'invalid JSON response';
+            throw new RuntimeException("SmartBill {$path} check failed (HTTP {$response['status']}): {$message}");
+        }
+        return $data;
+    };
+
+    $query = ['cif' => (string) SMARTBILL_COMPANY_VAT_CODE];
+    $seriesResponse = $fetchJson('/series', $query + ['type' => 'f']);
+    $taxResponse = $fetchJson('/tax', $query);
+    $seriesList = is_array($seriesResponse['list'] ?? null)
+        ? $seriesResponse['list']
+        : (array_is_list($seriesResponse) ? $seriesResponse : []);
+    $taxList = is_array($taxResponse['taxes'] ?? null)
+        ? $taxResponse['taxes']
+        : (is_array($taxResponse['list'] ?? null) ? $taxResponse['list'] : (array_is_list($taxResponse) ? $taxResponse : []));
+
+    $matchingSeries = null;
+    foreach ($seriesList as $item) {
+        if (is_array($item) && strcasecmp((string) ($item['name'] ?? ''), (string) SMARTBILL_INVOICE_SERIES) === 0) {
+            $matchingSeries = $item;
+            break;
+        }
+    }
+    if ($matchingSeries === null) {
+        throw new RuntimeException('Configured storefront invoice series was not found in SmartBill.');
+    }
+
+    $configuredTaxName = defined('SMARTBILL_TAX_NAME') ? trim((string) SMARTBILL_TAX_NAME) : '';
+    $configuredTaxPercentage = defined('SMARTBILL_TAX_PERCENTAGE') ? (float) SMARTBILL_TAX_PERCENTAGE : 0.0;
+    $matchingTax = null;
+    if ($configuredTaxName !== '' && !str_starts_with($configuredTaxName, 'REPLACE_WITH_')) {
+        foreach ($taxList as $item) {
+            if (is_array($item) && strcasecmp((string) ($item['name'] ?? ''), $configuredTaxName) === 0 && (float) ($item['percentage'] ?? -1) === $configuredTaxPercentage) {
+                $matchingTax = $item;
+                break;
+            }
+        }
+    }
+    if ($matchingTax === null) {
+        $zeroTaxNames = [];
+        foreach ($taxList as $item) {
+            if (is_array($item) && (float) ($item['percentage'] ?? -1) === 0.0 && trim((string) ($item['name'] ?? '')) !== '') {
+                $zeroTaxNames[] = trim((string) $item['name']);
+            }
+        }
+        $available = $zeroTaxNames ? implode(', ', array_unique($zeroTaxNames)) : 'none reported';
+        throw new RuntimeException('Configure SMARTBILL_TAX_NAME with the exact 0% rate name. Available 0% names: ' . $available);
+    }
+
+    if ($expectedNext !== null && (!ctype_digit($expectedNext) || (string) ($matchingSeries['nextNumber'] ?? '') !== $expectedNext)) {
+        throw new RuntimeException(
+            'Configured series next number is ' . ($matchingSeries['nextNumber'] ?? 'unknown') .
+            '; expected ' . $expectedNext . '. Do not enable automatic invoicing.'
+        );
+    }
+
+    return ['series' => $matchingSeries, 'tax' => $matchingTax];
+}
+
 function ggs_smartbill_country_name(string $countryCode): string
 {
     $countries = [

@@ -70,6 +70,26 @@ try {
     sbCheck(true, 'mismatched storefront series rejected');
 }
 
+$configurationCalls = [];
+$configuration = ggs_smartbill_check_configuration('1524', static function ($method, $url) use (&$configurationCalls) {
+    $configurationCalls[] = [$method, $url];
+    if (str_contains($url, '/series?')) {
+        return ['status' => 200, 'body' => json_encode(['list' => [
+            ['name' => 'LL', 'nextNumber' => '438'],
+            ['name' => 'GGS3D', 'nextNumber' => '1524'],
+        ]])];
+    }
+    if (str_contains($url, '/tax?')) {
+        return ['status' => 200, 'body' => json_encode(['taxes' => [
+            ['name' => 'Neplatitor TVA', 'percentage' => 0],
+        ]])];
+    }
+    return ['status' => 404, 'body' => '{}'];
+});
+sbCheck($configuration['series']['name'] === 'GGS3D' && $configuration['series']['nextNumber'] === '1524', 'read-only check finds storefront series');
+sbCheck($configuration['tax']['name'] === 'Neplatitor TVA', 'read-only check finds configured tax');
+sbCheck(count($configurationCalls) === 2 && array_column($configurationCalls, 0) === ['GET', 'GET'], 'configuration check uses only two GET requests');
+
 $issued = ggs_smartbill_issue($de['payload'], static function ($method, $url, $headers, $body) {
     sbCheck($method === 'POST' && str_ends_with($url, '/invoice/v2'), 'invoice endpoint');
     sbCheck(in_array('Accept: application/json', $headers, true), 'invoice requests JSON responses');

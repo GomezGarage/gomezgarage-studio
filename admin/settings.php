@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/smartbill.php';
 require_once __DIR__ . '/../config.php';
 
 ggs_require_admin();
@@ -17,14 +18,28 @@ $fields = [
 ];
 
 $notice = '';
+$noticeType = 'success';
+$smartBillCheck = null;
+$smartBillError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  foreach (array_keys($fields) as $key) {
-    if (isset($_POST[$key])) {
-      ggs_set_setting($key, trim((string) $_POST[$key]));
+  if (!ggs_admin_verify_csrf()) {
+    $notice = 'The security token expired. Reload the page and try again.';
+    $noticeType = 'error';
+  } elseif (($_POST['action'] ?? '') === 'check_smartbill') {
+    try {
+      $smartBillCheck = ggs_smartbill_check_configuration();
+    } catch (Throwable $error) {
+      $smartBillError = $error->getMessage();
     }
+  } else {
+    foreach (array_keys($fields) as $key) {
+      if (isset($_POST[$key])) {
+        ggs_set_setting($key, trim((string) $_POST[$key]));
+      }
+    }
+    $notice = 'Settings saved.';
   }
-  $notice = 'Settings saved.';
 }
 
 foreach ($fields as $key => $default) {
@@ -49,9 +64,11 @@ require __DIR__ . '/../includes/admin-header.php';
   </div>
 </div>
 
-<?php if ($notice): ?><div class="alert-banner" style="border-color:var(--success);color:var(--success);"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
+<?php if ($notice): ?><div class="alert-banner" style="border-color:var(--<?= $noticeType === 'error' ? 'danger' : 'success' ?>);color:var(--<?= $noticeType === 'error' ? 'danger' : 'success' ?>);"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
 
 <form method="post">
+  <input type="hidden" name="action" value="save_settings">
+  <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
   <div class="admin-panel">
     <h3>Notifications</h3>
     <div class="form-row">
@@ -101,6 +118,37 @@ require __DIR__ . '/../includes/admin-header.php';
     <tr><td>Secret key</td><td class="mono"><?= htmlspecialchars(ggs_mask_key(REVOLUT_SECRET_KEY)) ?></td></tr>
     <tr><td>Mode</td><td class="mono"><?= APP_ENV === 'sandbox' ? 'Sandbox' : 'Production' ?></td></tr>
   </table>
+</div>
+
+<div class="admin-panel" style="margin-top:24px;">
+  <h3>SmartBill API</h3>
+  <p class="form-hint">The check below only reads the invoice series and tax rates. It cannot create, change or delete an invoice.</p>
+
+  <?php if ($smartBillCheck): ?>
+    <div class="alert-banner" style="border-color:var(--success);color:var(--success);">
+      Connection verified. No document was created.
+    </div>
+  <?php elseif ($smartBillError): ?>
+    <div class="alert-banner" style="border-color:var(--danger);color:var(--danger);">
+      <?= htmlspecialchars($smartBillError) ?>
+    </div>
+  <?php endif; ?>
+
+  <table class="specs-table">
+    <tr><td>Automatic invoicing</td><td class="mono"><?= ggs_smartbill_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
+    <tr><td>Series</td><td class="mono"><?= htmlspecialchars(defined('SMARTBILL_INVOICE_SERIES') ? (string) SMARTBILL_INVOICE_SERIES : 'not configured') ?></td></tr>
+    <tr><td>Tax</td><td class="mono"><?= htmlspecialchars(defined('SMARTBILL_TAX_NAME') ? (string) SMARTBILL_TAX_NAME : 'not configured') ?></td></tr>
+    <?php if ($smartBillCheck): ?>
+      <tr><td>SmartBill next number</td><td class="mono"><?= htmlspecialchars((string) ($smartBillCheck['series']['nextNumber'] ?? 'unknown')) ?></td></tr>
+      <tr><td>Verified tax rate</td><td class="mono"><?= htmlspecialchars((string) ($smartBillCheck['tax']['name'] ?? 'unknown')) ?> (<?= htmlspecialchars((string) ($smartBillCheck['tax']['percentage'] ?? 'unknown')) ?>%)</td></tr>
+    <?php endif; ?>
+  </table>
+
+  <form method="post" style="margin-top:16px;">
+    <input type="hidden" name="action" value="check_smartbill">
+    <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
+    <button type="submit" class="btn btn-secondary">Check SmartBill connection (read-only)</button>
+  </form>
 </div>
 
 <?php require __DIR__ . '/../includes/admin-footer.php'; ?>
