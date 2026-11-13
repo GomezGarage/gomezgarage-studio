@@ -224,19 +224,22 @@ function ggs_smartbill_build_invoice(array $order, float $eurRonRate): array
     }
     if ($shippingEur > 0) {
         $shipping = round($shippingEur * $factor, 2);
-        $products[] = [
+        $shippingLine = [
             'name' => 'Livrare',
             'code' => 'GGS-SHIPPING',
             'quantity' => 1,
             'price' => $shipping,
             'currency' => $currency,
             'measuringUnitName' => $unit,
-            'taxName' => $taxName,
-            'taxPercentage' => $taxPercentage,
-            'isTaxIncluded' => true,
             'isService' => true,
             'saveToDb' => false,
         ];
+        if ($vatRegistered) {
+            $shippingLine['taxName'] = $taxName;
+            $shippingLine['taxPercentage'] = $taxPercentage;
+            $shippingLine['isTaxIncluded'] = true;
+        }
+        $products[] = $shippingLine;
         $total += $shipping;
     }
     $total = round($total, 2);

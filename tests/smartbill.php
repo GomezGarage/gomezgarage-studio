@@ -34,7 +34,7 @@ sbCheck($ro['payload']['products'][0]['price'] === 51.0, 'RON line converted onc
 sbCheck($ro['payload']['payment']['type'] === 'Card online' && $ro['payload']['payment']['value'] === 127.50, 'online card receipt recorded');
 sbCheck($ro['payload']['issueDate'] === $ro['payload']['paymentDate'] && preg_match('/^\d{4}-\d{2}-\d{2}$/', $ro['payload']['issueDate']) === 1, 'Romanian fiscal date explicit');
 sbCheck($ro['payload']['useStock'] === false && $ro['payload']['products'][0]['saveToDb'] === false, 'shop remains stock authority');
-sbCheck(!isset($ro['payload']['products'][0]['taxPercentage'], $ro['payload']['products'][0]['taxName'], $ro['payload']['products'][0]['isTaxIncluded']), 'non-VAT issuer omits product tax fields');
+sbCheck(array_reduce($ro['payload']['products'], static fn(bool $clean, array $line): bool => $clean && !isset($line['taxPercentage'], $line['taxName'], $line['isTaxIncluded']), true), 'non-VAT issuer omits tax fields from products and shipping');
 
 $de = ggs_smartbill_build_invoice(fixtureOrder('DE'), 5.10);
 sbCheck($de['currency'] === 'EUR' && $de['total'] === 25.0, 'foreign EUR invoice keeps EUR');
