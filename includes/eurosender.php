@@ -279,6 +279,13 @@ function ggs_eurosender_resolve_address(array $address, ?callable $transport = n
 /** @return array{country:string,zip:string,city:string,street:string,region:string} */
 function ggs_eurosender_pickup_address(): array
 {
+    $defaults = [
+        'country' => 'RO',
+        'zip' => '077016',
+        'city' => 'Dumbraveni',
+        'street' => 'Strada Magnoliei 12D',
+        'region' => 'Ilfov',
+    ];
     $map = [
         'country' => 'EUROSENDER_PICKUP_COUNTRY',
         'zip' => 'EUROSENDER_PICKUP_POSTAL',
@@ -288,10 +295,8 @@ function ggs_eurosender_pickup_address(): array
     ];
     $address = [];
     foreach ($map as $field => $constant) {
-        $value = defined($constant) ? trim((string) constant($constant)) : '';
-        if ($value === '' || str_starts_with($value, 'REPLACE_WITH_')) {
-            throw new RuntimeException('Eurosender pickup address is incomplete: ' . $constant . '.');
-        }
+        $value = defined($constant) ? trim((string) constant($constant)) : $defaults[$field];
+        if ($value === '' || str_starts_with($value, 'REPLACE_WITH_')) $value = $defaults[$field];
         $address[$field] = $value;
     }
     return $address;

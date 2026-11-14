@@ -6,6 +6,7 @@ define('EUROSENDER_ENV', 'sandbox');
 define('EUROSENDER_API_BASE', 'https://sandbox-api.eurosender.invalid');
 define('EUROSENDER_API_KEY', 'fixture-sandbox-key');
 define('EUROSENDER_TIMEOUT_SECONDS', 5);
+define('EUROSENDER_PICKUP_CONTACT_NAME', 'Lancer Land SRL / Gabriel Petrut');
 define('EUROSENDER_PICKUP_COUNTRY', 'RO');
 define('EUROSENDER_PICKUP_REGION', 'Ilfov');
 define('EUROSENDER_PICKUP_CITY', 'Dumbraveni');
@@ -19,6 +20,8 @@ function esCheck(bool $ok, string $label): void { global $checks; if (!$ok) thro
 esCheck(ggs_eurosender_configured(), 'synthetic API key accepted');
 esCheck(!ggs_eurosender_enabled(), 'runtime integration remains disabled');
 esCheck(count(ggs_eurosender_eu_countries()) === 27 && !isset(ggs_eurosender_eu_countries()['GB']), 'destination selector contains EU only');
+$configuredPickup = ggs_eurosender_pickup_address();
+esCheck($configuredPickup['street'] === 'Strada Test 12D' && $configuredPickup['zip'] === '077016', 'configured complete pickup address available');
 
 $calls = [];
 $result = ggs_eurosender_check_configuration(static function (string $method, string $url, array $headers, ?string $body) use (&$calls): array {

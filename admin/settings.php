@@ -37,11 +37,12 @@ $eurosenderConfigValue = static function (string $constant, string $fallback = '
   return str_starts_with($value, 'REPLACE_WITH_') ? $fallback : $value;
 };
 $eurosenderQuoteInput = [
+  'pickup_contact_name' => $eurosenderConfigValue('EUROSENDER_PICKUP_CONTACT_NAME', 'Lancer Land SRL / Gabriel Petrut'),
   'pickup_country' => $eurosenderConfigValue('EUROSENDER_PICKUP_COUNTRY', 'RO'),
-  'pickup_street' => $eurosenderConfigValue('EUROSENDER_PICKUP_STREET'),
-  'pickup_city' => $eurosenderConfigValue('EUROSENDER_PICKUP_CITY'),
-  'pickup_region' => $eurosenderConfigValue('EUROSENDER_PICKUP_REGION'),
-  'pickup_postal' => $eurosenderConfigValue('EUROSENDER_PICKUP_POSTAL'),
+  'pickup_street' => $eurosenderConfigValue('EUROSENDER_PICKUP_STREET', 'Strada Magnoliei 12D'),
+  'pickup_city' => $eurosenderConfigValue('EUROSENDER_PICKUP_CITY', 'Dumbraveni'),
+  'pickup_region' => $eurosenderConfigValue('EUROSENDER_PICKUP_REGION', 'Ilfov'),
+  'pickup_postal' => $eurosenderConfigValue('EUROSENDER_PICKUP_POSTAL', '077016'),
   'country' => 'RO', 'street' => '', 'city' => '', 'region' => '', 'postal' => '',
   'length' => '30', 'width' => '20', 'height' => '10', 'weight' => '1', 'value' => '100',
 ];
@@ -242,13 +243,14 @@ require __DIR__ . '/../includes/admin-header.php';
     <input type="hidden" name="action" value="quote_eurosender">
     <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
     <h5>Pickup address</h5>
+    <div class="form-group"><label>Sender</label><input name="pickup_contact_name" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_contact_name']) ?>"></div>
     <div class="form-row">
       <div class="form-group"><label>Pickup country</label><select name="pickup_country" required><?php foreach ($eurosenderCountries as $code => $name): ?><option value="<?= htmlspecialchars($code) ?>" <?= $eurosenderQuoteInput['pickup_country'] === $code ? 'selected' : '' ?>><?= htmlspecialchars($name) ?></option><?php endforeach; ?></select></div>
       <div class="form-group"><label>Pickup street and number</label><input name="pickup_street" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_street']) ?>"></div>
       <div class="form-group"><label>Pickup postal code</label><input name="pickup_postal" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_postal']) ?>"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Pickup exact city</label><input name="pickup_city" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_city']) ?>"></div>
+      <div class="form-group"><label>Pickup exact city</label><input name="pickup_city" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_city']) ?>"><div class="form-hint">Dumbraveni, comuna Balotesti. Eurosender receives the exact locality name Dumbraveni.</div></div>
       <div class="form-group"><label>Pickup county / region</label><input name="pickup_region" value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_region']) ?>"><div class="form-hint">Required for Romania and other countries that use regions.</div></div>
     </div>
     <h5 style="margin-top:20px;">Destination address</h5>

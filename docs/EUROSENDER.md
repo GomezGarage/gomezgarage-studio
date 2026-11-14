@@ -21,8 +21,9 @@ The connection check makes exactly one authenticated `GET /v1/countries` request
 not need wallet credit and cannot create a quote, order, label or charge.
 
 Once the connection succeeds, the five `EUROSENDER_PICKUP_*` constants can be
-configured to prefill the sandbox form, but they are not required for a manual
-Admin test. The form includes complete editable pickup and destination
+configured to override the Gomez Garage pickup defaults. The default sender is
+`Lancer Land SRL / Gabriel Petrut`, Strada Magnoliei 12D, Dumbraveni 077016,
+Ilfov, Romania. The form includes complete editable pickup and destination
 addresses and limits destination countries to the European Union. A quote
 resolves canonical Romanian region/city IDs and calls `POST /v1/quotes`; it
 does not create a shipment or debit the sandbox wallet. Both runtime flags
