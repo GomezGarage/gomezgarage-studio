@@ -2,11 +2,14 @@
 /** Pure Eurosender connection tests. No config.php, database or network. */
 define('EUROSENDER_INTEGRATION_ACTIVE', false);
 define('EUROSENDER_ENABLED', false);
+define('EUROSENDER_AUTO_BOOKING_ENABLED', false);
 define('EUROSENDER_ENV', 'sandbox');
 define('EUROSENDER_API_BASE', 'https://sandbox-api.eurosender.invalid');
 define('EUROSENDER_API_KEY', 'fixture-sandbox-key');
 define('EUROSENDER_TIMEOUT_SECONDS', 5);
 define('EUROSENDER_PICKUP_CONTACT_NAME', 'Lancer Land SRL / Gabriel Petrut');
+define('EUROSENDER_PICKUP_CONTACT_EMAIL', 'sender@example.invalid');
+define('EUROSENDER_PICKUP_CONTACT_PHONE', '+40700000000');
 define('EUROSENDER_PICKUP_COUNTRY', 'RO');
 define('EUROSENDER_PICKUP_REGION', 'Ilfov');
 define('EUROSENDER_PICKUP_CITY', 'Dumbraveni');
@@ -19,6 +22,7 @@ function esCheck(bool $ok, string $label): void { global $checks; if (!$ok) thro
 
 esCheck(ggs_eurosender_configured(), 'synthetic API key accepted');
 esCheck(!ggs_eurosender_enabled(), 'runtime integration remains disabled');
+esCheck(!ggs_eurosender_checkout_enabled() && !ggs_eurosender_booking_enabled(), 'checkout and booking remain disabled by default');
 esCheck(count(ggs_eurosender_eu_countries()) === 27 && !isset(ggs_eurosender_eu_countries()['GB']), 'destination selector contains EU only');
 esCheck(
     ggs_eurosender_normalize_geo_name('București') === ggs_eurosender_normalize_geo_name('Bucharest'),
@@ -132,5 +136,54 @@ esCheck(
 esCheck($allOptions['options'][0]['estimated_delivery_time'] === '3-4', 'service-option EDT parsed from official response field');
 $optionsPayload = json_decode((string) $optionsCalls[0]['body'], true, 512, JSON_THROW_ON_ERROR);
 esCheck(!array_key_exists('serviceType', $optionsPayload), 'all-options request does not force Standard selection');
+
+$packed = ggs_eurosender_package_from_items([
+    ['name' => 'Part A', 'price_eur' => 20, 'qty' => 2, 'shipping_length_cm' => 12, 'shipping_width_cm' => 8, 'shipping_height_cm' => 4, 'shipping_weight_kg' => 0.25],
+    ['name' => 'Part B', 'price_eur' => 10, 'qty' => 1, 'shipping_length_cm' => 20, 'shipping_width_cm' => 10, 'shipping_height_cm' => 3, 'shipping_weight_kg' => 0.1],
+]);
+esCheck($packed['length'] === 20.0 && $packed['height'] === 11.0 && $packed['weight'] === 0.6, 'cart packed into one conservative parcel');
+esCheck($packed['value'] === 50.0 && !$packed['used_defaults'], 'parcel value and measurement provenance retained');
+
+$orderFixture = [
+    'order_number' => 'GGS-2026-9999', 'status' => 'paid',
+    'customer_name' => 'Fixture Customer', 'customer_email' => 'customer@example.invalid', 'customer_phone' => '+33123456789',
+    'shipping_address' => json_encode(['country' => 'FR', 'county' => '', 'city' => 'Paris', 'postal' => '75001', 'street' => 'Rue de Test 1']),
+    'items' => json_encode([['name' => 'Part A', 'price_eur' => 50, 'qty' => 1, 'shipping_length_cm' => 20, 'shipping_width_cm' => 15, 'shipping_height_cm' => 10, 'shipping_weight_kg' => 0.5]]),
+    'shipping_package' => json_encode(['length' => 20, 'width' => 15, 'height' => 10, 'weight' => 0.5, 'value' => 50, 'content' => 'Part A']),
+    'subtotal_eur' => 50, 'eurosender_service_type' => 'flexi', 'eurosender_service_subtype' => 'door_to_door', 'eurosender_courier_id' => 7,
+];
+$orderCalls = [];
+$created = ggs_eurosender_create_order($orderFixture, static function (string $method, string $url, array $headers, ?string $body) use (&$orderCalls): array {
+    $orderCalls[] = compact('method', 'url', 'headers', 'body');
+    if (str_ends_with($url, '/v1/countries/RO/regions')) return ['status' => 200, 'body' => json_encode([['id' => 10, 'name' => 'Ilfov']])];
+    if (str_ends_with($url, '/v1/countries/RO/cities')) return ['status' => 200, 'body' => json_encode([['id' => 100, 'name' => 'Dumbraveni', 'regionId' => 10]])];
+    if (str_ends_with($url, '/validate_creation')) return ['status' => 200, 'body' => json_encode(['valid' => true])];
+    return ['status' => 201, 'body' => json_encode([
+        'orderCode' => '123456-26', 'status' => 'Order Received', 'labelLink' => 'https://example.invalid/label.pdf',
+        'parcels' => ['packages' => [['tracking' => ['number' => 'TRACK-1', 'url' => 'https://example.invalid/track']]]],
+    ], JSON_THROW_ON_ERROR)];
+});
+esCheck(count($orderCalls) === 4 && str_ends_with($orderCalls[2]['url'], '/validate_creation') && str_ends_with($orderCalls[3]['url'], '/v1/orders'), 'order validated before creation');
+$createPayload = json_decode((string) $orderCalls[3]['body'], true, 512, JSON_THROW_ON_ERROR);
+esCheck($createPayload['customerInternalReference'] === 'GGS-2026-9999' && $createPayload['serviceType'] === 'flexi' && $createPayload['serviceSubtype'] === 'door_to_door', 'order reference and selected service preserved');
+esCheck($createPayload['shipment']['pickupContact']['email'] === 'sender@example.invalid' && $createPayload['shipment']['deliveryContact']['name'] === 'Fixture Customer', 'sender and recipient contacts mapped');
+esCheck($created['order_code'] === '123456-26' && $created['tracking_number'] === 'TRACK-1', 'created shipment identifiers parsed');
+
+try {
+    ggs_eurosender_request('POST', '/v1/orders/validate_creation', ['fixture' => true], static fn(): array => [
+        'status' => 422, 'body' => json_encode(['message' => 'Invalid fixture']),
+    ]);
+    esCheck(false, 'validation error accepted');
+} catch (GgsEurosenderException $error) {
+    esCheck(!$error->isUncertain(), 'non-mutating validation failure remains safe to retry');
+}
+try {
+    ggs_eurosender_request('POST', '/v1/orders', ['fixture' => true], static fn(): array => [
+        'status' => 504, 'body' => json_encode(['message' => 'Gateway timeout']),
+    ], true);
+    esCheck(false, 'ambiguous creation failure accepted');
+} catch (GgsEurosenderException $error) {
+    esCheck($error->isUncertain(), 'ambiguous creation failure blocks automatic retry');
+}
 
 echo "PASS: {$checks} Eurosender sandbox connection checks. No config, database or network loaded.\n";

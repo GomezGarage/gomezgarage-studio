@@ -400,6 +400,13 @@
 .sameday-location-option strong { display:block; }
 .sameday-location-option small { color:var(--text-muted); }
 .sameday-selected { margin:10px 0 14px; border:1px solid var(--accent); padding:12px; border-radius:8px; }
+.eurosender-options { display:grid; gap:10px; margin:14px 0; }
+.eurosender-option { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; width:100%; text-align:left; border:1px solid var(--border); background:var(--surface); color:var(--text); padding:14px; border-radius:8px; cursor:pointer; }
+.eurosender-option:hover, .eurosender-option.active { border-color:var(--accent); background:#17100f; }
+.eurosender-option input { accent-color:var(--accent); }
+.eurosender-option strong, .eurosender-option small { display:block; }
+.eurosender-option small { color:var(--text-muted); margin-top:3px; }
+.eurosender-option-price { color:var(--accent); font-family:var(--font-mono); white-space:nowrap; }
 .sameday-map-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0; }
 .sameday-map-toolbar .form-hint { margin:0; }
 .sameday-easybox-map { width:100%; height:420px; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:#151515; }

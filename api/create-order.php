@@ -15,6 +15,7 @@ require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/customer-auth.php';
 require_once __DIR__ . '/../includes/product-content.php';
 require_once __DIR__ . '/../includes/sameday.php';
+require_once __DIR__ . '/../includes/eurosender.php';
 
 ggs_cors_headers();
 
@@ -107,6 +108,9 @@ $companyVatPayer = !empty($body['company_vat_payer']) || str_starts_with($compan
 if ($country === 'RO' && $county === '') {
   ggs_json_response(['success' => false, 'error' => 'County is required for Romanian fiscal invoices'], 422);
 }
+if (!in_array($country, $euCountries, true)) {
+  ggs_json_response(['success' => false, 'error' => 'We only ship within the European Union'], 422);
+}
 if ($customerType === 'pj' && ($companyName === '' || $companyCui === '' || $companyAddress === '' || $companyCity === '' || $companyCounty === '' || $companyPostal === '' || !preg_match('/^[A-Z]{2}$/', $companyCountry))) {
   ggs_json_response(['success' => false, 'error' => 'Complete all required company invoice fields'], 422);
 }
@@ -127,6 +131,9 @@ $shippingOohAddress = null;
 $shippingQuoteAmount = null;
 $shippingQuoteCurrency = null;
 $shippingPackage = null;
+$eurosenderServiceType = null;
+$eurosenderServiceSubtype = null;
+$eurosenderCourierId = null;
 
 if ($country === 'RO' && ggs_sameday_enabled()) {
   if (!ggs_sameday_configured()) ggs_json_response(['success' => false, 'error' => 'Sameday is enabled but its credentials are not configured'], 503);
@@ -166,6 +173,41 @@ if ($country === 'RO' && ggs_sameday_enabled()) {
     $shippingOohName = (string) $location['name'];
     $shippingOohAddress = trim((string) $location['address'] . ', ' . (string) $location['city'] . ', ' . (string) $location['county'], ', ');
   }
+} elseif (ggs_eurosender_checkout_enabled()) {
+  $requestedService = strtolower(trim((string) ($body['eurosender_service_type'] ?? '')));
+  $requestedSubtype = trim((string) ($body['eurosender_service_subtype'] ?? ''));
+  $requestedCourierId = max(0, (int) ($body['eurosender_courier_id'] ?? 0));
+  $deliveryAddress = [
+    'country' => $country,
+    'region' => $county,
+    'city' => trim((string) $body['city']),
+    'zip' => trim((string) $body['postal']),
+    'street' => trim((string) $body['street']),
+  ];
+  try {
+    $shippingPackage = ggs_eurosender_package_from_items($orderItems, $subtotalEur);
+    // Re-quote on the server. Client-provided prices are never trusted.
+    $quote = ggs_eurosender_select_quote($deliveryAddress, $shippingPackage, $requestedService, $requestedSubtype, $requestedCourierId);
+  } catch (Throwable $error) {
+    error_log('GGS Eurosender checkout selection failed: ' . $error->getMessage());
+    ggs_json_response(['success' => false, 'error' => 'The selected delivery rate is no longer available. Recalculate delivery.'], 502);
+  }
+  $shippingEur = round((float) $quote['amount'], 2);
+  $clientShippingEur = $body['shipping_eur'] ?? null;
+  if (!is_numeric($clientShippingEur) || abs(round((float) $clientShippingEur, 2) - $shippingEur) > 0.009) {
+    ggs_json_response([
+      'success' => false,
+      'error' => 'The selected delivery price changed. Recalculate delivery before paying.',
+    ], 409);
+  }
+  $shippingProvider = 'eurosender';
+  $shippingMethod = 'door_to_door';
+  $shippingServiceName = 'Eurosender ' . $quote['label'];
+  $shippingQuoteAmount = (float) $quote['amount'];
+  $shippingQuoteCurrency = (string) $quote['currency'];
+  $eurosenderServiceType = (string) $quote['name'];
+  $eurosenderServiceSubtype = (string) $quote['subtype'];
+  $eurosenderCourierId = (int) $quote['courier_id'] ?: null;
 } elseif ($country === 'RO') {
   $shippingEur = (float) ggs_get_setting('shipping_ro_eur', '5.00');
 } elseif (in_array($country, $euCountries, true)) {
@@ -190,8 +232,8 @@ $customerPhone = $body['phone'] ?? '';
 
 $stmt = $db->prepare(
   'INSERT INTO orders
-    (order_number, customer_account_id, status, payment_method, customer_type, company_name, company_cui, company_reg, company_address, company_city, company_county, company_postal, company_country, company_vat_payer, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, shipping_provider, shipping_method, shipping_service_id, shipping_service_name, shipping_ooh_id, shipping_ooh_name, shipping_ooh_address, shipping_quote_amount, shipping_quote_currency, shipping_package, total_eur)
-   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    (order_number, customer_account_id, status, payment_method, customer_type, company_name, company_cui, company_reg, company_address, company_city, company_county, company_postal, company_country, company_vat_payer, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, shipping_provider, shipping_method, shipping_service_id, shipping_service_name, shipping_ooh_id, shipping_ooh_name, shipping_ooh_address, shipping_quote_amount, shipping_quote_currency, shipping_package, eurosender_service_type, eurosender_service_subtype, eurosender_courier_id, eurosender_status, total_eur)
+   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->execute([
   $orderNumber,
@@ -225,6 +267,10 @@ $stmt->execute([
   $shippingQuoteAmount,
   $shippingQuoteCurrency,
   $shippingPackage ? json_encode($shippingPackage, JSON_UNESCAPED_UNICODE) : null,
+  $eurosenderServiceType,
+  $eurosenderServiceSubtype,
+  $eurosenderCourierId,
+  $shippingProvider === 'eurosender' ? 'quoted' : null,
   $totalEur,
 ]);
 $orderId = (int) $db->lastInsertId();

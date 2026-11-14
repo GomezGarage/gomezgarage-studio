@@ -43,6 +43,9 @@
   let customerCsrfToken = '';
   let samedayEnabled = false;
   let samedayQuote = null;
+  let eurosenderEnabled = false;
+  let eurosenderOptions = [];
+  let selectedEurosenderOption = null;
   let selectedEasybox = null;
   let currentCart = [];
   let paymentRefreshTimer = null;
@@ -79,9 +82,11 @@
           revolutPublicKey = data.public_key;
           revolutMode = data.mode;
           samedayEnabled = Boolean(data.sameday_enabled);
+          eurosenderEnabled = Boolean(data.eurosender_enabled);
           const form = document.querySelector('[data-checkout-form]');
           if (form) {
             updateSamedayVisibility(form);
+            updateEurosenderVisibility(form);
             renderOrderSummary(currentCart);
             schedulePaymentRefresh(form);
           }
@@ -115,7 +120,9 @@
     countrySelect.addEventListener('change', () => {
       updateFiscalFieldRequirements(form);
       invalidateSamedayQuote(form);
+      invalidateEurosenderQuote(form);
       updateSamedayVisibility(form);
+      updateEurosenderVisibility(form);
       renderOrderSummary(cart);
       syncBillingAddress(form);
       schedulePaymentRefresh(form);
@@ -131,6 +138,7 @@
     initBillingAddress(form);
     updateFiscalFieldRequirements(form);
     initSamedayDelivery(form, cart);
+    initEurosenderDelivery(form, cart);
 
     preloadCheckoutConfig();
     form.addEventListener('submit', (event) => event.preventDefault());
@@ -204,7 +212,16 @@
         }
         select.addEventListener('change', () => {
           if (select.value === '') return;
-          try { applyAddress(JSON.parse(select.selectedOptions[0].dataset.address)); } catch (_) {}
+          try {
+            applyAddress(JSON.parse(select.selectedOptions[0].dataset.address));
+            invalidateSamedayQuote(form);
+            invalidateEurosenderQuote(form);
+            updateSamedayVisibility(form);
+            updateEurosenderVisibility(form);
+            syncBillingAddress(form);
+            renderOrderSummary(currentCart);
+            schedulePaymentRefresh(form);
+          } catch (_) {}
         });
         if (select.value !== '') {
           try { applyAddress(JSON.parse(select.selectedOptions[0].dataset.address)); } catch (_) {}
@@ -295,6 +312,7 @@
   function currentShippingEur(form) {
     const country = form ? form.querySelector('[name="country"]').value : 'RO';
     if (samedayEnabled && country === 'RO') return samedayQuote ? samedayQuote.amount_eur : null;
+    if (eurosenderEnabled) return selectedEurosenderOption ? selectedEurosenderOption.amount_eur : null;
     const zone = shippingZoneFor(country);
     return SHIPPING_RATES[zone].eur;
   }
@@ -327,6 +345,101 @@
     const section = form.querySelector('[data-sameday-delivery]');
     const visible = samedayEnabled && country && country.value === 'RO';
     if (section) section.classList.toggle('hidden', !visible);
+  }
+
+  function updateEurosenderVisibility(form) {
+    const country = form.querySelector('[name="country"]')?.value || '';
+    const section = form.querySelector('[data-eurosender-delivery]');
+    const visible = eurosenderEnabled && EU_COUNTRIES.includes(country) && !(samedayEnabled && country === 'RO');
+    if (section) section.classList.toggle('hidden', !visible);
+  }
+
+  function invalidateEurosenderQuote(form) {
+    eurosenderOptions = [];
+    selectedEurosenderOption = null;
+    const options = form.querySelector('[data-eurosender-options]');
+    if (options) options.innerHTML = '';
+    const status = form.querySelector('[data-eurosender-quote-status]');
+    if (status) {
+      status.setAttribute('data-en', 'The payment form appears after you choose a delivery service.');
+      status.setAttribute('data-ro', 'Formularul de plata apare dupa ce alegi serviciul de livrare.');
+      status.textContent = document.documentElement.lang === 'ro' ? status.getAttribute('data-ro') : status.getAttribute('data-en');
+    }
+    renderOrderSummary(currentCart);
+    schedulePaymentRefresh(form);
+  }
+
+  function initEurosenderDelivery(form, cart) {
+    const button = form.querySelector('[data-eurosender-quote]');
+    const options = form.querySelector('[data-eurosender-options]');
+    const error = document.getElementById('eurosender-quote-error');
+    const status = form.querySelector('[data-eurosender-quote-status]');
+
+    ['street', 'city', 'county', 'postal'].forEach((name) => {
+      const input = form.querySelector(`[name="${name}"]`);
+      if (input) input.addEventListener('input', () => invalidateEurosenderQuote(form));
+    });
+
+    function choose(option) {
+      selectedEurosenderOption = option;
+      const optionId = `${option.service_type}|${option.service_subtype || ''}|${Number(option.courier_id) || 0}`;
+      options.querySelectorAll('[data-eurosender-option]').forEach((card) => card.classList.toggle('active', card.dataset.eurosenderOption === optionId));
+      const radio = Array.from(options.querySelectorAll('[data-eurosender-option] input')).find((input) => input.value === optionId);
+      if (radio) radio.checked = true;
+      if (status) {
+        status.textContent = document.documentElement.lang === 'ro' ? 'Serviciul de livrare este selectat.' : 'Delivery service selected.';
+      }
+      renderOrderSummary(cart);
+      schedulePaymentRefresh(form);
+    }
+
+    function render(optionsList) {
+      eurosenderOptions = optionsList;
+      options.innerHTML = optionsList.map((option) => {
+        const eta = option.eta ? (document.documentElement.lang === 'ro' ? `Livrare estimata: ${option.eta} zile lucratoare` : `Estimated delivery: ${option.eta} working days`) : '';
+        const optionId = `${option.service_type}|${option.service_subtype || ''}|${Number(option.courier_id) || 0}`;
+        return `<label class="eurosender-option" data-eurosender-option="${window.GGSUtil.escapeHtml(optionId)}"><input type="radio" name="eurosender_service_type" value="${window.GGSUtil.escapeHtml(optionId)}"><span><strong>${window.GGSUtil.escapeHtml(option.label)}</strong><small>${window.GGSUtil.escapeHtml(eta)}</small></span><span class="eurosender-option-price">${money(option.amount_eur)}</span></label>`;
+      }).join('');
+      options.querySelectorAll('[data-eurosender-option]').forEach((card) => card.addEventListener('click', () => {
+        const option = optionsList.find((item) => `${item.service_type}|${item.service_subtype || ''}|${Number(item.courier_id) || 0}` === card.dataset.eurosenderOption);
+        if (option) choose(option);
+      }));
+      if (optionsList.length) choose(optionsList[0]);
+    }
+
+    function requestQuote() {
+      if (!eurosenderEnabled) return;
+      if (error) error.classList.add('hidden');
+      const payload = {
+        street: form.querySelector('[name="street"]')?.value.trim() || '',
+        city: form.querySelector('[name="city"]')?.value.trim() || '',
+        county: form.querySelector('[name="county"]')?.value.trim() || '',
+        postal: form.querySelector('[name="postal"]')?.value.trim() || '',
+        country: form.querySelector('[name="country"]')?.value || '',
+        items: cart.map((item) => ({ product_id: item.product_id, qty: item.qty })),
+      };
+      if (!payload.street || !payload.city || !payload.postal || !EU_COUNTRIES.includes(payload.country) || (payload.country === 'RO' && !payload.county)) {
+        if (error) {
+          error.textContent = document.documentElement.lang === 'ro' ? 'Completeaza adresa exacta de livrare.' : 'Complete the exact delivery address.';
+          error.classList.remove('hidden');
+        }
+        return;
+      }
+      button.disabled = true;
+      if (status) status.textContent = document.documentElement.lang === 'ro' ? 'Se calculeaza tarifele...' : 'Calculating live rates...';
+      fetch(`${API_BASE}/eurosender-quote.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.success || !Array.isArray(data.options)) throw new Error(data.error || 'Delivery quote failed');
+          render(data.options);
+        })
+        .catch((requestError) => {
+          invalidateEurosenderQuote(form);
+          if (error) { error.textContent = requestError.message; error.classList.remove('hidden'); }
+        })
+        .finally(() => { button.disabled = false; });
+    }
+    if (button) button.addEventListener('click', requestQuote);
   }
 
   function invalidateSamedayQuote(form) {
@@ -677,6 +790,10 @@
         valid = false;
       }
     }
+    if (valid && eurosenderEnabled && !(samedayEnabled && country && country.value === 'RO') && !selectedEurosenderOption) {
+      showCheckoutError('Calculate and choose a Eurosender delivery service before continuing.', 'Calculeaza si alege un serviciu Eurosender inainte de a continua.');
+      valid = false;
+    }
 
     return valid;
   }
@@ -724,6 +841,9 @@
       shipping_eur: currentShippingEur(form),
       shipping_method: samedayEnabled && formData.get('country') === 'RO' ? (formData.get('shipping_method') || 'home') : 'standard',
       shipping_ooh_id: samedayEnabled && formData.get('country') === 'RO' && formData.get('shipping_method') === 'easybox' ? Number(formData.get('shipping_ooh_id')) : null,
+      eurosender_service_type: selectedEurosenderOption ? selectedEurosenderOption.service_type : null,
+      eurosender_service_subtype: selectedEurosenderOption ? selectedEurosenderOption.service_subtype : null,
+      eurosender_courier_id: selectedEurosenderOption ? Number(selectedEurosenderOption.courier_id) || null : null,
       payment_method: 'card',
       currency: window.GGSCurrency ? window.GGSCurrency.current : 'EUR',
       billing_address: billingAddressFromForm(form),
@@ -752,6 +872,7 @@
       if (method === 'easybox' && !selectedEasybox) return false;
       if (!samedayQuote) return false;
     }
+    if (eurosenderEnabled && !(samedayEnabled && value('country') === 'RO') && !selectedEurosenderOption) return false;
     return true;
   }
 
@@ -824,7 +945,9 @@
     const conversion = payload.currency === 'RON' && window.GGSCurrency ? window.GGSCurrency.rate : 1;
     const totalMinor = Math.round(totalEur * conversion * 100);
     const shippingMinor = Math.round(Number(payload.shipping_eur || 0) * conversion * 100);
-    const shippingLabel = payload.shipping_method === 'easybox'
+    const shippingLabel = selectedEurosenderOption
+      ? `Eurosender ${selectedEurosenderOption.label}`
+      : payload.shipping_method === 'easybox'
       ? 'Sameday Easybox'
       : (payload.shipping_method === 'home' ? 'Sameday home delivery' : 'Standard delivery');
     const shippingOptions = [{ id: payload.shipping_method || 'standard', label: shippingLabel, amount: shippingMinor }];

@@ -133,15 +133,17 @@ define('SAMEDAY_DEFAULT_HEIGHT_CM', 10.0);
 define('SAMEDAY_DEFAULT_WEIGHT_KG', 1.0);
 
 // ---------------------------------------------------------------------
-// Eurosender API (sandbox foundation; checkout and booking are not connected)
+// Eurosender API (disabled until sandbox validation and production approval)
 // https://integrators.eurosender.com/
 //
-// Eurosender has separate sandbox and production accounts/API keys. Keep this
-// environment independent from APP_ENV so the live Revolut shop can safely use
-// Eurosender sandbox. The read-only Admin check only calls GET /v1/countries.
+// Eurosender has separate sandbox and production accounts/API keys. Public
+// checkout refuses mixed environments: sandbox shipping only works when
+// APP_ENV is sandbox, and the live shop only accepts production shipping.
 // ---------------------------------------------------------------------
 define('EUROSENDER_INTEGRATION_ACTIVE', false);
 define('EUROSENDER_ENABLED', false);
+// Third safety gate. Enable only after a sandbox booking has been reviewed.
+define('EUROSENDER_AUTO_BOOKING_ENABLED', false);
 define('EUROSENDER_ENV', 'sandbox'); // 'sandbox' | 'production'
 define('EUROSENDER_API_BASE', EUROSENDER_ENV === 'sandbox'
   ? 'https://sandbox-api.eurosender.com'
@@ -152,8 +154,14 @@ define('EUROSENDER_TIMEOUT_SECONDS', 25);
 // requires an exact Eurosender city and region; the integration resolves their
 // canonical IDs before requesting a quote.
 define('EUROSENDER_PICKUP_CONTACT_NAME', 'Lancer Land SRL / Gabriel Petrut');
+define('EUROSENDER_PICKUP_CONTACT_EMAIL', 'REPLACE_WITH_EUROSENDER_PICKUP_EMAIL');
+define('EUROSENDER_PICKUP_CONTACT_PHONE', 'REPLACE_WITH_EUROSENDER_PICKUP_PHONE');
 define('EUROSENDER_PICKUP_COUNTRY', 'RO');
 define('EUROSENDER_PICKUP_REGION', 'Ilfov');
 define('EUROSENDER_PICKUP_CITY', 'Dumbraveni');
 define('EUROSENDER_PICKUP_POSTAL', '077016');
 define('EUROSENDER_PICKUP_STREET', 'Strada Magnoliei 12D');
+define('EUROSENDER_DEFAULT_LENGTH_CM', 30.0);
+define('EUROSENDER_DEFAULT_WIDTH_CM', 20.0);
+define('EUROSENDER_DEFAULT_HEIGHT_CM', 10.0);
+define('EUROSENDER_DEFAULT_WEIGHT_KG', 1.0);

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/sameday.php';
+require_once __DIR__ . '/../includes/eurosender.php';
 
 ggs_require_admin();
 
@@ -97,6 +98,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $notice = $error->getMessage();
       $noticeError = true;
     }
+  } elseif ($action === 'generate_eurosender_shipment') {
+    try {
+      if (!ggs_eurosender_booking_enabled()) throw new RuntimeException('Eurosender automatic booking is disabled in config.php.');
+      $issued = ggs_eurosender_issue_order($db, $id);
+      $notice = (!empty($issued['existing']) ? 'Existing' : 'New') . ' Eurosender shipment: ' . $issued['order_code'];
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note, created_by_admin_id) VALUES (?, ?, ?, ?)')
+        ->execute([$id, $order['status'], 'Eurosender shipment available: ' . $issued['order_code'], $_SESSION['admin_id'] ?? null]);
+    } catch (Throwable $error) {
+      $notice = $error->getMessage();
+      $noticeError = true;
+    }
+  } elseif ($action === 'refresh_eurosender_status') {
+    try {
+      $code = trim((string) ($order['eurosender_order_code'] ?? ''));
+      if ($code === '') throw new RuntimeException('No Eurosender order code is stored.');
+      $remote = ggs_eurosender_get_order($code);
+      $status = trim((string) ($remote['status'] ?? ''));
+      $trackingNumber = '';
+      $trackingUrl = '';
+      foreach ((array) ($remote['parcels']['packages'] ?? []) as $parcel) {
+        if (!is_array($parcel)) continue;
+        $trackingNumber = trim((string) ($parcel['tracking']['number'] ?? $parcel['trackingNumber'] ?? $trackingNumber));
+        $trackingUrl = trim((string) ($parcel['tracking']['url'] ?? $parcel['trackingUrl'] ?? $trackingUrl));
+      }
+      $db->prepare('UPDATE orders SET eurosender_status = ?, eurosender_tracking_url = NULLIF(?, ""), tracking_number = COALESCE(NULLIF(?, ""), tracking_number), eurosender_last_status_at = UTC_TIMESTAMP(), eurosender_error = NULL WHERE id = ?')
+        ->execute([$status, $trackingUrl, $trackingNumber, $id]);
+      $notice = 'Eurosender status refreshed.';
+    } catch (Throwable $error) {
+      $notice = $error->getMessage();
+      $noticeError = true;
+    }
   }
 
   $stmt = $db->prepare('SELECT * FROM orders WHERE id = ?');
@@ -156,7 +188,7 @@ require __DIR__ . '/../includes/admin-header.php';
 
 <?php if (array_key_exists('shipping_provider', $order)): ?>
 <div class="admin-panel">
-  <h3>Sameday delivery</h3>
+  <h3>Delivery</h3>
   <p>
     Provider: <strong><?= htmlspecialchars($order['shipping_provider'] ?: 'manual') ?></strong><br>
     Method: <strong><?= htmlspecialchars($order['shipping_method'] ?: 'standard') ?></strong><br>
@@ -164,7 +196,7 @@ require __DIR__ . '/../includes/admin-header.php';
     <?php if ($order['shipping_ooh_name']): ?>Easybox: <strong><?= htmlspecialchars($order['shipping_ooh_name']) ?></strong><br><?= htmlspecialchars($order['shipping_ooh_address'] ?? '') ?><br><?php endif; ?>
     <?php if ($order['shipping_quote_amount'] !== null): ?>Quoted shipping: <?= number_format((float) $order['shipping_quote_amount'], 2) ?> <?= htmlspecialchars($order['shipping_quote_currency'] ?: 'RON') ?><br><?php endif; ?>
     <?php if ($shippingPackage): ?>Package: <?= number_format((float) ($shippingPackage['length'] ?? 0), 1) ?> × <?= number_format((float) ($shippingPackage['width'] ?? 0), 1) ?> × <?= number_format((float) ($shippingPackage['height'] ?? 0), 1) ?> cm · <?= number_format((float) ($shippingPackage['weight'] ?? 0), 3) ?> kg<?= !empty($shippingPackage['used_defaults']) ? ' (contains fallback measurements)' : '' ?><br><?php endif; ?>
-    AWB status: <strong><?= htmlspecialchars($order['sameday_awb_status'] ?: 'not generated') ?></strong><br>
+    <?php if (($order['shipping_provider'] ?? '') === 'sameday'): ?>AWB status: <strong><?= htmlspecialchars($order['sameday_awb_status'] ?: 'not generated') ?></strong><br><?php endif; ?>
     <?php if ($order['sameday_awb_number']): ?>AWB: <span class="mono"><?= htmlspecialchars($order['sameday_awb_number']) ?></span> · <a href="<?= htmlspecialchars(ggs_sameday_tracking_url((string) $order['sameday_awb_number'])) ?>" target="_blank" rel="noopener noreferrer">Track at Sameday</a><br><?php endif; ?>
     <?php if ($order['sameday_last_status']): ?>Last Sameday status: <?= htmlspecialchars($order['sameday_last_status']) ?><br><?php endif; ?>
   </p>
@@ -179,6 +211,23 @@ require __DIR__ . '/../includes/admin-header.php';
         <a class="btn btn-outline" href="/studio/admin/sameday-awb.php?id=<?= (int) $id ?>&amp;format=A4">Download A4 label</a>
         <form method="post"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><input type="hidden" name="action" value="refresh_sameday_status"><button type="submit" class="btn btn-outline">Refresh tracking</button></form>
         <?php if (($order['sameday_awb_status'] ?? '') !== 'cancelled'): ?><form method="post" onsubmit="return confirm('Cancel this Sameday AWB?');"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><input type="hidden" name="action" value="cancel_sameday_awb"><button type="submit" class="btn btn-outline">Cancel AWB</button></form><?php endif; ?>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
+  <?php if (($order['shipping_provider'] ?? '') === 'eurosender'): ?>
+    <p>
+      Service type: <strong><?= htmlspecialchars($order['eurosender_service_type'] ?? '') ?></strong><?= !empty($order['eurosender_service_subtype']) ? ' / ' . htmlspecialchars($order['eurosender_service_subtype']) : '' ?><br>
+      Booking status: <strong><?= htmlspecialchars($order['eurosender_status'] ?: 'not booked') ?></strong><br>
+      <?php if ($order['eurosender_order_code']): ?>Eurosender order: <span class="mono"><?= htmlspecialchars($order['eurosender_order_code']) ?></span><br><?php endif; ?>
+      <?php if ($order['tracking_number']): ?>Tracking: <span class="mono"><?= htmlspecialchars($order['tracking_number']) ?></span><?php if ($order['eurosender_tracking_url']): ?> · <a href="<?= htmlspecialchars($order['eurosender_tracking_url']) ?>" target="_blank" rel="noopener noreferrer">Track shipment</a><?php endif; ?><br><?php endif; ?>
+      <?php if ($order['eurosender_label_url']): ?><a href="<?= htmlspecialchars($order['eurosender_label_url']) ?>" target="_blank" rel="noopener noreferrer">Open shipping label</a><br><?php endif; ?>
+    </p>
+    <?php if ($order['eurosender_error']): ?><div class="alert-banner" style="border-color:var(--danger);color:var(--danger);"><?= htmlspecialchars($order['eurosender_error']) ?></div><?php endif; ?>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <?php if (!$order['eurosender_order_code'] && ($order['eurosender_status'] ?? '') !== 'uncertain'): ?>
+        <form method="post"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><input type="hidden" name="action" value="generate_eurosender_shipment"><button type="submit" class="btn btn-primary">Book / retry shipment</button></form>
+      <?php else: ?>
+        <form method="post"><input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>"><input type="hidden" name="action" value="refresh_eurosender_status"><button type="submit" class="btn btn-outline">Refresh Eurosender status</button></form>
       <?php endif; ?>
     </div>
   <?php endif; ?>

@@ -193,6 +193,15 @@
               <p class="form-hint" data-sameday-quote-status data-en="Complete the Romanian delivery address, then calculate the exact Sameday rate." data-ro="Completeaza adresa din Romania, apoi calculeaza tariful exact Sameday.">Complete the Romanian delivery address, then calculate the exact Sameday rate.</p>
             </div>
 
+            <div class="checkout-step hidden" data-eurosender-delivery>
+              <h3><span class="step-badge">2</span><span data-en="Delivery" data-ro="Livrare">Delivery</span></h3>
+              <p class="form-hint" data-en="Enter the complete delivery address, then choose one of the live Eurosender rates." data-ro="Completeaza adresa de livrare, apoi alege unul dintre tarifele Eurosender disponibile.">Enter the complete delivery address, then choose one of the live Eurosender rates.</p>
+              <div id="eurosender-quote-error" class="checkout-error-banner hidden"></div>
+              <button type="button" class="btn btn-outline" data-eurosender-quote data-en="Calculate delivery" data-ro="Calculeaza livrarea">Calculate delivery</button>
+              <div class="eurosender-options" data-eurosender-options></div>
+              <p class="form-hint" data-eurosender-quote-status data-en="The payment form appears after you choose a delivery service." data-ro="Formularul de plata apare dupa ce alegi serviciul de livrare.">The payment form appears after you choose a delivery service.</p>
+            </div>
+
           </form>
         </div>
 
@@ -228,7 +237,7 @@
 
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
-<script src="/studio/assets/js/checkout.js?v=20261114-easybox-pdo"></script>
+<script src="/studio/assets/js/checkout.js?v=20261114-eurosender-checkout"></script>
 <script src="/studio/assets/js/main.js?v=20261107-account-menu"></script>
 </body>
 </html>

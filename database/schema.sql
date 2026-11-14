@@ -147,6 +147,17 @@ CREATE TABLE IF NOT EXISTS orders (
   shipping_quote_amount DECIMAL(10,2) NULL,
   shipping_quote_currency CHAR(3) NULL,
   shipping_package JSON NULL,
+  eurosender_service_type VARCHAR(40) NULL,
+  eurosender_service_subtype VARCHAR(80) NULL,
+  eurosender_courier_id INT NULL,
+  eurosender_order_code VARCHAR(100) NULL,
+  eurosender_status VARCHAR(100) NULL,
+  eurosender_label_url TEXT NULL,
+  eurosender_tracking_url TEXT NULL,
+  eurosender_error VARCHAR(500) NULL,
+  eurosender_attempted_at DATETIME NULL,
+  eurosender_created_at DATETIME NULL,
+  eurosender_last_status_at DATETIME NULL,
   total_eur DECIMAL(10,2),
   invoice_provider VARCHAR(20) NULL,
   invoice_status ENUM('pending','issuing','issued','failed','uncertain') NULL,
@@ -172,6 +183,7 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_orders_customer_account (customer_account_id),
   UNIQUE KEY uq_orders_sameday_awb (sameday_awb_number),
+  UNIQUE KEY uq_orders_eurosender_code (eurosender_order_code),
   CONSTRAINT fk_orders_customer_account FOREIGN KEY (customer_account_id) REFERENCES customer_accounts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

@@ -20,6 +20,7 @@ require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/invoice.php';
 require_once __DIR__ . '/../includes/smartbill.php';
 require_once __DIR__ . '/../includes/sameday.php';
+require_once __DIR__ . '/../includes/eurosender.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
   ggs_json_response(['success' => false, 'error' => 'Method not allowed'], 405);
@@ -146,6 +147,22 @@ if (in_array($event['event'], $paidEvents, true)) {
       error_log('GGS Sameday AWB failed for ' . $order['order_number'] . ': ' . $awbError->getMessage());
       $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
         ->execute([(int) $order['id'], 'paid', 'Automatic Sameday AWB generation needs an admin retry.']);
+    }
+  }
+  if (ggs_eurosender_booking_enabled() && ($order['shipping_provider'] ?? '') === 'eurosender') {
+    try {
+      $shipment = ggs_eurosender_issue_order($db, (int) $order['id']);
+      $order['eurosender_order_code'] = $shipment['order_code'];
+      $order['eurosender_status'] = $shipment['status'];
+      if (!empty($shipment['tracking_number'])) $order['tracking_number'] = $shipment['tracking_number'];
+      if (!empty($shipment['tracking_url'])) $order['eurosender_tracking_url'] = $shipment['tracking_url'];
+      if (!empty($shipment['label_url'])) $order['eurosender_label_url'] = $shipment['label_url'];
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+        ->execute([(int) $order['id'], 'paid', 'Eurosender shipment booked automatically: ' . $shipment['order_code']]);
+    } catch (Throwable $shipmentError) {
+      error_log('GGS Eurosender booking failed for ' . $order['order_number'] . ': ' . $shipmentError->getMessage());
+      $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+        ->execute([(int) $order['id'], 'paid', 'Automatic Eurosender booking needs admin review.']);
     }
   }
 
