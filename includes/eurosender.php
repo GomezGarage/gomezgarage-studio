@@ -210,7 +210,13 @@ function ggs_eurosender_normalize_geo_name(string $value): string
         'Ă' => 'A', 'Â' => 'A', 'Î' => 'I', 'Ș' => 'S', 'Ş' => 'S', 'Ț' => 'T', 'Ţ' => 'T',
     ]);
     $value = strtolower($value);
-    return preg_replace('/[^a-z0-9]+/u', '', $value) ?? '';
+    $normalized = preg_replace('/[^a-z0-9]+/u', '', $value) ?? '';
+    // Eurosender's Romanian nomenclature uses the English "Bucharest" while
+    // Romanian customers and addresses naturally use "Bucuresti".
+    return match ($normalized) {
+        'bucuresti', 'municipiulbucuresti' => 'bucharest',
+        default => $normalized,
+    };
 }
 
 /** @return array{id:int,name:string,code:?string} */
@@ -303,13 +309,19 @@ function ggs_eurosender_pickup_address(): array
 }
 
 /**
- * Build and request a non-mutating sandbox quote. No wallet credit is debited.
+ * Build a quote payload. Omitting the service type asks Eurosender for every
+ * available option instead of forcing Standard/selection.
  *
  * @param array{country:string,zip:string,city:string,street:string,region?:string} $deliveryAddress
  * @param array{length:float,width:float,height:float,weight:float,value:float,content?:string} $package
- * @return array{amount:float,currency:string,service_type:string,service_subtype:string,courier_id:int,minimum_pickup_date:string,estimated_delivery_time:string,warnings:array,payload:array}
  */
-function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable $transport = null, ?array $pickupAddress = null): array
+function ggs_eurosender_quote_payload(
+    array $deliveryAddress,
+    array $package,
+    ?callable $transport = null,
+    ?array $pickupAddress = null,
+    ?string $serviceType = 'selection'
+): array
 {
     foreach (['length', 'width', 'height', 'weight', 'value'] as $field) {
         if (!isset($package[$field]) || !is_numeric($package[$field]) || (float) $package[$field] <= 0) {
@@ -337,8 +349,25 @@ function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable 
         ]]],
         'paymentMethod' => 'credit',
         'currencyCode' => 'EUR',
-        'serviceType' => 'selection',
     ];
+    if ($serviceType !== null && trim($serviceType) !== '') {
+        $payload['serviceType'] = trim($serviceType);
+    }
+
+    return $payload;
+}
+
+/**
+ * Build and request one non-mutating Standard sandbox quote. No wallet credit
+ * is debited. Kept for the future order-selection flow.
+ *
+ * @param array{country:string,zip:string,city:string,street:string,region?:string} $deliveryAddress
+ * @param array{length:float,width:float,height:float,weight:float,value:float,content?:string} $package
+ * @return array{amount:float,currency:string,service_type:string,service_subtype:string,courier_id:int,minimum_pickup_date:string,estimated_delivery_time:string,warnings:array,payload:array}
+ */
+function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable $transport = null, ?array $pickupAddress = null): array
+{
+    $payload = ggs_eurosender_quote_payload($deliveryAddress, $package, $transport, $pickupAddress, 'selection');
 
     $response = ggs_eurosender_request('POST', '/v1/quotes', $payload, $transport);
     $data = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
@@ -357,6 +386,74 @@ function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable 
         'courier_id' => (int) ($order['courierId'] ?? 0),
         'minimum_pickup_date' => trim((string) ($order['minPickupDate'] ?? '')),
         'estimated_delivery_time' => trim((string) ($order['estimatedDeliveryTime'] ?? '')),
+        'warnings' => is_array($data['warnings'] ?? null) ? $data['warnings'] : [],
+        'payload' => $payload,
+    ];
+}
+
+function ggs_eurosender_service_label(string $serviceType): string
+{
+    return match (strtolower(trim($serviceType))) {
+        'selection' => 'Standard',
+        'flexi' => 'Standard Flexi',
+        'regular_plus' => 'Priority',
+        'express' => 'Priority Express',
+        'freight' => 'Freight',
+        'freight_priority' => 'Freight Priority',
+        'freight_priority_express' => 'Freight Priority Express',
+        'van' => 'Van',
+        'ftl' => 'Full Truck Load',
+        default => ucwords(str_replace('_', ' ', trim($serviceType))),
+    };
+}
+
+/**
+ * Request every non-booking sandbox quote option returned for an address pair.
+ * No shipment is created and the wallet is not debited.
+ *
+ * @param array{country:string,zip:string,city:string,street:string,region?:string} $deliveryAddress
+ * @param array{length:float,width:float,height:float,weight:float,value:float,content?:string} $package
+ * @return array{options:array<int,array{name:string,label:string,subtype:string,amount:float,currency:string,estimated_delivery_time:string,minimum_pickup_date:string,courier_id:int,label_required:bool}>,warnings:array,payload:array}
+ */
+function ggs_eurosender_quote_options(array $deliveryAddress, array $package, ?callable $transport = null, ?array $pickupAddress = null): array
+{
+    $payload = ggs_eurosender_quote_payload($deliveryAddress, $package, $transport, $pickupAddress, null);
+    $response = ggs_eurosender_request('POST', '/v1/quotes', $payload, $transport);
+    $data = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+    $serviceTypes = $data['options']['serviceTypes'] ?? [];
+    if (!is_array($serviceTypes)) $serviceTypes = [];
+
+    $options = [];
+    foreach ($serviceTypes as $service) {
+        if (!is_array($service)) continue;
+        $name = trim((string) ($service['name'] ?? $service['serviceType'] ?? ''));
+        $amount = $service['price']['original']['gross']
+            ?? $service['totalPrice']['original']['gross']
+            ?? null;
+        $currency = $service['price']['original']['currencyCode']
+            ?? $service['totalPrice']['original']['currencyCode']
+            ?? null;
+        if ($name === '' || !is_numeric($amount) || !is_string($currency) || trim($currency) === '') continue;
+
+        $options[] = [
+            'name' => $name,
+            'label' => ggs_eurosender_service_label($name),
+            'subtype' => trim((string) ($service['serviceSubtype'] ?? '')),
+            'amount' => round((float) $amount, 2),
+            'currency' => strtoupper(trim($currency)),
+            'estimated_delivery_time' => trim((string) ($service['edt'] ?? $service['estimatedDeliveryTime'] ?? '')),
+            'minimum_pickup_date' => trim((string) ($service['minPickupDate'] ?? '')),
+            'courier_id' => (int) ($service['courierId'] ?? 0),
+            'label_required' => (bool) ($service['isLabelRequired'] ?? false),
+        ];
+    }
+    if (!$options) {
+        throw new GgsEurosenderException('Eurosender returned no usable service options for this route and parcel.');
+    }
+
+    usort($options, static fn(array $left, array $right): int => $left['amount'] <=> $right['amount']);
+    return [
+        'options' => $options,
         'warnings' => is_array($data['warnings'] ?? null) ? $data['warnings'] : [],
         'payload' => $payload,
     ];

@@ -20,6 +20,10 @@ function esCheck(bool $ok, string $label): void { global $checks; if (!$ok) thro
 esCheck(ggs_eurosender_configured(), 'synthetic API key accepted');
 esCheck(!ggs_eurosender_enabled(), 'runtime integration remains disabled');
 esCheck(count(ggs_eurosender_eu_countries()) === 27 && !isset(ggs_eurosender_eu_countries()['GB']), 'destination selector contains EU only');
+esCheck(
+    ggs_eurosender_normalize_geo_name('București') === ggs_eurosender_normalize_geo_name('Bucharest'),
+    'Romanian Bucuresti alias matches Eurosender Bucharest'
+);
 $configuredPickup = ggs_eurosender_pickup_address();
 esCheck($configuredPickup['street'] === 'Strada Test 12D' && $configuredPickup['zip'] === '077016', 'configured complete pickup address available');
 
@@ -105,5 +109,28 @@ $foreignQuote = ggs_eurosender_quote($explicitDelivery, [
 esCheck($foreignQuote['amount'] === 12.3 && count($foreignCalls) === 1, 'editable non-Romanian pickup and EU destination quote directly');
 $foreignPayload = json_decode((string) $foreignCalls[0]['body'], true, 512, JSON_THROW_ON_ERROR);
 esCheck($foreignPayload['shipment']['pickupAddress']['country'] === 'DE' && $foreignPayload['shipment']['deliveryAddress']['country'] === 'FR', 'selected pickup and destination countries mapped');
+
+$optionsCalls = [];
+$allOptions = ggs_eurosender_quote_options($explicitDelivery, [
+    'length' => 20, 'width' => 15, 'height' => 10, 'weight' => 0.5, 'value' => 25,
+], static function (string $method, string $url, array $headers, ?string $body) use (&$optionsCalls): array {
+    $optionsCalls[] = compact('method', 'url', 'headers', 'body');
+    return ['status' => 200, 'body' => json_encode([
+        'options' => ['serviceTypes' => [
+            ['name' => 'express', 'serviceSubtype' => 'door_to_door', 'price' => ['original' => ['currencyCode' => 'EUR', 'gross' => 31.4]], 'edt' => '1'],
+            ['name' => 'selection', 'serviceSubtype' => 'door_to_door', 'price' => ['original' => ['currencyCode' => 'EUR', 'gross' => 12.3]], 'edt' => '3-4'],
+            ['name' => 'regular_plus', 'serviceSubtype' => 'door_to_door', 'price' => ['original' => ['currencyCode' => 'EUR', 'gross' => 20.1]], 'edt' => '2-3'],
+        ]],
+        'warnings' => [],
+    ], JSON_THROW_ON_ERROR)];
+}, $explicitPickup);
+esCheck(count($allOptions['options']) === 3 && count($optionsCalls) === 1, 'all available service options parsed from one non-booking quote request');
+esCheck(
+    array_column($allOptions['options'], 'label') === ['Standard', 'Priority', 'Priority Express'],
+    'service options labelled and sorted by price'
+);
+esCheck($allOptions['options'][0]['estimated_delivery_time'] === '3-4', 'service-option EDT parsed from official response field');
+$optionsPayload = json_decode((string) $optionsCalls[0]['body'], true, 512, JSON_THROW_ON_ERROR);
+esCheck(!array_key_exists('serviceType', $optionsPayload), 'all-options request does not force Standard selection');
 
 echo "PASS: {$checks} Eurosender sandbox connection checks. No config, database or network loaded.\n";

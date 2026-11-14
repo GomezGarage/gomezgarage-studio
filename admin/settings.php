@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (array_keys($eurosenderQuoteInput) as $key) $eurosenderQuoteInput[$key] = trim((string) ($_POST[$key] ?? ''));
     try {
       if (!defined('EUROSENDER_ENV') || EUROSENDER_ENV !== 'sandbox') throw new RuntimeException('The Admin quote test is available only in the Eurosender sandbox environment.');
-      $eurosenderQuote = ggs_eurosender_quote([
+      $eurosenderQuote = ggs_eurosender_quote_options([
         'country' => strtoupper($eurosenderQuoteInput['country']),
         'street' => $eurosenderQuoteInput['street'],
         'city' => $eurosenderQuoteInput['city'],
@@ -213,8 +213,21 @@ require __DIR__ . '/../includes/admin-header.php';
 
   <?php if ($eurosenderQuote): ?>
     <div class="alert-banner" style="border-color:var(--success);color:var(--success);">
-      Sandbox quote: <?= htmlspecialchars(number_format((float) $eurosenderQuote['amount'], 2, '.', '')) ?> <?= htmlspecialchars($eurosenderQuote['currency']) ?> · <?= htmlspecialchars($eurosenderQuote['service_type']) ?><?= $eurosenderQuote['service_subtype'] !== '' ? ' / ' . htmlspecialchars($eurosenderQuote['service_subtype']) : '' ?><?= $eurosenderQuote['estimated_delivery_time'] !== '' ? ' · ETA ' . htmlspecialchars($eurosenderQuote['estimated_delivery_time']) . ' working days' : '' ?>. No shipment was created.
+      <?= count($eurosenderQuote['options']) ?> sandbox service option<?= count($eurosenderQuote['options']) === 1 ? '' : 's' ?> received. No shipment was created. Sandbox prices are test values, not the negotiated production rates.
     </div>
+    <table class="specs-table" style="margin-top:12px;">
+      <thead><tr><th>Service</th><th>Route</th><th>Sandbox price</th><th>ETA</th></tr></thead>
+      <tbody>
+      <?php foreach ($eurosenderQuote['options'] as $option): ?>
+        <tr>
+          <td><strong><?= htmlspecialchars($option['label']) ?></strong><br><span class="mono"><?= htmlspecialchars($option['name']) ?></span></td>
+          <td class="mono"><?= htmlspecialchars($option['subtype'] !== '' ? $option['subtype'] : 'not specified') ?></td>
+          <td class="mono"><?= htmlspecialchars(number_format((float) $option['amount'], 2, '.', '')) ?> <?= htmlspecialchars($option['currency']) ?></td>
+          <td><?= htmlspecialchars($option['estimated_delivery_time'] !== '' ? $option['estimated_delivery_time'] . ' working days' : 'not supplied') ?></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
   <?php elseif ($eurosenderQuoteError): ?>
     <div class="alert-banner" style="border-color:var(--danger);color:var(--danger);"><?= htmlspecialchars($eurosenderQuoteError) ?></div>
   <?php endif; ?>
@@ -237,8 +250,8 @@ require __DIR__ . '/../includes/admin-header.php';
   </form>
 
   <hr style="border:0;border-top:1px solid var(--border);margin:24px 0;">
-  <h4>Sandbox quote test</h4>
-  <p class="form-hint">This requests a live sandbox price but cannot book a shipment or debit the wallet. Pickup defaults come from <code>config.php</code> when present; all fields remain editable and none of these test values are saved.</p>
+  <h4>Sandbox service-options test</h4>
+  <p class="form-hint">This requests every service option available in the sandbox but cannot book a shipment or debit the wallet. Sandbox prices are test values and can differ substantially from the negotiated production prices. Pickup defaults come from <code>config.php</code> when present; all fields remain editable and none of these test values are saved.</p>
   <form method="post">
     <input type="hidden" name="action" value="quote_eurosender">
     <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
@@ -260,7 +273,7 @@ require __DIR__ . '/../includes/admin-header.php';
       <div class="form-group"><label>Destination postal code</label><input name="postal" required value="<?= htmlspecialchars($eurosenderQuoteInput['postal']) ?>"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Destination exact city</label><input name="city" required value="<?= htmlspecialchars($eurosenderQuoteInput['city']) ?>"></div>
+      <div class="form-group"><label>Destination exact city</label><input name="city" required value="<?= htmlspecialchars($eurosenderQuoteInput['city']) ?>"><div class="form-hint">Romanian Bucuresti/București is translated automatically to Eurosender's canonical Bucharest.</div></div>
       <div class="form-group"><label>Destination county / region</label><input name="region" value="<?= htmlspecialchars($eurosenderQuoteInput['region']) ?>"><div class="form-hint">Required when the selected country uses regions, including Romania.</div></div>
     </div>
     <div class="form-row">
@@ -270,7 +283,7 @@ require __DIR__ . '/../includes/admin-header.php';
       <div class="form-group"><label>Weight (kg)</label><input type="number" min="0.01" step="0.01" name="weight" required value="<?= htmlspecialchars($eurosenderQuoteInput['weight']) ?>"></div>
       <div class="form-group"><label>Contents value (EUR)</label><input type="number" min="0.01" step="0.01" name="value" required value="<?= htmlspecialchars($eurosenderQuoteInput['value']) ?>"></div>
     </div>
-    <button type="submit" class="btn btn-outline">Request sandbox quote (no booking)</button>
+    <button type="submit" class="btn btn-outline">Request all sandbox options (no booking)</button>
   </form>
 </div>
 

@@ -80,7 +80,7 @@ full design decisions, page structure, schema and payment flow.
   migration and synchronize the account nomenclatures before enabling it.
   Never place the eAWB password in the repository.
 - Eurosender has an isolated, disabled-by-default sandbox foundation, a
-  read-only credential check and a non-booking sandbox quote test. Follow [the Eurosender deployment guide](docs/EUROSENDER.md)
+  read-only credential check and a non-booking all-service-options sandbox quote test. Follow [the Eurosender deployment guide](docs/EUROSENDER.md)
   before adding the sandbox key to the ignored server `config.php`. Checkout
   quotes and shipment booking are intentionally not connected in this phase.
 - Apache renders `product.html`, `products.html` and `sitemap.xml` through their PHP

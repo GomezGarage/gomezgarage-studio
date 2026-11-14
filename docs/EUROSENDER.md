@@ -24,10 +24,18 @@ Once the connection succeeds, the five `EUROSENDER_PICKUP_*` constants can be
 configured to override the Gomez Garage pickup defaults. The default sender is
 `Lancer Land SRL / Gabriel Petrut`, Strada Magnoliei 12D, Dumbraveni 077016,
 Ilfov, Romania. The form includes complete editable pickup and destination
-addresses and limits destination countries to the European Union. A quote
-resolves canonical Romanian region/city IDs and calls `POST /v1/quotes`; it
-does not create a shipment or debit the sandbox wallet. Both runtime flags
-remain `false` during this phase.
+addresses and limits destination countries to the European Union. The admin
+test translates Romanian `Bucuresti`/`București` to Eurosender's canonical
+`Bucharest`, resolves canonical Romanian region/city IDs and calls
+`POST /v1/quotes` without forcing a service type. It therefore displays every
+usable option returned by the API (for example Standard, Standard Flexi,
+Priority and Priority Express). It does not create a shipment or debit the
+sandbox wallet. Both runtime flags remain `false` during this phase.
+
+Sandbox prices are synthetic test values. Eurosender documents that negotiated
+rates are available only in Production, so a sandbox amount can differ greatly
+from the amount shown in the live Eurosender account. Use this screen to verify
+address matching and available service types, not to approve production prices.
 
 Eurosender's onboarding email says the sandbox wallet can be funded with an
 arbitrary test balance and no real money. If the interface asks for a real card
