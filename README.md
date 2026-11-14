@@ -79,6 +79,10 @@ full design decisions, page structure, schema and payment flow.
   [the Sameday deployment guide](docs/SAMEDAY.md), import its dedicated
   migration and synchronize the account nomenclatures before enabling it.
   Never place the eAWB password in the repository.
+- Eurosender has an isolated, disabled-by-default sandbox foundation and a
+  read-only credential check. Follow [the Eurosender deployment guide](docs/EUROSENDER.md)
+  before adding the sandbox key to the ignored server `config.php`. Checkout
+  quotes and shipment booking are intentionally not connected in this phase.
 - Apache renders `product.html`, `products.html` and `sitemap.xml` through their PHP
   counterparts. Product copy/metadata and published catalog links are available in
   initial HTML; the sitemap follows published products automatically. Existing product

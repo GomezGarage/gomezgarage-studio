@@ -131,3 +131,20 @@ define('SAMEDAY_DEFAULT_LENGTH_CM', 30.0);
 define('SAMEDAY_DEFAULT_WIDTH_CM', 20.0);
 define('SAMEDAY_DEFAULT_HEIGHT_CM', 10.0);
 define('SAMEDAY_DEFAULT_WEIGHT_KG', 1.0);
+
+// ---------------------------------------------------------------------
+// Eurosender API (sandbox foundation; checkout and booking are not connected)
+// https://integrators.eurosender.com/
+//
+// Eurosender has separate sandbox and production accounts/API keys. Keep this
+// environment independent from APP_ENV so the live Revolut shop can safely use
+// Eurosender sandbox. The read-only Admin check only calls GET /v1/countries.
+// ---------------------------------------------------------------------
+define('EUROSENDER_INTEGRATION_ACTIVE', false);
+define('EUROSENDER_ENABLED', false);
+define('EUROSENDER_ENV', 'sandbox'); // 'sandbox' | 'production'
+define('EUROSENDER_API_BASE', EUROSENDER_ENV === 'sandbox'
+  ? 'https://sandbox-api.eurosender.com'
+  : 'https://api.eurosender.com');
+define('EUROSENDER_API_KEY', 'REPLACE_WITH_EUROSENDER_X_API_KEY');
+define('EUROSENDER_TIMEOUT_SECONDS', 25);

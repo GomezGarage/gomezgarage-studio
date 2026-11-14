@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/smartbill.php';
 require_once __DIR__ . '/../includes/sameday.php';
+require_once __DIR__ . '/../includes/eurosender.php';
 require_once __DIR__ . '/../config.php';
 
 ggs_require_admin();
@@ -25,6 +26,8 @@ $smartBillError = '';
 $samedayCheck = null;
 $samedayError = '';
 $samedaySync = null;
+$eurosenderCheck = null;
+$eurosenderError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!ggs_admin_verify_csrf()) {
@@ -49,6 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $samedaySync = $accountCounts + ['ooh_locations' => $oohCount];
     } catch (Throwable $error) {
       $samedayError = $error->getMessage();
+    }
+  } elseif (($_POST['action'] ?? '') === 'check_eurosender') {
+    try {
+      $eurosenderCheck = ggs_eurosender_check_configuration();
+    } catch (Throwable $error) {
+      $eurosenderError = $error->getMessage();
     }
   } else {
     foreach (array_keys($fields) as $key) {
@@ -146,6 +155,34 @@ require __DIR__ . '/../includes/admin-header.php';
     <tr><td>Secret key</td><td class="mono"><?= htmlspecialchars(ggs_mask_key(REVOLUT_SECRET_KEY)) ?></td></tr>
     <tr><td>Mode</td><td class="mono"><?= APP_ENV === 'sandbox' ? 'Sandbox' : 'Production' ?></td></tr>
   </table>
+</div>
+
+<div class="admin-panel" style="margin-top:24px;">
+  <h3>Eurosender API</h3>
+  <p class="form-hint">Sandbox and production use different API keys. This first-phase check only reads the supported-country list; it cannot request a quote, debit the wallet or create a shipment.</p>
+
+  <?php if ($eurosenderCheck): ?>
+    <div class="alert-banner" style="border-color:var(--success);color:var(--success);">Connection verified. No quote or shipment was created.</div>
+  <?php elseif ($eurosenderError): ?>
+    <div class="alert-banner" style="border-color:var(--danger);color:var(--danger);"><?= htmlspecialchars($eurosenderError) ?></div>
+  <?php endif; ?>
+
+  <table class="specs-table">
+    <tr><td>Checkout / booking</td><td class="mono"><?= ggs_eurosender_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
+    <tr><td>Credentials</td><td class="mono"><?= ggs_eurosender_configured() ? 'configured' : 'missing / placeholder' ?></td></tr>
+    <tr><td>Environment</td><td class="mono"><?= htmlspecialchars(defined('EUROSENDER_ENV') ? (string) EUROSENDER_ENV : 'not configured') ?></td></tr>
+    <tr><td>API endpoint</td><td class="mono"><?= htmlspecialchars(defined('EUROSENDER_API_BASE') ? (string) EUROSENDER_API_BASE : 'not configured') ?></td></tr>
+    <?php if ($eurosenderCheck): ?>
+      <tr><td>Supported countries</td><td class="mono"><?= (int) $eurosenderCheck['active_countries'] ?> active · <?= (int) $eurosenderCheck['eu_countries'] ?> EU</td></tr>
+      <tr><td>Romania</td><td class="mono">available<?= ($eurosenderCheck['romania']['requiresRegion'] ?? false) ? ' · region required' : '' ?><?= ($eurosenderCheck['romania']['requiresCity'] ?? false) ? ' · exact city required' : '' ?></td></tr>
+    <?php endif; ?>
+  </table>
+
+  <form method="post" style="margin-top:16px;">
+    <input type="hidden" name="action" value="check_eurosender">
+    <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
+    <button type="submit" class="btn btn-secondary">Check Eurosender connection (read-only)</button>
+  </form>
 </div>
 
 <div class="admin-panel" style="margin-top:24px;">
