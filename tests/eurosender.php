@@ -18,6 +18,7 @@ function esCheck(bool $ok, string $label): void { global $checks; if (!$ok) thro
 
 esCheck(ggs_eurosender_configured(), 'synthetic API key accepted');
 esCheck(!ggs_eurosender_enabled(), 'runtime integration remains disabled');
+esCheck(count(ggs_eurosender_eu_countries()) === 27 && !isset(ggs_eurosender_eu_countries()['GB']), 'destination selector contains EU only');
 
 $calls = [];
 $result = ggs_eurosender_check_configuration(static function (string $method, string $url, array $headers, ?string $body) use (&$calls): array {
@@ -85,5 +86,21 @@ esCheck($quotePayload['shipment']['pickupAddress']['cityId'] === 100 && $quotePa
 esCheck($quotePayload['shipment']['deliveryAddress']['cityId'] === 101 && $quotePayload['shipment']['deliveryAddress']['regionId'] === 11, 'delivery canonical IDs included');
 esCheck($quotePayload['paymentMethod'] === 'credit' && $quotePayload['serviceType'] === 'selection', 'safe standard quote selection');
 esCheck($quotePayload['parcels']['packages'][0]['weight'] === 1.2, 'package measurements mapped');
+
+$explicitPickup = ['country' => 'DE', 'region' => '', 'city' => 'Berlin', 'zip' => '10115', 'street' => 'Teststrasse 1'];
+$explicitDelivery = ['country' => 'FR', 'region' => '', 'city' => 'Paris', 'zip' => '75001', 'street' => 'Rue de Test 1'];
+$foreignCalls = [];
+$foreignQuote = ggs_eurosender_quote($explicitDelivery, [
+    'length' => 20, 'width' => 15, 'height' => 10, 'weight' => 0.5, 'value' => 25,
+], static function (string $method, string $url, array $headers, ?string $body) use (&$foreignCalls): array {
+    $foreignCalls[] = compact('method', 'url', 'headers', 'body');
+    return ['status' => 200, 'body' => json_encode(['order' => [
+        'totalPrice' => ['original' => ['currencyCode' => 'EUR', 'gross' => 12.3]],
+        'serviceType' => 'selection', 'serviceSubtype' => 'door_to_door',
+    ]], JSON_THROW_ON_ERROR)];
+}, $explicitPickup);
+esCheck($foreignQuote['amount'] === 12.3 && count($foreignCalls) === 1, 'editable non-Romanian pickup and EU destination quote directly');
+$foreignPayload = json_decode((string) $foreignCalls[0]['body'], true, 512, JSON_THROW_ON_ERROR);
+esCheck($foreignPayload['shipment']['pickupAddress']['country'] === 'DE' && $foreignPayload['shipment']['deliveryAddress']['country'] === 'FR', 'selected pickup and destination countries mapped');
 
 echo "PASS: {$checks} Eurosender sandbox connection checks. No config, database or network loaded.\n";

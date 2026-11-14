@@ -45,6 +45,20 @@ function ggs_eurosender_timeout(): int
     return defined('EUROSENDER_TIMEOUT_SECONDS') ? max(5, (int) EUROSENDER_TIMEOUT_SECONDS) : 25;
 }
 
+/** @return array<string,string> */
+function ggs_eurosender_eu_countries(): array
+{
+    return [
+        'AT' => 'Austria', 'BE' => 'Belgium', 'BG' => 'Bulgaria', 'HR' => 'Croatia',
+        'CY' => 'Cyprus', 'CZ' => 'Czechia', 'DK' => 'Denmark', 'EE' => 'Estonia',
+        'FI' => 'Finland', 'FR' => 'France', 'DE' => 'Germany', 'GR' => 'Greece',
+        'HU' => 'Hungary', 'IE' => 'Ireland', 'IT' => 'Italy', 'LV' => 'Latvia',
+        'LT' => 'Lithuania', 'LU' => 'Luxembourg', 'MT' => 'Malta', 'NL' => 'Netherlands',
+        'PL' => 'Poland', 'PT' => 'Portugal', 'RO' => 'Romania', 'SK' => 'Slovakia',
+        'SI' => 'Slovenia', 'ES' => 'Spain', 'SE' => 'Sweden',
+    ];
+}
+
 /**
  * Low-level request with an injectable transport for offline tests.
  *
@@ -290,7 +304,7 @@ function ggs_eurosender_pickup_address(): array
  * @param array{length:float,width:float,height:float,weight:float,value:float,content?:string} $package
  * @return array{amount:float,currency:string,service_type:string,service_subtype:string,courier_id:int,minimum_pickup_date:string,estimated_delivery_time:string,warnings:array,payload:array}
  */
-function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable $transport = null): array
+function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable $transport = null, ?array $pickupAddress = null): array
 {
     foreach (['length', 'width', 'height', 'weight', 'value'] as $field) {
         if (!isset($package[$field]) || !is_numeric($package[$field]) || (float) $package[$field] <= 0) {
@@ -298,7 +312,7 @@ function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable 
         }
     }
 
-    $pickup = ggs_eurosender_resolve_address(ggs_eurosender_pickup_address(), $transport);
+    $pickup = ggs_eurosender_resolve_address($pickupAddress ?? ggs_eurosender_pickup_address(), $transport);
     $delivery = ggs_eurosender_resolve_address($deliveryAddress, $transport);
     $payload = [
         'shipment' => [

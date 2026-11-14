@@ -20,9 +20,11 @@ shipment or expose the API key to the browser.
 The connection check makes exactly one authenticated `GET /v1/countries` request. It does
 not need wallet credit and cannot create a quote, order, label or charge.
 
-Once the connection succeeds, configure the five `EUROSENDER_PICKUP_*`
-constants. The Admin page then offers a Romania-only sandbox quote form. A
-quote resolves the canonical region/city IDs and calls `POST /v1/quotes`; it
+Once the connection succeeds, the five `EUROSENDER_PICKUP_*` constants can be
+configured to prefill the sandbox form, but they are not required for a manual
+Admin test. The form includes complete editable pickup and destination
+addresses and limits destination countries to the European Union. A quote
+resolves canonical Romanian region/city IDs and calls `POST /v1/quotes`; it
 does not create a shipment or debit the sandbox wallet. Both runtime flags
 remain `false` during this phase.
 

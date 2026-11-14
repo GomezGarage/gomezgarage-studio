@@ -30,8 +30,19 @@ $eurosenderCheck = null;
 $eurosenderError = '';
 $eurosenderQuote = null;
 $eurosenderQuoteError = '';
+$eurosenderCountries = ggs_eurosender_eu_countries();
+$eurosenderConfigValue = static function (string $constant, string $fallback = ''): string {
+  if (!defined($constant)) return $fallback;
+  $value = trim((string) constant($constant));
+  return str_starts_with($value, 'REPLACE_WITH_') ? $fallback : $value;
+};
 $eurosenderQuoteInput = [
-  'street' => '', 'city' => '', 'region' => '', 'postal' => '',
+  'pickup_country' => $eurosenderConfigValue('EUROSENDER_PICKUP_COUNTRY', 'RO'),
+  'pickup_street' => $eurosenderConfigValue('EUROSENDER_PICKUP_STREET'),
+  'pickup_city' => $eurosenderConfigValue('EUROSENDER_PICKUP_CITY'),
+  'pickup_region' => $eurosenderConfigValue('EUROSENDER_PICKUP_REGION'),
+  'pickup_postal' => $eurosenderConfigValue('EUROSENDER_PICKUP_POSTAL'),
+  'country' => 'RO', 'street' => '', 'city' => '', 'region' => '', 'postal' => '',
   'length' => '30', 'width' => '20', 'height' => '10', 'weight' => '1', 'value' => '100',
 ];
 
@@ -70,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
       if (!defined('EUROSENDER_ENV') || EUROSENDER_ENV !== 'sandbox') throw new RuntimeException('The Admin quote test is available only in the Eurosender sandbox environment.');
       $eurosenderQuote = ggs_eurosender_quote([
-        'country' => 'RO',
+        'country' => strtoupper($eurosenderQuoteInput['country']),
         'street' => $eurosenderQuoteInput['street'],
         'city' => $eurosenderQuoteInput['city'],
         'region' => $eurosenderQuoteInput['region'],
@@ -81,6 +92,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'height' => (float) $eurosenderQuoteInput['height'],
         'weight' => (float) $eurosenderQuoteInput['weight'],
         'value' => (float) $eurosenderQuoteInput['value'],
+      ], null, [
+        'country' => strtoupper($eurosenderQuoteInput['pickup_country']),
+        'street' => $eurosenderQuoteInput['pickup_street'],
+        'city' => $eurosenderQuoteInput['pickup_city'],
+        'region' => $eurosenderQuoteInput['pickup_region'],
+        'zip' => $eurosenderQuoteInput['pickup_postal'],
       ]);
     } catch (Throwable $error) {
       $eurosenderQuoteError = $error->getMessage();
@@ -219,18 +236,30 @@ require __DIR__ . '/../includes/admin-header.php';
   </form>
 
   <hr style="border:0;border-top:1px solid var(--border);margin:24px 0;">
-  <h4>Sandbox quote test (Romania)</h4>
-  <p class="form-hint">This requests a live sandbox price but cannot book a shipment or debit the wallet. Enter a non-customer test destination; the values are not saved.</p>
+  <h4>Sandbox quote test</h4>
+  <p class="form-hint">This requests a live sandbox price but cannot book a shipment or debit the wallet. Pickup defaults come from <code>config.php</code> when present; all fields remain editable and none of these test values are saved.</p>
   <form method="post">
     <input type="hidden" name="action" value="quote_eurosender">
     <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
+    <h5>Pickup address</h5>
     <div class="form-row">
-      <div class="form-group"><label>Street and number</label><input name="street" required value="<?= htmlspecialchars($eurosenderQuoteInput['street']) ?>"></div>
-      <div class="form-group"><label>Postal code</label><input name="postal" required value="<?= htmlspecialchars($eurosenderQuoteInput['postal']) ?>"></div>
+      <div class="form-group"><label>Pickup country</label><select name="pickup_country" required><?php foreach ($eurosenderCountries as $code => $name): ?><option value="<?= htmlspecialchars($code) ?>" <?= $eurosenderQuoteInput['pickup_country'] === $code ? 'selected' : '' ?>><?= htmlspecialchars($name) ?></option><?php endforeach; ?></select></div>
+      <div class="form-group"><label>Pickup street and number</label><input name="pickup_street" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_street']) ?>"></div>
+      <div class="form-group"><label>Pickup postal code</label><input name="pickup_postal" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_postal']) ?>"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Exact city</label><input name="city" required value="<?= htmlspecialchars($eurosenderQuoteInput['city']) ?>"></div>
-      <div class="form-group"><label>Exact county / region</label><input name="region" required value="<?= htmlspecialchars($eurosenderQuoteInput['region']) ?>"></div>
+      <div class="form-group"><label>Pickup exact city</label><input name="pickup_city" required value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_city']) ?>"></div>
+      <div class="form-group"><label>Pickup county / region</label><input name="pickup_region" value="<?= htmlspecialchars($eurosenderQuoteInput['pickup_region']) ?>"><div class="form-hint">Required for Romania and other countries that use regions.</div></div>
+    </div>
+    <h5 style="margin-top:20px;">Destination address</h5>
+    <div class="form-row">
+      <div class="form-group"><label>Destination country</label><select name="country" required><?php foreach ($eurosenderCountries as $code => $name): ?><option value="<?= htmlspecialchars($code) ?>" <?= $eurosenderQuoteInput['country'] === $code ? 'selected' : '' ?>><?= htmlspecialchars($name) ?></option><?php endforeach; ?></select></div>
+      <div class="form-group"><label>Destination street and number</label><input name="street" required value="<?= htmlspecialchars($eurosenderQuoteInput['street']) ?>"></div>
+      <div class="form-group"><label>Destination postal code</label><input name="postal" required value="<?= htmlspecialchars($eurosenderQuoteInput['postal']) ?>"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Destination exact city</label><input name="city" required value="<?= htmlspecialchars($eurosenderQuoteInput['city']) ?>"></div>
+      <div class="form-group"><label>Destination county / region</label><input name="region" value="<?= htmlspecialchars($eurosenderQuoteInput['region']) ?>"><div class="form-hint">Required when the selected country uses regions, including Romania.</div></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Length (cm)</label><input type="number" min="0.1" step="0.1" name="length" required value="<?= htmlspecialchars($eurosenderQuoteInput['length']) ?>"></div>
