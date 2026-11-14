@@ -148,3 +148,11 @@ define('EUROSENDER_API_BASE', EUROSENDER_ENV === 'sandbox'
   : 'https://api.eurosender.com');
 define('EUROSENDER_API_KEY', 'REPLACE_WITH_EUROSENDER_X_API_KEY');
 define('EUROSENDER_TIMEOUT_SECONDS', 25);
+// Sender address used for quotes and, in a later release, bookings. Romania
+// requires an exact Eurosender city and region; the integration resolves their
+// canonical IDs before requesting a quote.
+define('EUROSENDER_PICKUP_COUNTRY', 'RO');
+define('EUROSENDER_PICKUP_REGION', 'REPLACE_WITH_EXACT_EUROSENDER_REGION');
+define('EUROSENDER_PICKUP_CITY', 'REPLACE_WITH_EXACT_EUROSENDER_CITY');
+define('EUROSENDER_PICKUP_POSTAL', 'REPLACE_WITH_PICKUP_POSTAL_CODE');
+define('EUROSENDER_PICKUP_STREET', 'REPLACE_WITH_PICKUP_STREET_AND_NUMBER');

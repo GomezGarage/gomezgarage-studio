@@ -28,6 +28,12 @@ $samedayError = '';
 $samedaySync = null;
 $eurosenderCheck = null;
 $eurosenderError = '';
+$eurosenderQuote = null;
+$eurosenderQuoteError = '';
+$eurosenderQuoteInput = [
+  'street' => '', 'city' => '', 'region' => '', 'postal' => '',
+  'length' => '30', 'width' => '20', 'height' => '10', 'weight' => '1', 'value' => '100',
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!ggs_admin_verify_csrf()) {
@@ -58,6 +64,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $eurosenderCheck = ggs_eurosender_check_configuration();
     } catch (Throwable $error) {
       $eurosenderError = $error->getMessage();
+    }
+  } elseif (($_POST['action'] ?? '') === 'quote_eurosender') {
+    foreach (array_keys($eurosenderQuoteInput) as $key) $eurosenderQuoteInput[$key] = trim((string) ($_POST[$key] ?? ''));
+    try {
+      if (!defined('EUROSENDER_ENV') || EUROSENDER_ENV !== 'sandbox') throw new RuntimeException('The Admin quote test is available only in the Eurosender sandbox environment.');
+      $eurosenderQuote = ggs_eurosender_quote([
+        'country' => 'RO',
+        'street' => $eurosenderQuoteInput['street'],
+        'city' => $eurosenderQuoteInput['city'],
+        'region' => $eurosenderQuoteInput['region'],
+        'zip' => $eurosenderQuoteInput['postal'],
+      ], [
+        'length' => (float) $eurosenderQuoteInput['length'],
+        'width' => (float) $eurosenderQuoteInput['width'],
+        'height' => (float) $eurosenderQuoteInput['height'],
+        'weight' => (float) $eurosenderQuoteInput['weight'],
+        'value' => (float) $eurosenderQuoteInput['value'],
+      ]);
+    } catch (Throwable $error) {
+      $eurosenderQuoteError = $error->getMessage();
     }
   } else {
     foreach (array_keys($fields) as $key) {
@@ -167,6 +193,14 @@ require __DIR__ . '/../includes/admin-header.php';
     <div class="alert-banner" style="border-color:var(--danger);color:var(--danger);"><?= htmlspecialchars($eurosenderError) ?></div>
   <?php endif; ?>
 
+  <?php if ($eurosenderQuote): ?>
+    <div class="alert-banner" style="border-color:var(--success);color:var(--success);">
+      Sandbox quote: <?= htmlspecialchars(number_format((float) $eurosenderQuote['amount'], 2, '.', '')) ?> <?= htmlspecialchars($eurosenderQuote['currency']) ?> · <?= htmlspecialchars($eurosenderQuote['service_type']) ?><?= $eurosenderQuote['service_subtype'] !== '' ? ' / ' . htmlspecialchars($eurosenderQuote['service_subtype']) : '' ?><?= $eurosenderQuote['estimated_delivery_time'] !== '' ? ' · ETA ' . htmlspecialchars($eurosenderQuote['estimated_delivery_time']) . ' working days' : '' ?>. No shipment was created.
+    </div>
+  <?php elseif ($eurosenderQuoteError): ?>
+    <div class="alert-banner" style="border-color:var(--danger);color:var(--danger);"><?= htmlspecialchars($eurosenderQuoteError) ?></div>
+  <?php endif; ?>
+
   <table class="specs-table">
     <tr><td>Checkout / booking</td><td class="mono"><?= ggs_eurosender_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
     <tr><td>Credentials</td><td class="mono"><?= ggs_eurosender_configured() ? 'configured' : 'missing / placeholder' ?></td></tr>
@@ -182,6 +216,30 @@ require __DIR__ . '/../includes/admin-header.php';
     <input type="hidden" name="action" value="check_eurosender">
     <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
     <button type="submit" class="btn btn-secondary">Check Eurosender connection (read-only)</button>
+  </form>
+
+  <hr style="border:0;border-top:1px solid var(--border);margin:24px 0;">
+  <h4>Sandbox quote test (Romania)</h4>
+  <p class="form-hint">This requests a live sandbox price but cannot book a shipment or debit the wallet. Enter a non-customer test destination; the values are not saved.</p>
+  <form method="post">
+    <input type="hidden" name="action" value="quote_eurosender">
+    <input type="hidden" name="admin_csrf_token" value="<?= htmlspecialchars(ggs_admin_csrf_token()) ?>">
+    <div class="form-row">
+      <div class="form-group"><label>Street and number</label><input name="street" required value="<?= htmlspecialchars($eurosenderQuoteInput['street']) ?>"></div>
+      <div class="form-group"><label>Postal code</label><input name="postal" required value="<?= htmlspecialchars($eurosenderQuoteInput['postal']) ?>"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Exact city</label><input name="city" required value="<?= htmlspecialchars($eurosenderQuoteInput['city']) ?>"></div>
+      <div class="form-group"><label>Exact county / region</label><input name="region" required value="<?= htmlspecialchars($eurosenderQuoteInput['region']) ?>"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Length (cm)</label><input type="number" min="0.1" step="0.1" name="length" required value="<?= htmlspecialchars($eurosenderQuoteInput['length']) ?>"></div>
+      <div class="form-group"><label>Width (cm)</label><input type="number" min="0.1" step="0.1" name="width" required value="<?= htmlspecialchars($eurosenderQuoteInput['width']) ?>"></div>
+      <div class="form-group"><label>Height (cm)</label><input type="number" min="0.1" step="0.1" name="height" required value="<?= htmlspecialchars($eurosenderQuoteInput['height']) ?>"></div>
+      <div class="form-group"><label>Weight (kg)</label><input type="number" min="0.01" step="0.01" name="weight" required value="<?= htmlspecialchars($eurosenderQuoteInput['weight']) ?>"></div>
+      <div class="form-group"><label>Contents value (EUR)</label><input type="number" min="0.01" step="0.01" name="value" required value="<?= htmlspecialchars($eurosenderQuoteInput['value']) ?>"></div>
+    </div>
+    <button type="submit" class="btn btn-outline">Request sandbox quote (no booking)</button>
   </form>
 </div>
 

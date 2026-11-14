@@ -6,6 +6,11 @@ define('EUROSENDER_ENV', 'sandbox');
 define('EUROSENDER_API_BASE', 'https://sandbox-api.eurosender.invalid');
 define('EUROSENDER_API_KEY', 'fixture-sandbox-key');
 define('EUROSENDER_TIMEOUT_SECONDS', 5);
+define('EUROSENDER_PICKUP_COUNTRY', 'RO');
+define('EUROSENDER_PICKUP_REGION', 'Ilfov');
+define('EUROSENDER_PICKUP_CITY', 'Dumbraveni');
+define('EUROSENDER_PICKUP_POSTAL', '077016');
+define('EUROSENDER_PICKUP_STREET', 'Strada Test 12D');
 require __DIR__ . '/../includes/eurosender.php';
 
 $checks = 0;
@@ -39,5 +44,46 @@ try {
 } catch (GgsEurosenderException $error) {
     esCheck(str_contains($error->getMessage(), 'Invalid API key') && !$error->isUncertain(), 'read-only authentication error is clear and safe');
 }
+
+$quoteCalls = [];
+$quoteTransport = static function (string $method, string $url, array $headers, ?string $body) use (&$quoteCalls): array {
+    $quoteCalls[] = compact('method', 'url', 'headers', 'body');
+    if (str_ends_with($url, '/v1/countries/RO/regions')) {
+        return ['status' => 200, 'body' => json_encode([
+            ['id' => 10, 'name' => 'Ilfov', 'code' => null],
+            ['id' => 11, 'name' => 'Bucuresti', 'code' => null],
+        ], JSON_THROW_ON_ERROR)];
+    }
+    if (str_ends_with($url, '/v1/countries/RO/cities')) {
+        return ['status' => 200, 'body' => json_encode([
+            ['id' => 100, 'name' => 'Dumbrăveni', 'regionId' => 10],
+            ['id' => 101, 'name' => 'București', 'regionId' => 11],
+        ], JSON_THROW_ON_ERROR)];
+    }
+    if (str_ends_with($url, '/v1/quotes')) {
+        return ['status' => 200, 'body' => json_encode([
+            'options' => ['serviceTypes' => []],
+            'order' => [
+                'totalPrice' => ['original' => ['currencyCode' => 'EUR', 'gross' => 4.75, 'net' => 4.75]],
+                'serviceType' => 'selection', 'serviceSubtype' => 'door_to_door', 'courierId' => 42,
+                'minPickupDate' => '2026-11-16T00:00:00+02:00', 'estimatedDeliveryTime' => '1-2',
+            ],
+            'warnings' => [],
+        ], JSON_THROW_ON_ERROR)];
+    }
+    return ['status' => 404, 'body' => '{}'];
+};
+$quote = ggs_eurosender_quote([
+    'country' => 'RO', 'region' => 'Bucuresti', 'city' => 'Bucuresti',
+    'zip' => '030167', 'street' => 'Strada Test 15A',
+], ['length' => 30, 'width' => 20, 'height' => 10, 'weight' => 1.2, 'value' => 100], $quoteTransport);
+esCheck($quote['amount'] === 4.75 && $quote['currency'] === 'EUR', 'sandbox quote total parsed');
+esCheck($quote['service_type'] === 'selection' && $quote['service_subtype'] === 'door_to_door', 'sandbox service parsed');
+esCheck(count($quoteCalls) === 5 && $quoteCalls[4]['method'] === 'POST', 'Romanian pickup and delivery are resolved before quote');
+$quotePayload = json_decode((string) $quoteCalls[4]['body'], true, 512, JSON_THROW_ON_ERROR);
+esCheck($quotePayload['shipment']['pickupAddress']['cityId'] === 100 && $quotePayload['shipment']['pickupAddress']['regionId'] === 10, 'pickup canonical IDs included');
+esCheck($quotePayload['shipment']['deliveryAddress']['cityId'] === 101 && $quotePayload['shipment']['deliveryAddress']['regionId'] === 11, 'delivery canonical IDs included');
+esCheck($quotePayload['paymentMethod'] === 'credit' && $quotePayload['serviceType'] === 'selection', 'safe standard quote selection');
+esCheck($quotePayload['parcels']['packages'][0]['weight'] === 1.2, 'package measurements mapped');
 
 echo "PASS: {$checks} Eurosender sandbox connection checks. No config, database or network loaded.\n";

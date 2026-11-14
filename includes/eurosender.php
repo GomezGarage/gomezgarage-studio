@@ -177,3 +177,168 @@ function ggs_eurosender_check_configuration(?callable $transport = null): array
         'romania' => $romania,
     ];
 }
+
+/** @return array<int,array> */
+function ggs_eurosender_get_list(string $path, ?callable $transport = null): array
+{
+    $response = ggs_eurosender_request('GET', $path, null, $transport);
+    $data = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($data) || !array_is_list($data)) {
+        throw new GgsEurosenderException('Eurosender returned an unexpected geographic-data response.');
+    }
+    return array_values(array_filter($data, 'is_array'));
+}
+
+function ggs_eurosender_normalize_geo_name(string $value): string
+{
+    $value = strtr(trim($value), [
+        'ă' => 'a', 'â' => 'a', 'î' => 'i', 'ș' => 's', 'ş' => 's', 'ț' => 't', 'ţ' => 't',
+        'Ă' => 'A', 'Â' => 'A', 'Î' => 'I', 'Ș' => 'S', 'Ş' => 'S', 'Ț' => 'T', 'Ţ' => 'T',
+    ]);
+    $value = strtolower($value);
+    return preg_replace('/[^a-z0-9]+/u', '', $value) ?? '';
+}
+
+/** @return array{id:int,name:string,code:?string} */
+function ggs_eurosender_match_geo_item(array $items, string $wanted, string $label, ?int $regionId = null): array
+{
+    $needle = ggs_eurosender_normalize_geo_name($wanted);
+    $candidates = [];
+    foreach ($items as $item) {
+        if ($regionId !== null && isset($item['regionId']) && (int) $item['regionId'] !== $regionId) continue;
+        $name = trim((string) ($item['name'] ?? ''));
+        if ($name === '') continue;
+        $normalized = ggs_eurosender_normalize_geo_name($name);
+        if ($normalized === $needle) {
+            return ['id' => (int) ($item['id'] ?? 0), 'name' => $name, 'code' => isset($item['code']) ? (string) $item['code'] : null];
+        }
+        if ($needle !== '' && (str_contains($normalized, $needle) || str_contains($needle, $normalized))) $candidates[] = $name;
+    }
+
+    $suffix = $candidates ? ' Closest matches: ' . implode(', ', array_slice(array_unique($candidates), 0, 8)) . '.' : '';
+    throw new InvalidArgumentException('Eurosender could not match the exact ' . $label . ' "' . $wanted . '".' . $suffix);
+}
+
+/**
+ * Resolve the canonical region/city IDs required by countries such as Romania.
+ *
+ * @param array{country:string,zip?:string,city?:string,street?:string,region?:string} $address
+ * @return array{country:string,zip:string,city:string,cityId?:int,street:string,region?:string,regionId?:int}
+ */
+function ggs_eurosender_resolve_address(array $address, ?callable $transport = null): array
+{
+    $country = strtoupper(trim((string) ($address['country'] ?? '')));
+    $city = trim((string) ($address['city'] ?? ''));
+    $region = trim((string) ($address['region'] ?? ''));
+    $zip = trim((string) ($address['zip'] ?? ''));
+    $street = trim((string) ($address['street'] ?? ''));
+    if (!preg_match('/^[A-Z]{2}$/', $country)) throw new InvalidArgumentException('Eurosender pickup/delivery country must be a two-letter code.');
+    if ($city === '' || $zip === '' || $street === '') throw new InvalidArgumentException('Eurosender address requires street, city and postal code.');
+
+    $resolved = ['country' => $country, 'zip' => $zip, 'city' => $city, 'street' => $street];
+    if ($country !== 'RO') {
+        if ($region !== '') $resolved['region'] = $region;
+        return $resolved;
+    }
+    if ($region === '') throw new InvalidArgumentException('Eurosender requires a region/county for Romanian addresses.');
+
+    $regionMatch = ggs_eurosender_match_geo_item(
+        ggs_eurosender_get_list('/v1/countries/RO/regions', $transport),
+        $region,
+        'Romanian region'
+    );
+    $cityMatch = ggs_eurosender_match_geo_item(
+        ggs_eurosender_get_list('/v1/countries/RO/cities', $transport),
+        $city,
+        'Romanian city',
+        $regionMatch['id']
+    );
+    if ($regionMatch['id'] <= 0 || $cityMatch['id'] <= 0) throw new GgsEurosenderException('Eurosender geographic data did not include valid IDs.');
+
+    $resolved['region'] = $regionMatch['name'];
+    $resolved['regionId'] = $regionMatch['id'];
+    $resolved['city'] = $cityMatch['name'];
+    $resolved['cityId'] = $cityMatch['id'];
+    return $resolved;
+}
+
+/** @return array{country:string,zip:string,city:string,street:string,region:string} */
+function ggs_eurosender_pickup_address(): array
+{
+    $map = [
+        'country' => 'EUROSENDER_PICKUP_COUNTRY',
+        'zip' => 'EUROSENDER_PICKUP_POSTAL',
+        'city' => 'EUROSENDER_PICKUP_CITY',
+        'street' => 'EUROSENDER_PICKUP_STREET',
+        'region' => 'EUROSENDER_PICKUP_REGION',
+    ];
+    $address = [];
+    foreach ($map as $field => $constant) {
+        $value = defined($constant) ? trim((string) constant($constant)) : '';
+        if ($value === '' || str_starts_with($value, 'REPLACE_WITH_')) {
+            throw new RuntimeException('Eurosender pickup address is incomplete: ' . $constant . '.');
+        }
+        $address[$field] = $value;
+    }
+    return $address;
+}
+
+/**
+ * Build and request a non-mutating sandbox quote. No wallet credit is debited.
+ *
+ * @param array{country:string,zip:string,city:string,street:string,region?:string} $deliveryAddress
+ * @param array{length:float,width:float,height:float,weight:float,value:float,content?:string} $package
+ * @return array{amount:float,currency:string,service_type:string,service_subtype:string,courier_id:int,minimum_pickup_date:string,estimated_delivery_time:string,warnings:array,payload:array}
+ */
+function ggs_eurosender_quote(array $deliveryAddress, array $package, ?callable $transport = null): array
+{
+    foreach (['length', 'width', 'height', 'weight', 'value'] as $field) {
+        if (!isset($package[$field]) || !is_numeric($package[$field]) || (float) $package[$field] <= 0) {
+            throw new InvalidArgumentException('Eurosender package ' . $field . ' must be greater than zero.');
+        }
+    }
+
+    $pickup = ggs_eurosender_resolve_address(ggs_eurosender_pickup_address(), $transport);
+    $delivery = ggs_eurosender_resolve_address($deliveryAddress, $transport);
+    $payload = [
+        'shipment' => [
+            'pickupAddress' => $pickup,
+            'deliveryAddress' => $delivery,
+            'pickupType' => 'new_pickup_request',
+        ],
+        'parcels' => ['packages' => [[
+            'parcelId' => 'GGS3D-TEST-1',
+            'quantity' => 1,
+            'width' => round((float) $package['width'], 2),
+            'height' => round((float) $package['height'], 2),
+            'length' => round((float) $package['length'], 2),
+            'weight' => round((float) $package['weight'], 3),
+            'content' => trim((string) ($package['content'] ?? '3D printed products')) ?: '3D printed products',
+            'value' => round((float) $package['value'], 2),
+        ]]],
+        'paymentMethod' => 'credit',
+        'currencyCode' => 'EUR',
+        'serviceType' => 'selection',
+    ];
+
+    $response = ggs_eurosender_request('POST', '/v1/quotes', $payload, $transport);
+    $data = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+    $order = is_array($data['order'] ?? null) ? $data['order'] : [];
+    $amount = $order['totalPrice']['original']['gross'] ?? null;
+    $currency = $order['totalPrice']['original']['currencyCode'] ?? null;
+    if (!is_numeric($amount) || !is_string($currency) || $currency === '') {
+        throw new GgsEurosenderException('Eurosender returned a quote without a usable total price.');
+    }
+
+    return [
+        'amount' => round((float) $amount, 2),
+        'currency' => strtoupper($currency),
+        'service_type' => trim((string) ($order['serviceType'] ?? 'selection')),
+        'service_subtype' => trim((string) ($order['serviceSubtype'] ?? '')),
+        'courier_id' => (int) ($order['courierId'] ?? 0),
+        'minimum_pickup_date' => trim((string) ($order['minPickupDate'] ?? '')),
+        'estimated_delivery_time' => trim((string) ($order['estimatedDeliveryTime'] ?? '')),
+        'warnings' => is_array($data['warnings'] ?? null) ? $data['warnings'] : [],
+        'payload' => $payload,
+    ];
+}
