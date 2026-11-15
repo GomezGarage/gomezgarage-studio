@@ -28,6 +28,13 @@ esCheck(
     ggs_eurosender_normalize_geo_name('București') === ggs_eurosender_normalize_geo_name('Bucharest'),
     'Romanian Bucuresti alias matches Eurosender Bucharest'
 );
+$bucharestResolved = ggs_eurosender_resolve_address([
+    'country' => 'RO', 'region' => 'Sector 3', 'city' => 'Bucuresti', 'zip' => '031726', 'street' => 'Strada Test 1',
+], static function (string $method, string $url): array {
+    if (str_ends_with($url, '/regions')) return ['status' => 200, 'body' => json_encode([['id' => 40, 'name' => 'Bucharest']])];
+    return ['status' => 200, 'body' => json_encode([['id' => 400, 'name' => 'Bucharest', 'regionId' => 40]])];
+});
+esCheck($bucharestResolved['region'] === 'Bucharest' && $bucharestResolved['city'] === 'Bucharest', 'Bucuresti plus Sector 1-6 canonicalizes for Eurosender');
 $configuredPickup = ggs_eurosender_pickup_address();
 esCheck($configuredPickup['street'] === 'Strada Test 12D' && $configuredPickup['zip'] === '077016', 'configured complete pickup address available');
 

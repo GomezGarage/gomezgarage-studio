@@ -10,9 +10,10 @@ $orders = file_get_contents($root . '/api/create-order.php');
 $sameday = file_get_contents($root . '/includes/sameday.php');
 $checkoutConfig = file_get_contents($root . '/api/get-checkout-config.php');
 $eurosenderQuote = file_get_contents($root . '/api/eurosender-quote.php');
+$eurosenderGeo = file_get_contents($root . '/api/eurosender-geo.php');
 $eurosender = file_get_contents($root . '/includes/eurosender.php');
 
-if ($html === false || $js === false || $css === false || $locations === false || $orders === false || $sameday === false || $checkoutConfig === false || $eurosenderQuote === false || $eurosender === false) {
+if ($html === false || $js === false || $css === false || $locations === false || $orders === false || $sameday === false || $checkoutConfig === false || $eurosenderQuote === false || $eurosenderGeo === false || $eurosender === false) {
     throw new RuntimeException('Checkout sources could not be read.');
 }
 
@@ -59,6 +60,9 @@ $check(str_contains($eurosenderQuote, 'ggs_eurosender_package_from_items') && st
 $check(str_contains($orders, 'ggs_eurosender_select_quote'), 'order creation re-quotes selected Eurosender service server-side');
 $check(str_contains($orders, 'The selected delivery price changed') && str_contains($orders, '409'), 'changed Eurosender prices block payment until the customer re-quotes');
 $check(str_contains($js, 'Eurosender sandbox preview is active') && !str_contains($js, 'choose(optionsList[0])'), 'sandbox preview blocks payment and requires an explicit service choice');
+$check(str_contains($html, 'eurosender-city-suggestions') && str_contains($js, 'eurosender-geo.php'), 'checkout suggests canonical Eurosender regions and cities');
+$check(str_contains($eurosenderGeo, 'ggs_eurosender_get_cached_list') && str_contains($eurosenderGeo, "['regions', 'cities']"), 'geographic suggestions stay server-side and use cached official nomenclature');
+$check(str_contains($eurosenderQuote, 'safeAddressError') && str_contains($eurosenderQuote, '$providerMessage'), 'safe provider address errors are returned to checkout');
 $check(str_contains($eurosender, '/v1/orders/validate_creation') && str_contains($eurosender, 'customerInternalReference'), 'Eurosender booking validates and carries idempotency reference');
 
 echo "PASS: {$checks} isolated checkout, payment and Easybox regression checks.\n";

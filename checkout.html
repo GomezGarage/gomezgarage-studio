@@ -70,11 +70,12 @@
               </div>
               <div class="form-group"><label data-en="Street address" data-ro="Adresa">Street address</label><input type="text" name="street"></div>
               <div class="form-row">
-                <div class="form-group"><label data-en="City" data-ro="Oras">City</label><input type="text" name="city"></div>
+                <div class="form-group"><label data-en="City" data-ro="Oras">City</label><input type="text" name="city" list="eurosender-city-suggestions" autocomplete="address-level2"><datalist id="eurosender-city-suggestions"></datalist></div>
                 <div class="form-group">
                   <label data-en="County / region" data-ro="Judet / regiune">County / region</label>
-                  <input type="text" name="county" maxlength="120" aria-describedby="county-hint">
-                  <small class="form-hint" id="county-hint" data-en="Required for Romanian fiscal invoices. For Bucharest, use Bucuresti and enter the sector as the city." data-ro="Obligatoriu pentru facturile din Romania. Pentru Bucuresti, trece Bucuresti la judet si sectorul la oras.">Required for Romanian fiscal invoices. For Bucharest, use Bucuresti and enter the sector as the city.</small>
+                  <input type="text" name="county" maxlength="120" list="eurosender-region-suggestions" autocomplete="address-level1" aria-describedby="county-hint">
+                  <datalist id="eurosender-region-suggestions"></datalist>
+                  <small class="form-hint" id="county-hint" data-en="Required for Romanian invoices. For Bucharest you may use city Bucuresti and county Sector 1-6; the courier address is normalized automatically." data-ro="Obligatoriu pentru facturile din Romania. Pentru Bucuresti poti folosi oras Bucuresti si judet Sector 1-6; adresa curierului este normalizata automat.">Required for Romanian invoices. For Bucharest you may use city Bucuresti and county Sector 1-6; the courier address is normalized automatically.</small>
                 </div>
               </div>
               <div class="form-row">
@@ -238,7 +239,7 @@
 
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
-<script src="/studio/assets/js/checkout.js?v=20261115-eurosender-preview"></script>
+<script src="/studio/assets/js/checkout.js?v=20261115-eurosender-addresses"></script>
 <script src="/studio/assets/js/main.js?v=20261107-account-menu"></script>
 </body>
 </html>

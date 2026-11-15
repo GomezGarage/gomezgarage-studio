@@ -238,6 +238,21 @@ function ggs_eurosender_get_list(string $path, ?callable $transport = null): arr
     return array_values(array_filter($data, 'is_array'));
 }
 
+/** Cache public Eurosender geographic nomenclature to avoid repeated large API reads. */
+function ggs_eurosender_get_cached_list(string $path, ?callable $transport = null): array
+{
+    if ($transport !== null) return ggs_eurosender_get_list($path, $transport);
+    $cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+        . DIRECTORY_SEPARATOR . 'ggs-eurosender-geo-' . hash('sha256', (string) EUROSENDER_API_BASE . '|' . $path) . '.json';
+    if (is_file($cacheFile) && (int) @filemtime($cacheFile) > time() - 86400) {
+        $cached = json_decode((string) @file_get_contents($cacheFile), true);
+        if (is_array($cached) && array_is_list($cached)) return array_values(array_filter($cached, 'is_array'));
+    }
+    $items = ggs_eurosender_get_list($path);
+    @file_put_contents($cacheFile, json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    return $items;
+}
+
 function ggs_eurosender_normalize_geo_name(string $value): string
 {
     $value = strtr(trim($value), [
@@ -252,6 +267,12 @@ function ggs_eurosender_normalize_geo_name(string $value): string
         'bucuresti', 'municipiulbucuresti' => 'bucharest',
         default => $normalized,
     };
+}
+
+function ggs_eurosender_is_bucharest_alias(string $value): bool
+{
+    $normalized = ggs_eurosender_normalize_geo_name($value);
+    return $normalized === 'bucharest' || preg_match('/^(?:sector|sectorul)[1-6]$/', $normalized) === 1;
 }
 
 /** @return array{id:int,name:string,code:?string} */
@@ -297,13 +318,26 @@ function ggs_eurosender_resolve_address(array $address, ?callable $transport = n
     }
     if ($region === '') throw new InvalidArgumentException('Eurosender requires a region/county for Romanian addresses.');
 
+    // Romanian invoices normally use Bucuresti + Sector 1-6, in either field
+    // order. Eurosender's courier nomenclature uses Bucharest for both the
+    // region and city. Preserve the submitted fiscal address in the order, but
+    // canonicalize only the provider payload here.
+    if (ggs_eurosender_is_bucharest_alias($city) && ggs_eurosender_is_bucharest_alias($region)) {
+        $city = 'Bucharest';
+        $region = 'Bucharest';
+    }
+
     $regionMatch = ggs_eurosender_match_geo_item(
-        ggs_eurosender_get_list('/v1/countries/RO/regions', $transport),
+        $transport !== null
+            ? ggs_eurosender_get_list('/v1/countries/RO/regions', $transport)
+            : ggs_eurosender_get_cached_list('/v1/countries/RO/regions'),
         $region,
         'Romanian region'
     );
     $cityMatch = ggs_eurosender_match_geo_item(
-        ggs_eurosender_get_list('/v1/countries/RO/cities', $transport),
+        $transport !== null
+            ? ggs_eurosender_get_list('/v1/countries/RO/cities', $transport)
+            : ggs_eurosender_get_cached_list('/v1/countries/RO/cities'),
         $city,
         'Romanian city',
         $regionMatch['id']

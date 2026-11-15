@@ -64,5 +64,14 @@ try {
   ggs_json_response(['success' => true, 'options' => $options, 'used_package_defaults' => $package['used_defaults']]);
 } catch (Throwable $error) {
   error_log('GGS Eurosender checkout quote failed: ' . $error->getMessage());
-  ggs_json_response(['success' => false, 'error' => 'Eurosender could not calculate this delivery. Check the exact address and try again.'], 502);
+  $providerMessage = trim($error->getMessage());
+  $safeAddressError = $error instanceof InvalidArgumentException
+    || str_contains($providerMessage, 'could not match the exact')
+    || str_contains($providerMessage, 'address requires')
+    || str_contains($providerMessage, 'requires a region/county')
+    || preg_match('/Eurosender request failed \(HTTP 4\d\d\):/i', $providerMessage) === 1;
+  $message = $safeAddressError && mb_strlen($providerMessage) <= 500
+    ? $providerMessage
+    : 'Eurosender could not calculate this delivery. Check the exact address and try again.';
+  ggs_json_response(['success' => false, 'error' => $message], 502);
 }

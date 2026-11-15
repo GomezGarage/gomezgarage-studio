@@ -9,6 +9,9 @@ production environments cannot be mixed.
 
 - checkout requests every available parcel service for the exact EU address
   and packed product measurements;
+- checkout suggests canonical regions and cities from Eurosender while keeping
+  the API key server-side; Bucuresti plus Sector 1-6 is normalized to the
+  provider's Bucharest nomenclature without changing the stored fiscal address;
 - the customer selects a service and sees its live price in the order total;
 - `create-order.php` repeats the quote server-side and never trusts a price
   submitted by the browser;
@@ -68,6 +71,8 @@ For a temporary visual test on the production storefront, keep
 true. The storefront then shows sandbox service options after the address is
 entered, labels them as test prices, requires an explicit selection, and never
 mounts Revolut or creates an order. Set the flag back to false after review.
+If Eurosender rejects an address, checkout displays the safe validation detail
+instead of replacing it with a generic error.
 
 ## Safe sandbox verification
 

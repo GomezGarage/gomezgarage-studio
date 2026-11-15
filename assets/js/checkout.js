@@ -141,6 +141,7 @@
     updateFiscalFieldRequirements(form);
     initSamedayDelivery(form, cart);
     initEurosenderDelivery(form, cart);
+    initEurosenderAddressSuggestions(form);
 
     preloadCheckoutConfig();
     form.addEventListener('submit', (event) => event.preventDefault());
@@ -454,6 +455,46 @@
         .finally(() => { button.disabled = false; });
     }
     if (button) button.addEventListener('click', requestQuote);
+  }
+
+  function initEurosenderAddressSuggestions(form) {
+    const country = form.querySelector('[name="country"]');
+    const region = form.querySelector('[name="county"]');
+    const city = form.querySelector('[name="city"]');
+    const regionList = document.getElementById('eurosender-region-suggestions');
+    const cityList = document.getElementById('eurosender-city-suggestions');
+    if (!country || !region || !city || !regionList || !cityList) return;
+
+    const timers = new WeakMap();
+    const fill = (list, suggestions) => {
+      list.innerHTML = suggestions.map((value) => `<option value="${window.GGSUtil.escapeHtml(value)}"></option>`).join('');
+    };
+    const request = (input, kind, list) => {
+      window.clearTimeout(timers.get(input));
+      const query = input.value.trim();
+      if (!eurosenderEnabled || query.length < 2) {
+        fill(list, []);
+        return;
+      }
+      timers.set(input, window.setTimeout(() => {
+        const params = new URLSearchParams({ country: country.value, kind, q: query });
+        if (kind === 'cities' && region.value.trim()) params.set('region', region.value.trim());
+        fetch(`${API_BASE}/eurosender-geo.php?${params.toString()}`, { cache: 'no-store' })
+          .then((response) => response.json())
+          .then((data) => fill(list, data.success && Array.isArray(data.suggestions) ? data.suggestions : []))
+          .catch(() => fill(list, []));
+      }, 300));
+    };
+
+    region.addEventListener('input', () => {
+      request(region, 'regions', regionList);
+      fill(cityList, []);
+    });
+    city.addEventListener('input', () => request(city, 'cities', cityList));
+    country.addEventListener('change', () => {
+      fill(regionList, []);
+      fill(cityList, []);
+    });
   }
 
   function invalidateSamedayQuote(form) {
