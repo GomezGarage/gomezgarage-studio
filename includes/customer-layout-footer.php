@@ -4,5 +4,6 @@
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
 <script src="/studio/assets/js/main.js?v=20261107-customer-accounts"></script>
+<?php if (!empty($customerPageScript)): ?><script src="<?= ggs_customer_escape($customerPageScript) ?>"></script><?php endif; ?>
 </body>
 </html>

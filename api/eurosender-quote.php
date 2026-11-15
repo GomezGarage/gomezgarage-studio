@@ -16,6 +16,9 @@ if (!ggs_eurosender_quote_enabled()) {
 $body = ggs_read_json_body();
 $country = strtoupper(trim((string) ($body['country'] ?? '')));
 if (!isset(ggs_eurosender_eu_countries()[$country])) ggs_json_response(['success' => false, 'error' => 'We only ship within the European Union'], 422);
+if (!ggs_eurosender_postal_valid($country, trim((string) ($body['postal'] ?? '')))) {
+  ggs_json_response(['success' => false, 'error' => $country === 'RO' ? 'Romanian postal codes contain exactly 6 digits' : 'Enter a valid postal code'], 422);
+}
 if (!is_array($body['items'] ?? null) || !$body['items'] || count($body['items']) > 100) {
   ggs_json_response(['success' => false, 'error' => 'Cart is empty or invalid'], 422);
 }

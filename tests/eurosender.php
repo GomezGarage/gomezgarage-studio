@@ -24,6 +24,8 @@ esCheck(ggs_eurosender_configured(), 'synthetic API key accepted');
 esCheck(!ggs_eurosender_enabled(), 'runtime integration remains disabled');
 esCheck(!ggs_eurosender_checkout_enabled() && !ggs_eurosender_booking_enabled(), 'checkout and booking remain disabled by default');
 esCheck(count(ggs_eurosender_eu_countries()) === 27 && !isset(ggs_eurosender_eu_countries()['GB']), 'destination selector contains EU only');
+esCheck(ggs_eurosender_postal_valid('RO', '031726') && !ggs_eurosender_postal_valid('RO', '31726'), 'Romanian postal codes require six digits');
+esCheck(ggs_eurosender_postal_valid('NL', '1234 AB') && ggs_eurosender_postal_valid('IE', 'D02 X285'), 'common EU alphanumeric postal formats are accepted');
 esCheck(
     ggs_eurosender_normalize_geo_name('București') === ggs_eurosender_normalize_geo_name('Bucharest'),
     'Romanian Bucuresti alias matches Eurosender Bucharest'

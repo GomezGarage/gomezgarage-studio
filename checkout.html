@@ -68,51 +68,51 @@
                 <div class="form-group"><label>Email</label><input type="email" name="email"></div>
                 <div class="form-group"><label data-en="Phone" data-ro="Telefon">Phone</label><input type="tel" name="phone"></div>
               </div>
-              <div class="form-group"><label data-en="Street address" data-ro="Adresa">Street address</label><input type="text" name="street"></div>
+              <div class="form-group">
+                <label data-en="Country" data-ro="Tara">Country</label>
+                <select name="country" autocomplete="country">
+                <option value="RO">Romania</option>
+                <option value="AT">Austria</option>
+                <option value="BE">Belgium</option>
+                <option value="BG">Bulgaria</option>
+                <option value="HR">Croatia</option>
+                <option value="CY">Cyprus</option>
+                <option value="CZ">Czechia</option>
+                <option value="DK">Denmark</option>
+                <option value="EE">Estonia</option>
+                <option value="FI">Finland</option>
+                <option value="FR">France</option>
+                <option value="DE">Germany</option>
+                <option value="GR">Greece</option>
+                <option value="HU">Hungary</option>
+                <option value="IE">Ireland</option>
+                <option value="IT">Italy</option>
+                <option value="LV">Latvia</option>
+                <option value="LT">Lithuania</option>
+                <option value="LU">Luxembourg</option>
+                <option value="MT">Malta</option>
+                <option value="NL">Netherlands</option>
+                <option value="PL">Poland</option>
+                <option value="PT">Portugal</option>
+                <option value="SK">Slovakia</option>
+                <option value="SI">Slovenia</option>
+                <option value="ES">Spain</option>
+                <option value="SE">Sweden</option>
+                </select>
+              </div>
               <div class="form-row">
-                <div class="form-group"><label data-en="City" data-ro="Oras">City</label><input type="text" name="city" list="eurosender-city-suggestions" autocomplete="address-level2"><datalist id="eurosender-city-suggestions"></datalist></div>
                 <div class="form-group">
                   <label data-en="County / region" data-ro="Judet / regiune">County / region</label>
                   <input type="text" name="county" maxlength="120" list="eurosender-region-suggestions" autocomplete="address-level1" aria-describedby="county-hint" data-eurosender-region-input>
                   <select class="hidden" disabled aria-describedby="county-hint" data-eurosender-region-select><option value="" data-en="Choose county / region" data-ro="Alege judetul / regiunea">Choose county / region</option></select>
                   <datalist id="eurosender-region-suggestions"></datalist>
-                  <small class="form-hint" id="county-hint" data-en="Required for Romanian invoices. For Bucharest you may use city Bucuresti and county Sector 1-6; the courier address is normalized automatically." data-ro="Obligatoriu pentru facturile din Romania. Pentru Bucuresti poti folosi oras Bucuresti si judet Sector 1-6; adresa curierului este normalizata automat.">Required for Romanian invoices. For Bucharest you may use city Bucuresti and county Sector 1-6; the courier address is normalized automatically.</small>
+                  <small class="form-hint" id="county-hint" data-en="Choose the official region used by the courier." data-ro="Alege judetul sau regiunea oficiala folosita de curier.">Choose the official region used by the courier.</small>
                 </div>
+                <div class="form-group"><label data-en="City / locality" data-ro="Oras / localitate">City / locality</label><input type="text" name="city" list="eurosender-city-suggestions" autocomplete="address-level2"><datalist id="eurosender-city-suggestions"></datalist><small class="form-hint" data-en="Start typing, then choose the matching locality." data-ro="Incepe sa scrii, apoi alege localitatea corecta.">Start typing, then choose the matching locality.</small></div>
               </div>
               <div class="form-row">
-                <div class="form-group"><label data-en="Postal code" data-ro="Cod postal">Postal code</label><input type="text" name="postal"></div>
-                <div class="form-group">
-                  <label data-en="Country" data-ro="Tara">Country</label>
-                  <select name="country">
-                  <option value="RO">Romania</option>
-                  <option value="AT">Austria</option>
-                  <option value="BE">Belgium</option>
-                  <option value="BG">Bulgaria</option>
-                  <option value="HR">Croatia</option>
-                  <option value="CY">Cyprus</option>
-                  <option value="CZ">Czechia</option>
-                  <option value="DK">Denmark</option>
-                  <option value="EE">Estonia</option>
-                  <option value="FI">Finland</option>
-                  <option value="FR">France</option>
-                  <option value="DE">Germany</option>
-                  <option value="GR">Greece</option>
-                  <option value="HU">Hungary</option>
-                  <option value="IE">Ireland</option>
-                  <option value="IT">Italy</option>
-                  <option value="LV">Latvia</option>
-                  <option value="LT">Lithuania</option>
-                  <option value="LU">Luxembourg</option>
-                  <option value="MT">Malta</option>
-                  <option value="NL">Netherlands</option>
-                  <option value="PL">Poland</option>
-                  <option value="PT">Portugal</option>
-                  <option value="SK">Slovakia</option>
-                  <option value="SI">Slovenia</option>
-                  <option value="ES">Spain</option>
-                  <option value="SE">Sweden</option>
-                  </select>
-                </div>
+                <div class="form-group"><label data-en="Postal code" data-ro="Cod postal">Postal code</label><input type="text" name="postal" autocomplete="postal-code" maxlength="30"><small class="form-hint" data-en="Use the postal code for this exact address." data-ro="Introdu codul postal al adresei exacte.">Use the postal code for this exact address.</small></div>
+                <div class="form-group"><label data-en="Street and number" data-ro="Strada si numar">Street and number</label><input type="text" name="street" autocomplete="street-address"></div>
               </div>
               <div class="form-group">
                 <label data-en="Invoice type" data-ro="Tip factura">Invoice type</label>
@@ -240,7 +240,7 @@
 
 <script src="/studio/assets/js/currency.js"></script>
 <script src="/studio/assets/js/shop.js?v=20261026-catalog"></script>
-<script src="/studio/assets/js/checkout.js?v=20261115-eurosender-region-select"></script>
+<script src="/studio/assets/js/checkout.js?v=20261115-guided-addresses"></script>
 <script src="/studio/assets/js/main.js?v=20261107-account-menu"></script>
 </body>
 </html>

@@ -94,6 +94,14 @@ function ggs_eurosender_eu_countries(): array
     ];
 }
 
+function ggs_eurosender_postal_valid(string $country, string $postal): bool
+{
+    $country = strtoupper(trim($country));
+    $postal = trim($postal);
+    if ($country === 'RO') return preg_match('/^\d{6}$/', $postal) === 1;
+    return preg_match('/^[A-Za-z0-9][A-Za-z0-9 -]{1,10}[A-Za-z0-9]$/', $postal) === 1;
+}
+
 /**
  * Low-level request with an injectable transport for offline tests.
  *

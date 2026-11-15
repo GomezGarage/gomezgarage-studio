@@ -15,6 +15,10 @@ production environments cannot be mixed.
   remain editable and the API key stays server-side; Bucuresti plus Sector 1-6
   is normalized to the provider's Bucharest nomenclature without changing the
   stored fiscal address;
+- saved customer addresses use the same country-first flow, official region
+  dropdown, filtered locality suggestions and country-aware postal validation;
+  postal code and street remain editable because Eurosender does not expose a
+  complete street/postal-address directory;
 - the customer selects a service and sees its live price in the order total;
 - `create-order.php` repeats the quote server-side and never trusts a price
   submitted by the browser;

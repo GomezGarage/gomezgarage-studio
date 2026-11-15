@@ -111,6 +111,9 @@ if ($country === 'RO' && $county === '') {
 if (!in_array($country, $euCountries, true)) {
   ggs_json_response(['success' => false, 'error' => 'We only ship within the European Union'], 422);
 }
+if (!ggs_eurosender_postal_valid($country, trim((string) $body['postal']))) {
+  ggs_json_response(['success' => false, 'error' => $country === 'RO' ? 'Romanian postal codes contain exactly 6 digits' : 'Enter a valid postal code'], 422);
+}
 if ($customerType === 'pj' && ($companyName === '' || $companyCui === '' || $companyAddress === '' || $companyCity === '' || $companyCounty === '' || $companyPostal === '' || !preg_match('/^[A-Z]{2}$/', $companyCountry))) {
   ggs_json_response(['success' => false, 'error' => 'Complete all required company invoice fields'], 422);
 }

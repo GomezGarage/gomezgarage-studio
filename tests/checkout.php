@@ -12,8 +12,11 @@ $checkoutConfig = file_get_contents($root . '/api/get-checkout-config.php');
 $eurosenderQuote = file_get_contents($root . '/api/eurosender-quote.php');
 $eurosenderGeo = file_get_contents($root . '/api/eurosender-geo.php');
 $eurosender = file_get_contents($root . '/includes/eurosender.php');
+$accountAddresses = file_get_contents($root . '/account/addresses.php');
+$accountAddressJs = file_get_contents($root . '/assets/js/account-addresses.js');
+$customerFooter = file_get_contents($root . '/includes/customer-layout-footer.php');
 
-if ($html === false || $js === false || $css === false || $locations === false || $orders === false || $sameday === false || $checkoutConfig === false || $eurosenderQuote === false || $eurosenderGeo === false || $eurosender === false) {
+if ($html === false || $js === false || $css === false || $locations === false || $orders === false || $sameday === false || $checkoutConfig === false || $eurosenderQuote === false || $eurosenderGeo === false || $eurosender === false || $accountAddresses === false || $accountAddressJs === false || $customerFooter === false) {
     throw new RuntimeException('Checkout sources could not be read.');
 }
 
@@ -64,6 +67,11 @@ $check(str_contains($html, 'eurosender-city-suggestions') && str_contains($js, '
 $check(str_contains($eurosenderGeo, 'ggs_eurosender_get_cached_list') && str_contains($eurosenderGeo, "['regions', 'cities']"), 'geographic suggestions stay server-side and use cached official nomenclature');
 $check(str_contains($html, 'data-eurosender-region-select') && str_contains($js, 'loadEurosenderRegionChoices'), 'country selection loads an official Eurosender region dropdown');
 $check(str_contains($eurosenderGeo, '$listAll') && str_contains($eurosenderGeo, "kind === 'regions' ? 250 : 500"), 'geographic endpoint supports bounded official region and city lists');
+$check(strpos($html, '<select name="country"') < strpos($html, 'data-eurosender-region-select'), 'checkout asks for country before region and locality');
+$check(str_contains($js, 'checkoutRegionLabel') && str_contains($js, "return 'Bucuresti'"), 'Romanian checkout displays Bucuresti while preserving canonical provider values');
+$check(str_contains($accountAddresses, 'data-account-address-form') && str_contains($customerFooter, '$customerPageScript'), 'saved-address form loads its guided address controller');
+$check(str_contains($accountAddressJs, 'loadRegions') && str_contains($accountAddressJs, 'requestCities') && str_contains($accountAddressJs, 'configurePostal'), 'saved addresses use country, official region, locality suggestions and country-aware postal validation');
+$check(str_contains($orders, 'ggs_eurosender_postal_valid') && str_contains($eurosenderQuote, 'ggs_eurosender_postal_valid'), 'postal codes are validated consistently before quoting and order creation');
 $check(str_contains($eurosenderQuote, 'safeAddressError') && str_contains($eurosenderQuote, '$providerMessage'), 'safe provider address errors are returned to checkout');
 $check(str_contains($eurosender, '/v1/orders/validate_creation') && str_contains($eurosender, 'customerInternalReference'), 'Eurosender booking validates and carries idempotency reference');
 
