@@ -650,6 +650,16 @@
               "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
             },
             "description": "Exclusive creation time bound."
+          },
+          {
+            "name": "X-Studio-Payment-Evidence",
+            "in": "header",
+            "required": false,
+            "description": "Send 1 to include payment_confirmed_at on each order. Repeat for each cursor page.",
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
           }
         ],
         "responses": {
@@ -1563,6 +1573,14 @@
             ],
             "pattern": "^studio_[a-f0-9]{64}$",
             "description": "Keyed pseudonymous identifier derived from normalized customer email; null if unavailable. It is linkable across orders and remains sensitive business data."
+          },
+          "payment_confirmed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Returned only when opted in. Timestamp of the authenticated completed card payment recorded by the shop, or null if absent. This is not proof of bank settlement."
           }
         }
       },

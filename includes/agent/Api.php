@@ -28,7 +28,8 @@ final class Api
     }
 
     public function handle(string $route, string $method, string $authorization, string $query, bool $https,
-        string $requestBody = '', string $idempotencyKey = '', string $contentType = ''): array
+        string $requestBody = '', string $idempotencyKey = '', string $contentType = '',
+        string $paymentEvidence = ''): array
     {
         $started = microtime(true);
         $now = ($this->clock)();
@@ -106,6 +107,11 @@ final class Api
                 $filters = $this->filters($route, $query);
                 $cursor = $filters['cursor'] ?? null;
                 unset($filters['cursor']);
+                // An opt-in keeps existing exact-schema clients compatible. Bind it
+                // to the cursor so continuation never changes the response shape.
+                if ($route === 'orders' && $paymentEvidence === '1') {
+                    $filters['payment_evidence'] = true;
+                }
                 if ($route === 'health') {
                     $data = ['status' => 'ok', 'contract_version' => self::VERSION, 'server_time' => utc($now), 'check' => 'liveness'];
                     $before = null;

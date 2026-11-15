@@ -42,7 +42,7 @@ $db->exec('CREATE TABLE products (id INTEGER PRIMARY KEY, slug TEXT, status TEXT
  material TEXT, category TEXT, price_eur TEXT, images TEXT, specs TEXT, stock INTEGER, updated_at TEXT, created_at TEXT)');
 $db->exec('CREATE TABLE orders (id INTEGER PRIMARY KEY, order_number TEXT, status TEXT, payment_method TEXT,
  created_at TEXT, updated_at TEXT, subtotal_eur TEXT, shipping_eur TEXT, total_eur TEXT, items TEXT,
- shipping_address TEXT, tracking_number TEXT, customer_email TEXT, customer_name TEXT, customer_phone TEXT, customer_note TEXT)');
+ shipping_address TEXT, tracking_number TEXT, customer_email TEXT, customer_name TEXT, customer_phone TEXT, customer_note TEXT, revolut_order_id TEXT)');
 $db->exec('CREATE TABLE product_views_daily(product_id INTEGER NOT NULL,view_date TEXT NOT NULL,view_count INTEGER NOT NULL,
  PRIMARY KEY(product_id,view_date))');
 for ($id = 1; $id <= 6; $id++) {
@@ -52,15 +52,21 @@ for ($id = 1; $id <= 6; $id++) {
         '[{"key":"Weight","value":"10g","private":"not exported"}]', 2, '2026-10-21 10:00:00', '2026-10-20 08:00:00']);
 }
 $db->exec("INSERT INTO product_views_daily VALUES(1,'2026-10-21',8),(1,'2026-10-14',3),(2,'2026-10-20',0)");
+$db->exec('CREATE TABLE order_status_history (order_id INTEGER, status TEXT, note TEXT, created_by_admin_id INTEGER, created_at TEXT)');
+$db->exec("INSERT INTO order_status_history VALUES
+ (1,'paid','Payment confirmed',NULL,'2026-10-21 10:00:00'),
+ (2,'paid','Payment confirmed',7,'2026-10-21 10:00:00'),
+ (3,'paid','Payment confirmed',NULL,'2026-10-21 10:00:00'),
+ (3,'paid','Payment confirmed',NULL,'2026-10-21 11:00:00')");
 foreach (['pending', 'paid', 'shipped'] as $index => $status) {
-    $stmt = $db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt = $db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $email = $index === 0 ? 'repeat@example.invalid'
         : ($index === 1 ? ' Repeat@Example.invalid ' : 'single@example.invalid');
     $stmt->execute([$index + 1, 'SYNTHETIC-' . ($index + 1), $status, $index === 0 ? 'cod' : 'card',
         '2026-10-20 08:00:00', '2026-10-21 10:00:00', '24.60', '5.00', '29.60',
         '[{"product_id":1,"name":"Synthetic product","qty":2,"price_eur":12.3,"private":"discard"}]',
         '{"street":"PRIVATE-STREET","country":"RO"}', null,
-        $email, 'PRIVATE-NAME', 'PRIVATE-PHONE', 'PRIVATE-NOTE']);
+        $email, 'PRIVATE-NAME', 'PRIVATE-PHONE', 'PRIVATE-NOTE', 'synthetic-card-' . $index]);
 }
 $db->exec('PRAGMA query_only = ON');
 $baseline = serialize([$db->query('SELECT * FROM products')->fetchAll(), $db->query('SELECT * FROM orders')->fetchAll(),
@@ -78,10 +84,10 @@ $api = new Api(static function () use (&$config): array { return $config; },
     static function (): void {},
     static function ($event) use (&$events): void { $events[] = $event; },
     static function () use (&$now): int { return $now; });
-function request(string $route = 'products', string $query = '', string $method = 'GET', ?string $auth = null, bool $https = true): array
+function request(string $route = 'products', string $query = '', string $method = 'GET', ?string $auth = null, bool $https = true, string $paymentEvidence = ''): array
 {
     global $api, $token, $responses;
-    $response = $api->handle($route, $method, $auth ?? 'Bearer ' . $token, $query, $https);
+    $response = $api->handle($route, $method, $auth ?? 'Bearer ' . $token, $query, $https, paymentEvidence: $paymentEvidence);
     $responses[] = ['route' => $route, 'status' => $response['status'], 'body' => $response['body']];
     return $response;
 }
@@ -149,6 +155,13 @@ $orderResponse = request('orders');
 $order = $orderResponse['body']['data'][0];
 check($order['payment_method'] === 'cod' && $order['payment_state'] === 'unknown' && $order['status'] === 'pending', 'COD not receipts');
 check($orderResponse['body']['data'][1]['payment_state'] === 'unknown', 'manual paid not settlement proof');
+check(!array_key_exists('payment_confirmed_at', $order), 'legacy order response unchanged');
+$evidence = request('orders', paymentEvidence: '1')['body']['data'];
+check(array_column($evidence, 'payment_confirmed_at') === [null, null, '2026-10-21T10:00:00Z'],
+    'checkout and admin edits do not prove payment, signed evidence survives fulfilment changes');
+$evidenceCursor = request('orders', 'limit=1', paymentEvidence: '1')['body']['next_cursor'];
+check(request('orders', 'limit=1&cursor=' . urlencode($evidenceCursor))['status'] === 422, 'cursor binds payment opt-in');
+check(request('orders', 'limit=1&cursor=' . urlencode($evidenceCursor), paymentEvidence: '1')['status'] === 200, 'payment cursor continues');
 check($order['customer_language'] === null && $order['country'] === 'RO', 'language not inferred');
 check($order['currency'] === 'EUR' && $order['total'] === '29.60' && $order['items'][0]['price'] === '12.30', 'decimal amounts and currency');
 check($order['created_at'] === '2026-10-20T08:00:00Z', 'UTC timestamp');

@@ -93,12 +93,26 @@ final class Repository implements ReadRepository
                CAST(total_eur AS CHAR) AS total_eur, items,
                NULLIF(JSON_UNQUOTE(JSON_EXTRACT(shipping_address, '$.country')), 'null') AS country, tracking_number,
                customer_email";
+            if (($filters['payment_evidence'] ?? false) === true) {
+                // This exact audit entry is written by the signed completed-payment
+                // webhook. Admin transitions have a non-null author and do not count.
+                $columns .= ", CASE WHEN orders.payment_method = 'card'
+                    AND orders.revolut_order_id IS NOT NULL AND orders.revolut_order_id <> ''
+                    AND orders.status IN ('paid','processing','printing','shipped','delivered')
+                    THEN (
+                        SELECT MIN(h.created_at) FROM order_status_history h
+                        WHERE h.order_id = orders.id AND h.created_by_admin_id IS NULL
+                          AND h.status = 'paid' AND h.note = 'Payment confirmed'
+                          AND h.created_at >= orders.created_at AND h.created_at < ?
+                    ) ELSE NULL END AS payment_confirmed_at";
+            }
             $from = 'orders';
             $idColumn = 'id';
             $updatedColumn = 'updated_at';
         }
         $where = ["{$updatedColumn} < ?"];
-        $params = [gmdate('Y-m-d H:i:s', $before)];
+        $cutoff = gmdate('Y-m-d H:i:s', $before);
+        $params = ($filters['payment_evidence'] ?? false) === true ? [$cutoff, $cutoff] : [$cutoff];
         foreach (['updated_from' => 'updated_at >= ?', 'created_from' => 'created_at >= ?', 'created_before' => 'created_at < ?'] as $key => $clause) {
             if (isset($filters[$key])) {
                 $where[] = $clause;
