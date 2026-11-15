@@ -108,3 +108,18 @@ The product read filter and draft-write category enum now also accept `home`
 valid. Install `database/migrations/20261026_home_category.sql` before using `home`
 on an existing database. The OpenAPI contract includes this additive enum value.
 Initial catalog imports are separate from service API activation and remain drafts.
+
+### Optional card payment confirmation
+
+On `GET /orders.php`, send `X-Studio-Payment-Evidence: 1` on the first request
+and on each continuation. The order DTO then includes
+`payment_confirmed_at` (UTC timestamp or null). The field comes from the
+completed card payment recorded by the authenticated Revolut webhook; a manually
+edited order status, pending checkout, or cash-on-delivery row does not supply it.
+This field does not report settlement in the merchant bank account.
+Responses without the opt-in retain their original shape.
+
+The read-only API database account needs SELECT on the existing order payment
+and status-history fields used by the projection. No new table or migration is
+required. If the consumer already has an incremental cache, refresh its orders
+in full once after activating the new response field.

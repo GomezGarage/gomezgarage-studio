@@ -50,7 +50,8 @@ function serve(string $route): void
         $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '',
         $_SERVER['QUERY_STRING'] ?? '', $https,
         $route === 'product-drafts' ? (string) file_get_contents('php://input', false, null, 0, 32769) : '',
-        $_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? '', $_SERVER['CONTENT_TYPE'] ?? '');
+        $_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? '', $_SERVER['CONTENT_TYPE'] ?? '',
+        $_SERVER['HTTP_X_STUDIO_PAYMENT_EVIDENCE'] ?? '');
     http_response_code($result['status']);
     foreach ($result['headers'] as $name => $value) {
         header($name . ': ' . $value);

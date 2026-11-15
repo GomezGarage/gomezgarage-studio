@@ -143,6 +143,10 @@ final class Dto
         $result['status'] = self::choice($row['status'], ['pending', 'paid', 'processing', 'printing', 'shipped', 'delivered', 'cancelled']);
         // Admin can manually set every native status. None proves receipt of funds.
         $result['payment_state'] = 'unknown';
+        if (array_key_exists('payment_confirmed_at', $row)) {
+            $result['payment_confirmed_at'] = $row['payment_confirmed_at'] === null
+                ? null : self::date($row['payment_confirmed_at']);
+        }
         $result['fulfilment_status'] = in_array($row['status'], ['processing', 'printing', 'shipped', 'delivered'], true) ? $row['status'] : 'unknown';
         $result['customer_language'] = null;
         $result['currency'] = 'EUR';
