@@ -16,9 +16,10 @@ $country = strtoupper(trim((string) ($_GET['country'] ?? '')));
 $kind = strtolower(trim((string) ($_GET['kind'] ?? '')));
 $query = trim((string) ($_GET['q'] ?? ''));
 $region = trim((string) ($_GET['region'] ?? ''));
+$listAll = (string) ($_GET['all'] ?? '') === '1';
 if (!isset(ggs_eurosender_eu_countries()[$country])) ggs_json_response(['success' => false, 'error' => 'Choose an EU country'], 422);
 if (!in_array($kind, ['regions', 'cities'], true)) ggs_json_response(['success' => false, 'error' => 'Invalid suggestion type'], 422);
-if (mb_strlen($query) < 2 || mb_strlen($query) > 120 || mb_strlen($region) > 120) {
+if ((!$listAll && mb_strlen($query) < 2) || mb_strlen($query) > 120 || mb_strlen($region) > 120) {
   ggs_json_response(['success' => true, 'suggestions' => []]);
 }
 
@@ -43,12 +44,13 @@ try {
     $name = trim((string) ($item['name'] ?? ''));
     if ($name === '') continue;
     $normalized = ggs_eurosender_normalize_geo_name($name);
-    if (!str_contains($normalized, $needle) && !str_contains($needle, $normalized)) continue;
-    $score = $normalized === $needle ? 0 : (str_starts_with($normalized, $needle) ? 1 : 2);
+    if (!$listAll && !str_contains($normalized, $needle) && !str_contains($needle, $normalized)) continue;
+    $score = $listAll ? 0 : ($normalized === $needle ? 0 : (str_starts_with($normalized, $needle) ? 1 : 2));
     $matches[] = ['value' => $name, 'score' => $score];
   }
   usort($matches, static fn(array $left, array $right): int => [$left['score'], $left['value']] <=> [$right['score'], $right['value']]);
-  $suggestions = array_map(static fn(array $match): string => $match['value'], array_slice($matches, 0, 12));
+  $limit = $listAll ? ($kind === 'regions' ? 250 : 500) : 12;
+  $suggestions = array_map(static fn(array $match): string => $match['value'], array_slice($matches, 0, $limit));
   ggs_json_response(['success' => true, 'suggestions' => array_values(array_unique($suggestions))]);
 } catch (Throwable $error) {
   error_log('GGS Eurosender geographic suggestions failed: ' . $error->getMessage());

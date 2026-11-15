@@ -87,6 +87,7 @@
           eurosenderPreview = Boolean(data.eurosender_preview);
           const form = document.querySelector('[data-checkout-form]');
           if (form) {
+            loadEurosenderRegionChoices(form);
             updateSamedayVisibility(form);
             updateEurosenderVisibility(form);
             renderOrderSummary(currentCart);
@@ -205,9 +206,10 @@
           setIfBlank(form, 'phone', address.phone || '');
           form.querySelector('[name="street"]').value = address.street || '';
           form.querySelector('[name="city"]').value = address.city || '';
-          form.querySelector('[name="county"]').value = address.county || '';
-          form.querySelector('[name="postal"]').value = address.postal || '';
           form.querySelector('[name="country"]').value = address.country || 'RO';
+          setCheckoutRegionValue(form, address.county || '');
+          form.querySelector('[name="postal"]').value = address.postal || '';
+          loadEurosenderRegionChoices(form);
           updateFiscalFieldRequirements(form);
           const recipientName = String(address.recipient_name || data.customer.name || '').trim().split(/\s+/);
           form.querySelector('[name="first_name"]').value = recipientName.shift() || '';
@@ -459,11 +461,12 @@
 
   function initEurosenderAddressSuggestions(form) {
     const country = form.querySelector('[name="country"]');
-    const region = form.querySelector('[name="county"]');
+    const regionInput = form.querySelector('[data-eurosender-region-input]');
+    const regionSelect = form.querySelector('[data-eurosender-region-select]');
     const city = form.querySelector('[name="city"]');
     const regionList = document.getElementById('eurosender-region-suggestions');
     const cityList = document.getElementById('eurosender-city-suggestions');
-    if (!country || !region || !city || !regionList || !cityList) return;
+    if (!country || !regionInput || !regionSelect || !city || !regionList || !cityList) return;
 
     const timers = new WeakMap();
     const fill = (list, suggestions) => {
@@ -478,7 +481,8 @@
       }
       timers.set(input, window.setTimeout(() => {
         const params = new URLSearchParams({ country: country.value, kind, q: query });
-        if (kind === 'cities' && region.value.trim()) params.set('region', region.value.trim());
+        const activeRegion = form.querySelector('[name="county"]');
+        if (kind === 'cities' && activeRegion && activeRegion.value.trim()) params.set('region', activeRegion.value.trim());
         fetch(`${API_BASE}/eurosender-geo.php?${params.toString()}`, { cache: 'no-store' })
           .then((response) => response.json())
           .then((data) => fill(list, data.success && Array.isArray(data.suggestions) ? data.suggestions : []))
@@ -486,15 +490,106 @@
       }, 300));
     };
 
-    region.addEventListener('input', () => {
-      request(region, 'regions', regionList);
+    regionInput.addEventListener('input', () => {
+      request(regionInput, 'regions', regionList);
       fill(cityList, []);
+    });
+    regionSelect.addEventListener('change', () => {
+      fill(cityList, []);
+      invalidateSamedayQuote(form);
+      invalidateEurosenderQuote(form);
+      syncBillingAddress(form);
+      if (city.value.trim().length >= 2) request(city, 'cities', cityList);
     });
     city.addEventListener('input', () => request(city, 'cities', cityList));
     country.addEventListener('change', () => {
+      regionInput.value = '';
+      regionSelect.value = '';
+      delete regionSelect.dataset.pendingValue;
+      city.value = '';
       fill(regionList, []);
       fill(cityList, []);
+      loadEurosenderRegionChoices(form);
     });
+  }
+
+  function normalizeGeoChoice(value) {
+    const normalized = String(value || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (normalized === 'bucuresti' || normalized === 'municipiulbucuresti' || /^(sector|sectorul)[1-6]$/.test(normalized)) return 'bucharest';
+    return normalized;
+  }
+
+  function selectCanonicalRegion(select, value) {
+    const wanted = normalizeGeoChoice(value);
+    const option = Array.from(select.options).find((candidate) => normalizeGeoChoice(candidate.value) === wanted);
+    if (!option) return false;
+    select.value = option.value;
+    return true;
+  }
+
+  function setCheckoutRegionValue(form, value) {
+    const field = form.querySelector('[name="county"]');
+    if (!field) return;
+    if (field.tagName === 'SELECT') {
+      field.dataset.pendingValue = value;
+      selectCanonicalRegion(field, value);
+    } else {
+      field.value = value;
+    }
+  }
+
+  function loadEurosenderRegionChoices(form) {
+    const country = form.querySelector('[name="country"]');
+    const input = form.querySelector('[data-eurosender-region-input]');
+    const select = form.querySelector('[data-eurosender-region-select]');
+    if (!country || !input || !select) return;
+
+    const useFreeInput = () => {
+      const previous = select.value || select.dataset.pendingValue || '';
+      select.classList.add('hidden');
+      select.disabled = true;
+      select.removeAttribute('name');
+      input.classList.remove('hidden');
+      input.disabled = false;
+      input.name = 'county';
+      if (!input.value && previous) input.value = previous;
+    };
+    if (!eurosenderEnabled || !EU_COUNTRIES.includes(country.value)) {
+      useFreeInput();
+      return;
+    }
+
+    const existing = (select.dataset.pendingValue || form.querySelector('[name="county"]')?.value || '').trim();
+    const requestedCountry = country.value;
+    const params = new URLSearchParams({ country: requestedCountry, kind: 'regions', all: '1' });
+    fetch(`${API_BASE}/eurosender-geo.php?${params.toString()}`, { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (country.value !== requestedCountry) return;
+        const suggestions = data.success && Array.isArray(data.suggestions) ? data.suggestions : [];
+        if (!suggestions.length) {
+          useFreeInput();
+          return;
+        }
+        const placeholder = document.documentElement.lang === 'ro' ? 'Alege judetul / regiunea' : 'Choose county / region';
+        select.innerHTML = `<option value="">${window.GGSUtil.escapeHtml(placeholder)}</option>`
+          + suggestions.map((value) => `<option value="${window.GGSUtil.escapeHtml(value)}">${window.GGSUtil.escapeHtml(value)}</option>`).join('');
+        input.classList.add('hidden');
+        input.disabled = true;
+        input.removeAttribute('name');
+        select.classList.remove('hidden');
+        select.disabled = false;
+        select.name = 'county';
+        selectCanonicalRegion(select, existing);
+        delete select.dataset.pendingValue;
+        syncBillingAddress(form);
+        schedulePaymentRefresh(form);
+      })
+      .catch(() => {
+        if (country.value === requestedCountry) useFreeInput();
+      });
   }
 
   function invalidateSamedayQuote(form) {

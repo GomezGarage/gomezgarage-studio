@@ -62,6 +62,8 @@ $check(str_contains($orders, 'The selected delivery price changed') && str_conta
 $check(str_contains($js, 'Eurosender sandbox preview is active') && !str_contains($js, 'choose(optionsList[0])'), 'sandbox preview blocks payment and requires an explicit service choice');
 $check(str_contains($html, 'eurosender-city-suggestions') && str_contains($js, 'eurosender-geo.php'), 'checkout suggests canonical Eurosender regions and cities');
 $check(str_contains($eurosenderGeo, 'ggs_eurosender_get_cached_list') && str_contains($eurosenderGeo, "['regions', 'cities']"), 'geographic suggestions stay server-side and use cached official nomenclature');
+$check(str_contains($html, 'data-eurosender-region-select') && str_contains($js, 'loadEurosenderRegionChoices'), 'country selection loads an official Eurosender region dropdown');
+$check(str_contains($eurosenderGeo, '$listAll') && str_contains($eurosenderGeo, "kind === 'regions' ? 250 : 500"), 'geographic endpoint supports bounded official region and city lists');
 $check(str_contains($eurosenderQuote, 'safeAddressError') && str_contains($eurosenderQuote, '$providerMessage'), 'safe provider address errors are returned to checkout');
 $check(str_contains($eurosender, '/v1/orders/validate_creation') && str_contains($eurosender, 'customerInternalReference'), 'Eurosender booking validates and carries idempotency reference');
 

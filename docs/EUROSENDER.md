@@ -9,9 +9,12 @@ production environments cannot be mixed.
 
 - checkout requests every available parcel service for the exact EU address
   and packed product measurements;
-- checkout suggests canonical regions and cities from Eurosender while keeping
-  the API key server-side; Bucuresti plus Sector 1-6 is normalized to the
-  provider's Bucharest nomenclature without changing the stored fiscal address;
+- checkout loads the official Eurosender region list after the customer chooses
+  a country, then filters city suggestions by that region; countries without a
+  provider region list fall back to a free region field, while street and number
+  remain editable and the API key stays server-side; Bucuresti plus Sector 1-6
+  is normalized to the provider's Bucharest nomenclature without changing the
+  stored fiscal address;
 - the customer selects a service and sees its live price in the order total;
 - `create-order.php` repeats the quote server-side and never trusts a price
   submitted by the browser;
