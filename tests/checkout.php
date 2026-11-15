@@ -54,10 +54,11 @@ $check(str_contains($sameday, "\$payload['oohLastMile'] = \$oohId"), 'selected l
 $check(str_contains($sameday, "'serviceTaxes'] = 'PDO '"), 'PDO tax uses documented payload format');
 $check(str_contains($sameday, "defined('SAMEDAY_INTEGRATION_ACTIVE')"), 'Sameday provider has a master gate');
 $check(str_contains($checkoutConfig, "'sameday_enabled' => ggs_sameday_enabled()"), 'checkout respects the Sameday master gate');
-$check(str_contains($checkoutConfig, "'eurosender_enabled' => ggs_eurosender_checkout_enabled()"), 'checkout exposes the environment-safe Eurosender gate');
+$check(str_contains($checkoutConfig, "'eurosender_enabled' => ggs_eurosender_quote_enabled()") && str_contains($checkoutConfig, "'eurosender_preview'"), 'checkout exposes the environment-safe Eurosender quote and preview gates');
 $check(str_contains($eurosenderQuote, 'ggs_eurosender_package_from_items') && str_contains($eurosenderQuote, 'ggs_eurosender_quote_options'), 'Eurosender quote reprices and measures on the server');
 $check(str_contains($orders, 'ggs_eurosender_select_quote'), 'order creation re-quotes selected Eurosender service server-side');
 $check(str_contains($orders, 'The selected delivery price changed') && str_contains($orders, '409'), 'changed Eurosender prices block payment until the customer re-quotes');
+$check(str_contains($js, 'Eurosender sandbox preview is active') && !str_contains($js, 'choose(optionsList[0])'), 'sandbox preview blocks payment and requires an explicit service choice');
 $check(str_contains($eurosender, '/v1/orders/validate_creation') && str_contains($eurosender, 'customerInternalReference'), 'Eurosender booking validates and carries idempotency reference');
 
 echo "PASS: {$checks} isolated checkout, payment and Easybox regression checks.\n";

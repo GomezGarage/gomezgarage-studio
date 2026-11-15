@@ -142,6 +142,9 @@ define('SAMEDAY_DEFAULT_WEIGHT_KG', 1.0);
 // ---------------------------------------------------------------------
 define('EUROSENDER_INTEGRATION_ACTIVE', false);
 define('EUROSENDER_ENABLED', false);
+// Temporary quote-only preview: sandbox prices may be shown on the production
+// storefront, but payment and order creation remain blocked.
+define('EUROSENDER_SANDBOX_PREVIEW_ENABLED', false);
 // Third safety gate. Enable only after a sandbox booking has been reviewed.
 define('EUROSENDER_AUTO_BOOKING_ENABLED', false);
 define('EUROSENDER_ENV', 'sandbox'); // 'sandbox' | 'production'

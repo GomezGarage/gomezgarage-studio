@@ -54,13 +54,20 @@ All three provider gates start disabled:
 ```php
 define('EUROSENDER_INTEGRATION_ACTIVE', false);
 define('EUROSENDER_ENABLED', false);
+define('EUROSENDER_SANDBOX_PREVIEW_ENABLED', false);
 define('EUROSENDER_AUTO_BOOKING_ENABLED', false);
 define('EUROSENDER_ENV', 'sandbox');
 ```
 
-`EUROSENDER_INTEGRATION_ACTIVE` and `EUROSENDER_ENABLED` expose quotes only
-when the provider environment matches `APP_ENV`. Automatic booking additionally
-requires `EUROSENDER_AUTO_BOOKING_ENABLED`.
+`EUROSENDER_INTEGRATION_ACTIVE` and `EUROSENDER_ENABLED` expose normal checkout
+quotes only when the provider environment matches `APP_ENV`. Automatic booking
+additionally requires `EUROSENDER_AUTO_BOOKING_ENABLED`.
+
+For a temporary visual test on the production storefront, keep
+`EUROSENDER_ENV = 'sandbox'` and set `EUROSENDER_SANDBOX_PREVIEW_ENABLED` to
+true. The storefront then shows sandbox service options after the address is
+entered, labels them as test prices, requires an explicit selection, and never
+mounts Revolut or creates an order. Set the flag back to false after review.
 
 ## Safe sandbox verification
 

@@ -9,7 +9,7 @@ ggs_cors_headers();
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
   ggs_json_response(['success' => false, 'error' => 'Method not allowed'], 405);
 }
-if (!ggs_eurosender_checkout_enabled()) {
+if (!ggs_eurosender_quote_enabled()) {
   ggs_json_response(['success' => false, 'error' => 'Eurosender checkout is not available in this environment'], 503);
 }
 

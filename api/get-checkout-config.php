@@ -21,5 +21,6 @@ ggs_json_response([
   'public_key' => REVOLUT_PUBLIC_KEY,
   'mode' => APP_ENV === 'sandbox' ? 'sandbox' : 'prod',
   'sameday_enabled' => ggs_sameday_enabled(),
-  'eurosender_enabled' => ggs_eurosender_checkout_enabled(),
+  'eurosender_enabled' => ggs_eurosender_quote_enabled(),
+  'eurosender_preview' => ggs_eurosender_sandbox_preview_enabled(),
 ]);

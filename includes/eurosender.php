@@ -40,6 +40,24 @@ function ggs_eurosender_checkout_enabled(): bool
         || ($providerEnv === 'sandbox' && $appEnv === 'sandbox');
 }
 
+/**
+ * Allow the production storefront to preview sandbox quotes without ever
+ * enabling payment/order creation. This is an explicit, temporary test mode.
+ */
+function ggs_eurosender_sandbox_preview_enabled(): bool
+{
+    if (!ggs_eurosender_enabled() || !ggs_eurosender_configured()) return false;
+    if (!defined('EUROSENDER_SANDBOX_PREVIEW_ENABLED') || EUROSENDER_SANDBOX_PREVIEW_ENABLED !== true) return false;
+    $providerEnv = defined('EUROSENDER_ENV') ? strtolower(trim((string) EUROSENDER_ENV)) : 'sandbox';
+    $appEnv = defined('APP_ENV') ? strtolower(trim((string) APP_ENV)) : 'production';
+    return $providerEnv === 'sandbox' && $appEnv === 'production';
+}
+
+function ggs_eurosender_quote_enabled(): bool
+{
+    return ggs_eurosender_checkout_enabled() || ggs_eurosender_sandbox_preview_enabled();
+}
+
 function ggs_eurosender_booking_enabled(): bool
 {
     return ggs_eurosender_checkout_enabled()

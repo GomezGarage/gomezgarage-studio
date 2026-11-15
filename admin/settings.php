@@ -233,7 +233,10 @@ require __DIR__ . '/../includes/admin-header.php';
   <?php endif; ?>
 
   <table class="specs-table">
-    <tr><td>Checkout / booking</td><td class="mono"><?= ggs_eurosender_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
+    <tr><td>Quote availability</td><td class="mono"><?= ggs_eurosender_quote_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
+    <tr><td>Production checkout</td><td class="mono"><?= ggs_eurosender_checkout_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
+    <tr><td>Sandbox storefront preview</td><td class="mono"><?= ggs_eurosender_sandbox_preview_enabled() ? 'ENABLED (payment blocked)' : 'DISABLED' ?></td></tr>
+    <tr><td>Automatic booking</td><td class="mono"><?= ggs_eurosender_booking_enabled() ? 'ENABLED' : 'DISABLED (safe)' ?></td></tr>
     <tr><td>Credentials</td><td class="mono"><?= ggs_eurosender_configured() ? 'configured' : 'missing / placeholder' ?></td></tr>
     <tr><td>Environment</td><td class="mono"><?= htmlspecialchars(defined('EUROSENDER_ENV') ? (string) EUROSENDER_ENV : 'not configured') ?></td></tr>
     <tr><td>API endpoint</td><td class="mono"><?= htmlspecialchars(defined('EUROSENDER_API_BASE') ? (string) EUROSENDER_API_BASE : 'not configured') ?></td></tr>

@@ -44,6 +44,7 @@
   let samedayEnabled = false;
   let samedayQuote = null;
   let eurosenderEnabled = false;
+  let eurosenderPreview = false;
   let eurosenderOptions = [];
   let selectedEurosenderOption = null;
   let selectedEasybox = null;
@@ -83,6 +84,7 @@
           revolutMode = data.mode;
           samedayEnabled = Boolean(data.sameday_enabled);
           eurosenderEnabled = Boolean(data.eurosender_enabled);
+          eurosenderPreview = Boolean(data.eurosender_preview);
           const form = document.querySelector('[data-checkout-form]');
           if (form) {
             updateSamedayVisibility(form);
@@ -352,6 +354,8 @@
     const section = form.querySelector('[data-eurosender-delivery]');
     const visible = eurosenderEnabled && EU_COUNTRIES.includes(country) && !(samedayEnabled && country === 'RO');
     if (section) section.classList.toggle('hidden', !visible);
+    const previewNote = form.querySelector('[data-eurosender-preview-note]');
+    if (previewNote) previewNote.classList.toggle('hidden', !visible || !eurosenderPreview);
   }
 
   function invalidateEurosenderQuote(form) {
@@ -361,8 +365,12 @@
     if (options) options.innerHTML = '';
     const status = form.querySelector('[data-eurosender-quote-status]');
     if (status) {
-      status.setAttribute('data-en', 'The payment form appears after you choose a delivery service.');
-      status.setAttribute('data-ro', 'Formularul de plata apare dupa ce alegi serviciul de livrare.');
+      status.setAttribute('data-en', eurosenderPreview
+        ? 'Complete the address to preview sandbox delivery services.'
+        : 'The payment form appears after you choose a delivery service.');
+      status.setAttribute('data-ro', eurosenderPreview
+        ? 'Completeaza adresa pentru a simula serviciile de livrare sandbox.'
+        : 'Formularul de plata apare dupa ce alegi serviciul de livrare.');
       status.textContent = document.documentElement.lang === 'ro' ? status.getAttribute('data-ro') : status.getAttribute('data-en');
     }
     renderOrderSummary(currentCart);
@@ -387,7 +395,9 @@
       const radio = Array.from(options.querySelectorAll('[data-eurosender-option] input')).find((input) => input.value === optionId);
       if (radio) radio.checked = true;
       if (status) {
-        status.textContent = document.documentElement.lang === 'ro' ? 'Serviciul de livrare este selectat.' : 'Delivery service selected.';
+        status.textContent = eurosenderPreview
+          ? (document.documentElement.lang === 'ro' ? 'Tarif sandbox selectat. Plata ramane dezactivata in modul de test.' : 'Sandbox rate selected. Payment remains disabled in test mode.')
+          : (document.documentElement.lang === 'ro' ? 'Serviciul de livrare este selectat.' : 'Delivery service selected.');
       }
       renderOrderSummary(cart);
       schedulePaymentRefresh(form);
@@ -404,7 +414,11 @@
         const option = optionsList.find((item) => `${item.service_type}|${item.service_subtype || ''}|${Number(item.courier_id) || 0}` === card.dataset.eurosenderOption);
         if (option) choose(option);
       }));
-      if (optionsList.length) choose(optionsList[0]);
+      if (optionsList.length && status) {
+        status.textContent = document.documentElement.lang === 'ro'
+          ? 'Alege explicit una dintre variantele de livrare.'
+          : 'Choose one of the delivery services explicitly.';
+      }
     }
 
     function requestQuote() {
@@ -892,6 +906,15 @@
   }
 
   function refreshPaymentModule(form) {
+    if (eurosenderPreview) {
+      if (embeddedInstance || mountedPaymentSignature) resetPaymentWidget();
+      setPaymentReadyStatus(
+        'Eurosender sandbox preview is active. Payment and order creation are disabled.',
+        'Preview-ul Eurosender sandbox este activ. Plata si crearea comenzii sunt dezactivate.',
+        false
+      );
+      return;
+    }
     if (!form || !paymentFormIsReady(form)) {
       if (embeddedInstance || mountedPaymentSignature) resetPaymentWidget();
       setPaymentReadyStatus(
