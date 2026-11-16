@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_amount DECIMAL(12,2) NULL,
   customer_account_id INT UNSIGNED NULL,
   status ENUM('pending','paid','processing','printing','shipped','delivered','cancelled') DEFAULT 'pending',
-  payment_method VARCHAR(20) DEFAULT 'card', -- storefront accepts Revolut online payments only
+  payment_method VARCHAR(20) DEFAULT 'card', -- card or temporary test_cod; never forwarded as courier COD
   customer_name VARCHAR(200),
   customer_email VARCHAR(200),
   customer_phone VARCHAR(50),

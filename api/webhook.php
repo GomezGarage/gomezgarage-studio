@@ -22,6 +22,10 @@ require_once __DIR__ . '/../includes/smartbill.php';
 require_once __DIR__ . '/../includes/sameday.php';
 require_once __DIR__ . '/../includes/eurosender.php';
 
+if ((defined('REVOLUT_ENABLED') && REVOLUT_ENABLED !== true) || ggs_eurosender_sandbox_dummy_checkout_enabled()) {
+  ggs_json_response(['success' => false, 'error' => 'Revolut webhooks are disabled'], 503);
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
   ggs_json_response(['success' => false, 'error' => 'Method not allowed'], 405);
 }
@@ -86,7 +90,8 @@ if (in_array($event['event'], $paidEvents, true)) {
   // Invoicing is best-effort: payment processing and stock remain authoritative
   // even when the external fiscal service needs manual reconciliation.
   $invoicePath = null;
-  if (ggs_smartbill_enabled()) {
+  $invoicingEnabled = !defined('INVOICING_ENABLED') || INVOICING_ENABLED === true;
+  if ($invoicingEnabled && ggs_smartbill_enabled()) {
     try {
       $db->prepare('UPDATE orders SET invoice_provider = "smartbill", invoice_status = "issuing", invoice_error = NULL WHERE id = ?')
         ->execute([(int) $order['id']]);
@@ -121,7 +126,7 @@ if (in_array($event['event'], $paidEvents, true)) {
         ->execute([substr($e->getMessage(), 0, 500), (int) $order['id']]);
       error_log('GGS SmartBill invoice failed for ' . $order['order_number'] . ': ' . $e->getMessage());
     }
-  } else {
+  } elseif ($invoicingEnabled) {
     try {
       $invoiceNumber = ggs_generate_invoice_number($db);
       $db->prepare('UPDATE orders SET invoice_number = ?, invoice_provider = "local", invoice_status = "issued", invoice_currency = "RON", invoice_issued_at = NOW() WHERE id = ?')

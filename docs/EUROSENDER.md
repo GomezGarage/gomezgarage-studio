@@ -81,10 +81,43 @@ mounts Revolut or creates an order. Set the flag back to false after review.
 If Eurosender rejects an address, checkout displays the safe validation detail
 instead of replacing it with a generic error.
 
+### Temporary sandbox order simulation
+
+The checkout also supports a short-lived dummy payment flow that can create a
+real order in the Eurosender sandbox without calling Revolut or asking the
+courier to collect cash. Before enabling it, back up the server `config.php`.
+Set these switches temporarily:
+
+```php
+define('REVOLUT_ENABLED', false);
+define('SMARTBILL_ENABLED', false);
+define('INVOICING_ENABLED', false);
+define('EUROSENDER_SANDBOX_DUMMY_CHECKOUT_ENABLED', true);
+define('EUROSENDER_ENV', 'sandbox');
+define('EUROSENDER_AUTO_BOOKING_ENABLED', true);
+```
+
+Edit the existing `define(...)` lines in `config.php`; do not add duplicate
+definitions. Keep the Revolut and invoice switches false for the whole test.
+
+Keep both Eurosender master gates enabled, use the sandbox API key and sandbox
+API base, and make sure sender contact details are configured. Checkout then
+offers a clearly marked test "cash on delivery" button. The stored payment
+method is only a test marker; the Eurosender order still uses the sender's
+Eurosender account credit, and no COD collection is included in the courier
+payload. Invoicing is fully skipped, including the local PDF fallback. Revolut
+webhooks are rejected while its switch is off.
+
+After the simulation, restore the backed-up live config values, set the dummy
+checkout switch and Eurosender sandbox auto-booking back to false, and restore
+the original Revolut and invoicing switches. This dummy mode is off by default.
+
 ## Safe sandbox verification
 
-Use an isolated staging installation with `APP_ENV = 'sandbox'` and the
-Eurosender sandbox key. Never switch the public production shop to sandbox.
+Use an isolated staging installation with `APP_ENV = 'sandbox'` for synthetic
+checkout work. For the provider's required end-to-end sandbox shipment from the
+public storefront, use the temporary dummy flow above; do not enable Revolut or
+invoicing for that simulation.
 
 1. Leave all provider gates off and use **Admin > Settings > Eurosender API >
    Check connection**. This performs only `GET /v1/countries`.

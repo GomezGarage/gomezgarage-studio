@@ -36,8 +36,22 @@ function ggs_eurosender_checkout_enabled(): bool
     if (!ggs_eurosender_enabled() || !ggs_eurosender_configured()) return false;
     $providerEnv = defined('EUROSENDER_ENV') ? strtolower(trim((string) EUROSENDER_ENV)) : 'sandbox';
     $appEnv = defined('APP_ENV') ? strtolower(trim((string) APP_ENV)) : 'production';
+    if (ggs_eurosender_sandbox_dummy_checkout_enabled()) return true;
     return ($providerEnv === 'production' && $appEnv === 'production')
         || ($providerEnv === 'sandbox' && $appEnv === 'sandbox');
+}
+
+/** Temporary checkout bypass: Eurosender sandbox only, with no real payment provider. */
+function ggs_eurosender_sandbox_dummy_checkout_enabled(): bool
+{
+    if (!defined('EUROSENDER_SANDBOX_DUMMY_CHECKOUT_ENABLED') || EUROSENDER_SANDBOX_DUMMY_CHECKOUT_ENABLED !== true) return false;
+    if (!defined('EUROSENDER_ENV') || strtolower(trim((string) EUROSENDER_ENV)) !== 'sandbox') return false;
+    if (!defined('EUROSENDER_API_BASE') || rtrim((string) EUROSENDER_API_BASE, '/') !== 'https://sandbox-api.eurosender.com') return false;
+    return ggs_eurosender_enabled()
+        && ggs_eurosender_configured()
+        && defined('EUROSENDER_AUTO_BOOKING_ENABLED')
+        && EUROSENDER_AUTO_BOOKING_ENABLED === true
+        && ggs_eurosender_pickup_contact_configured();
 }
 
 /**
@@ -46,6 +60,7 @@ function ggs_eurosender_checkout_enabled(): bool
  */
 function ggs_eurosender_sandbox_preview_enabled(): bool
 {
+    if (ggs_eurosender_sandbox_dummy_checkout_enabled()) return false;
     if (!ggs_eurosender_enabled() || !ggs_eurosender_configured()) return false;
     if (!defined('EUROSENDER_SANDBOX_PREVIEW_ENABLED') || EUROSENDER_SANDBOX_PREVIEW_ENABLED !== true) return false;
     $providerEnv = defined('EUROSENDER_ENV') ? strtolower(trim((string) EUROSENDER_ENV)) : 'sandbox';

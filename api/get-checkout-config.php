@@ -15,12 +15,14 @@ require_once __DIR__ . '/../includes/sameday.php';
 require_once __DIR__ . '/../includes/eurosender.php';
 
 ggs_cors_headers();
+$dummyCodEnabled = ggs_eurosender_sandbox_dummy_checkout_enabled() && ggs_eurosender_booking_enabled();
 
 ggs_json_response([
   'success' => true,
-  'public_key' => REVOLUT_PUBLIC_KEY,
+  'public_key' => ((!defined('REVOLUT_ENABLED') || REVOLUT_ENABLED === true) && !$dummyCodEnabled) ? REVOLUT_PUBLIC_KEY : null,
   'mode' => APP_ENV === 'sandbox' ? 'sandbox' : 'prod',
-  'sameday_enabled' => ggs_sameday_enabled(),
+  'dummy_cod_enabled' => $dummyCodEnabled,
+  'sameday_enabled' => !$dummyCodEnabled && ggs_sameday_enabled(),
   'eurosender_enabled' => ggs_eurosender_quote_enabled(),
   'eurosender_preview' => ggs_eurosender_sandbox_preview_enabled(),
 ]);

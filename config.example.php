@@ -12,6 +12,15 @@
 define('APP_ENV', 'production'); // 'production' | 'sandbox'
 define('SITE_URL', 'https://gomezgarage.eu/studio');
 
+// Temporary provider switches for a Eurosender sandbox checkout. For that test
+// only: set REVOLUT_ENABLED=false, SMARTBILL_ENABLED=false,
+// INVOICING_ENABLED=false and EUROSENDER_SANDBOX_DUMMY_CHECKOUT_ENABLED=true.
+// Also enable the Eurosender integration, sandbox key and auto-booking below.
+// Restore the original live values and turn the dummy switch off after testing.
+define('REVOLUT_ENABLED', true);
+define('INVOICING_ENABLED', true); // master gate for SmartBill and local PDF invoices
+define('EUROSENDER_SANDBOX_DUMMY_CHECKOUT_ENABLED', false);
+
 // ---------------------------------------------------------------------
 // Database
 // ---------------------------------------------------------------------

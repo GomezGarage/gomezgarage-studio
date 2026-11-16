@@ -45,6 +45,7 @@
   let samedayQuote = null;
   let eurosenderEnabled = false;
   let eurosenderPreview = false;
+  let dummyCodEnabled = false;
   let eurosenderOptions = [];
   let selectedEurosenderOption = null;
   let selectedEasybox = null;
@@ -85,6 +86,13 @@
           samedayEnabled = Boolean(data.sameday_enabled);
           eurosenderEnabled = Boolean(data.eurosender_enabled);
           eurosenderPreview = Boolean(data.eurosender_preview);
+          dummyCodEnabled = Boolean(data.dummy_cod_enabled);
+          const revolutContainer = document.getElementById('revolut-widget-container');
+          if (revolutContainer) revolutContainer.classList.toggle('hidden', dummyCodEnabled);
+          const dummyButton = document.querySelector('[data-test-cod-submit]');
+          const dummyNote = document.querySelector('[data-test-cod-note]');
+          if (dummyButton) dummyButton.classList.toggle('hidden', !dummyCodEnabled);
+          if (dummyNote) dummyNote.classList.toggle('hidden', !dummyCodEnabled);
           const form = document.querySelector('[data-checkout-form]');
           if (form) {
             loadEurosenderRegionChoices(form);
@@ -146,6 +154,8 @@
 
     preloadCheckoutConfig();
     form.addEventListener('submit', (event) => event.preventDefault());
+    const dummyButton = document.querySelector('[data-test-cod-submit]');
+    if (dummyButton) dummyButton.addEventListener('click', () => submitDummyCodOrder(form));
     form.addEventListener('input', () => {
       syncBillingAddress(form);
       schedulePaymentRefresh(form);
@@ -1034,7 +1044,7 @@
       eurosender_service_type: selectedEurosenderOption ? selectedEurosenderOption.service_type : null,
       eurosender_service_subtype: selectedEurosenderOption ? selectedEurosenderOption.service_subtype : null,
       eurosender_courier_id: selectedEurosenderOption ? Number(selectedEurosenderOption.courier_id) || null : null,
-      payment_method: 'card',
+      payment_method: dummyCodEnabled ? 'test_cod' : 'card',
       currency: window.GGSCurrency ? window.GGSCurrency.current : 'EUR',
       billing_address: billingAddressFromForm(form),
     };
@@ -1076,6 +1086,37 @@
     status.textContent = document.documentElement.lang === 'ro' ? messageRo : messageEn;
   }
 
+  function submitDummyCodOrder(form) {
+    const button = document.querySelector('[data-test-cod-submit]');
+    if (!button || button.disabled || button.dataset.submitting === 'true') return;
+    if (!validateCheckoutForm(form) || !paymentFormIsReady(form)) return;
+    const payload = buildCheckoutPayload(form, currentCart);
+    payload.payment_method = 'test_cod';
+    button.dataset.submitting = 'true';
+    button.disabled = true;
+    hideCheckoutError();
+    setPaymentReadyStatus('Creating the sandbox shipment...', 'Se creeaza expedierea sandbox...', false);
+
+    fetch(`${API_BASE}/create-order.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(customerCsrfToken ? { 'X-CSRF-Token': customerCsrfToken } : {}) },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success || !data.order_number) throw new Error(data.error || 'Order creation failed');
+        window.GGSCart.clearCart();
+        const bookingQuery = data.eurosender_booking_status === 'booked' ? '' : '&shipment=needs-review';
+        window.location.href = `/studio/order-success.html?order=${encodeURIComponent(data.order_number)}${bookingQuery}`;
+      })
+      .catch((error) => {
+        button.dataset.submitting = 'false';
+        button.disabled = false;
+        showCheckoutError(error.message || 'Sandbox order could not be created.', 'Comanda sandbox nu a putut fi creata.');
+        schedulePaymentRefresh(form);
+      });
+  }
+
   function schedulePaymentRefresh(form) {
     window.clearTimeout(paymentRefreshTimer);
     paymentRefreshTimer = window.setTimeout(() => refreshPaymentModule(form), 450);
@@ -1087,6 +1128,18 @@
       setPaymentReadyStatus(
         'Eurosender sandbox preview is active. Payment and order creation are disabled.',
         'Preview-ul Eurosender sandbox este activ. Plata si crearea comenzii sunt dezactivate.',
+        false
+      );
+      return;
+    }
+    if (dummyCodEnabled) {
+      if (embeddedInstance || mountedPaymentSignature) resetPaymentWidget();
+      const ready = Boolean(form && paymentFormIsReady(form));
+      const button = document.querySelector('[data-test-cod-submit]');
+      if (button) button.disabled = !ready || button.dataset.submitting === 'true';
+      setPaymentReadyStatus(
+        ready ? 'Test checkout is ready. No online payment will be taken.' : 'Complete the delivery details and choose a Eurosender rate to continue.',
+        ready ? 'Comanda de test este gata. Nu se va incasa nicio plata online.' : 'Completeaza datele de livrare si alege tariful Eurosender pentru a continua.',
         false
       );
       return;

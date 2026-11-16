@@ -25,8 +25,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 
 $body = ggs_read_json_body();
 
-if (($body['payment_method'] ?? 'card') !== 'card') {
-  ggs_json_response(['success' => false, 'error' => 'Only online payment is supported'], 422);
+$dummyCodEnabled = ggs_eurosender_sandbox_dummy_checkout_enabled() && ggs_eurosender_booking_enabled();
+$paymentMethod = (string) ($body['payment_method'] ?? 'card');
+if ($paymentMethod === 'test_cod') {
+  if (!$dummyCodEnabled) ggs_json_response(['success' => false, 'error' => 'Test checkout is not enabled'], 403);
+} elseif ($paymentMethod !== 'card' || (defined('REVOLUT_ENABLED') && REVOLUT_ENABLED !== true)) {
+  ggs_json_response(['success' => false, 'error' => 'Online payment is not available'], 503);
+} elseif ($dummyCodEnabled) {
+  ggs_json_response(['success' => false, 'error' => 'Revolut is disabled during the Eurosender sandbox checkout'], 503);
 }
 
 $required = ['first_name', 'last_name', 'email', 'street', 'city', 'postal', 'country', 'items'];
@@ -138,7 +144,7 @@ $eurosenderServiceType = null;
 $eurosenderServiceSubtype = null;
 $eurosenderCourierId = null;
 
-if ($country === 'RO' && ggs_sameday_enabled()) {
+if (!$dummyCodEnabled && $country === 'RO' && ggs_sameday_enabled()) {
   if (!ggs_sameday_configured()) ggs_json_response(['success' => false, 'error' => 'Sameday is enabled but its credentials are not configured'], 503);
   $shippingMethod = (string) ($body['shipping_method'] ?? '');
   if (!in_array($shippingMethod, ['home', 'easybox'], true)) ggs_json_response(['success' => false, 'error' => 'Choose a Sameday delivery method'], 422);
@@ -221,7 +227,11 @@ if ($country === 'RO' && ggs_sameday_enabled()) {
 
 $totalEur = round($subtotalEur + $shippingEur, 2);
 $orderNumber = ggs_generate_order_number();
-$paymentMethod = 'card';
+$isDummyCodOrder = $paymentMethod === 'test_cod';
+if ($isDummyCodOrder && $shippingProvider !== 'eurosender') {
+  ggs_json_response(['success' => false, 'error' => 'Test checkout is only available with Eurosender sandbox shipping'], 422);
+}
+$orderStatus = $isDummyCodOrder ? 'processing' : 'pending';
 
 $shippingAddress = [
   'street' => $body['street'],
@@ -236,11 +246,12 @@ $customerPhone = $body['phone'] ?? '';
 $stmt = $db->prepare(
   'INSERT INTO orders
     (order_number, customer_account_id, status, payment_method, customer_type, company_name, company_cui, company_reg, company_address, company_city, company_county, company_postal, company_country, company_vat_payer, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, shipping_provider, shipping_method, shipping_service_id, shipping_service_name, shipping_ooh_id, shipping_ooh_name, shipping_ooh_address, shipping_quote_amount, shipping_quote_currency, shipping_package, eurosender_service_type, eurosender_service_subtype, eurosender_courier_id, eurosender_status, total_eur)
-   VALUES (?, ?, "pending", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->execute([
   $orderNumber,
   $customerAccountId,
+  $orderStatus,
   $paymentMethod,
   $customerType,
   $customerType === 'pj' ? $companyName : null,
@@ -278,7 +289,37 @@ $stmt->execute([
 ]);
 $orderId = (int) $db->lastInsertId();
 $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
-  ->execute([$orderId, 'pending', 'Order placed']);
+  ->execute([$orderId, $orderStatus, $isDummyCodOrder
+    ? 'Sandbox checkout: dummy cash-on-delivery selection; courier is not asked to collect cash.'
+    : 'Order placed']);
+
+if ($isDummyCodOrder) {
+  // The dummy checkout is not sent to the courier as COD. Eurosender's own
+  // account credit is still used to pay for the sandbox shipment.
+  $sandboxBookingStatus = 'failed';
+  try {
+    $shipment = ggs_eurosender_issue_order($db, $orderId);
+    $sandboxBookingStatus = 'booked';
+    $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+      ->execute([$orderId, $orderStatus, 'Eurosender sandbox order created: ' . $shipment['order_code']]);
+    $orderStmt = $db->prepare('SELECT * FROM orders WHERE id = ? LIMIT 1');
+    $orderStmt->execute([$orderId]);
+    $order = $orderStmt->fetch() ?: [];
+    ggs_notify_new_order($order);
+    ggs_send_order_confirmation($order, null);
+  } catch (Throwable $error) {
+    error_log('Eurosender sandbox booking failed for ' . $orderNumber . ': ' . $error->getMessage());
+    $db->prepare('INSERT INTO order_status_history (order_id, status, note) VALUES (?, ?, ?)')
+      ->execute([$orderId, $orderStatus, 'Eurosender sandbox booking failed and needs admin review.']);
+  }
+
+  ggs_json_response([
+    'success' => true,
+    'order_number' => $orderNumber,
+    'payment_mode' => 'test_cod',
+    'eurosender_booking_status' => $sandboxBookingStatus,
+  ]);
+}
 
 // Charge in whatever currency the customer was actually shown on the
 // checkout page (the order summary), not always EUR — otherwise the
