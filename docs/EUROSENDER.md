@@ -90,8 +90,10 @@ uses HMAC-SHA256 on the exact raw request body, and accepts hex or Base64 digest
 encoding (optionally prefixed with `sha256=`). A unique delivery ID prevents
 retries from duplicating timeline entries. Shipment progress changes are
 recorded in the customer order history; tracking-confirmed pickup/in-transit
-and delivery transitions update the shop status. A carrier cancellation is
-recorded as a provider status and does not cancel the paid shop order.
+and delivery transitions update the shop status. The label-ready event causes
+one read-only order lookup to store Eurosender's returned label link. A carrier
+cancellation is recorded as a provider status and does not cancel the paid shop
+order.
 
 Eurosender's published webhook reference confirms HMAC-SHA256 but does not
 specify the exact signature serialization/encoding. Confirm the first live

@@ -56,6 +56,24 @@ if ($orderCode === '' && $eventCode === 'delivery_status_updated') {
     $orderCode = trim((string) ($payload['notifications'][0]['orderCode'] ?? ''));
 }
 
+$updates = ggs_eurosender_webhook_updates($eventCode, $payload);
+if ($eventCode === 'order_label_ready') {
+    // The label-ready notification only carries the order code. Fetch the
+    // order resource (read-only) to pick up its label link for the admin.
+    foreach ($updates as &$update) {
+        $code = trim((string) ($update['order_code'] ?? ''));
+        if ($code === '') continue;
+        try {
+            $remote = ggs_eurosender_get_order($code);
+            $update['provider_status'] = trim((string) ($remote['status'] ?? 'label_ready'));
+            $update['label_url'] = trim((string) ($remote['labelLink'] ?? ''));
+        } catch (Throwable $error) {
+            error_log('Eurosender label-ready lookup failed for ' . $code . ': ' . $error->getMessage());
+        }
+    }
+    unset($update);
+}
+
 $db = ggs_db();
 $customerEmails = [];
 try {
@@ -72,7 +90,6 @@ try {
         throw $error;
     }
 
-    $updates = ggs_eurosender_webhook_updates($eventCode, $payload);
     foreach ($updates as $update) {
         $code = trim((string) ($update['order_code'] ?? ''));
         if ($code === '') continue;
@@ -85,10 +102,11 @@ try {
         $providerStatus = trim((string) ($update['provider_status'] ?? ''));
         $trackingNumber = trim((string) ($update['tracking_number'] ?? ''));
         $trackingUrl = trim((string) ($update['tracking_url'] ?? ''));
+        $labelUrl = trim((string) ($update['label_url'] ?? ''));
         $newOrderStatus = ggs_eurosender_webhook_order_status((string) $order['status'], $providerStatus);
 
-        $db->prepare('UPDATE orders SET eurosender_status = NULLIF(?, ""), eurosender_tracking_url = COALESCE(NULLIF(?, ""), eurosender_tracking_url), tracking_number = COALESCE(NULLIF(?, ""), tracking_number), eurosender_last_status_at = UTC_TIMESTAMP(), eurosender_error = NULL, status = ? WHERE id = ?')
-            ->execute([$providerStatus, $trackingUrl, $trackingNumber, $newOrderStatus, (int) $order['id']]);
+        $db->prepare('UPDATE orders SET eurosender_status = NULLIF(?, ""), eurosender_label_url = COALESCE(NULLIF(?, ""), eurosender_label_url), eurosender_tracking_url = COALESCE(NULLIF(?, ""), eurosender_tracking_url), tracking_number = COALESCE(NULLIF(?, ""), tracking_number), eurosender_last_status_at = UTC_TIMESTAMP(), eurosender_error = NULL, status = ? WHERE id = ?')
+            ->execute([$providerStatus, $labelUrl, $trackingUrl, $trackingNumber, $newOrderStatus, (int) $order['id']]);
 
         $note = 'Eurosender: ' . ($providerStatus !== '' ? $providerStatus : $eventCode);
         if ($trackingNumber !== '') $note .= ' · Tracking ' . $trackingNumber;
