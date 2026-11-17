@@ -35,7 +35,7 @@ if ($paymentMethod === 'test_cod') {
   ggs_json_response(['success' => false, 'error' => 'Revolut is disabled during the Eurosender sandbox checkout'], 503);
 }
 
-$required = ['first_name', 'last_name', 'email', 'street', 'city', 'postal', 'country', 'items'];
+$required = ['first_name', 'last_name', 'email', 'street', 'house_number', 'city', 'postal', 'country', 'items'];
 foreach ($required as $field) {
   if (empty($body[$field])) {
     ggs_json_response(['success' => false, 'error' => "Missing field: {$field}"], 422);
@@ -99,6 +99,11 @@ foreach ($body['items'] as $item) {
 // Shipping — Romania / European Union only.
 $euCountries = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
 $country = strtoupper(substr((string) $body['country'], 0, 2));
+$streetName = trim((string) $body['street']);
+$houseNumber = trim((string) $body['house_number']);
+$shippingStreet = $country === 'RO'
+  ? $streetName . ', Nr. ' . $houseNumber
+  : $streetName . ' ' . $houseNumber;
 $county = trim((string) ($body['county'] ?? ''));
 $customerType = (($body['customer_type'] ?? 'pf') === 'pj') ? 'pj' : 'pf';
 $companyName = trim((string) ($body['company_name'] ?? ''));
@@ -157,7 +162,7 @@ if (!$dummyCodEnabled && $country === 'RO' && ggs_sameday_enabled()) {
     'customer_name' => trim((string) $body['first_name'] . ' ' . (string) $body['last_name']),
     'customer_email' => (string) $body['email'],
     'customer_phone' => (string) ($body['phone'] ?? ''),
-    'shipping_address' => ['street' => (string) $body['street'], 'city' => (string) $body['city'], 'county' => $county, 'postal' => (string) $body['postal'], 'country' => $country],
+    'shipping_address' => ['street' => $shippingStreet, 'city' => (string) $body['city'], 'county' => $county, 'postal' => (string) $body['postal'], 'country' => $country],
     'items' => $orderItems,
   ];
   try {
@@ -191,7 +196,7 @@ if (!$dummyCodEnabled && $country === 'RO' && ggs_sameday_enabled()) {
     'region' => $county,
     'city' => trim((string) $body['city']),
     'zip' => trim((string) $body['postal']),
-    'street' => trim((string) $body['street']),
+    'street' => $shippingStreet,
   ];
   try {
     $shippingPackage = ggs_eurosender_package_from_items($orderItems, $subtotalEur);
@@ -234,7 +239,7 @@ if ($isDummyCodOrder && $shippingProvider !== 'eurosender') {
 $orderStatus = $isDummyCodOrder ? 'processing' : 'pending';
 
 $shippingAddress = [
-  'street' => $body['street'],
+  'street' => $shippingStreet,
   'city' => $body['city'],
   'county' => $county,
   'postal' => $body['postal'],

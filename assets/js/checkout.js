@@ -28,7 +28,7 @@
   'use strict';
 
   const API_BASE = '/studio/api';
-  const REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'street', 'city', 'postal', 'country'];
+  const REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'street', 'house_number', 'city', 'postal', 'country'];
 
   const SHIPPING_RATES = {
     RO: { eur: 5, label: 'Romania' },
@@ -214,7 +214,7 @@
         function applyAddress(address) {
           if (!address) return;
           setIfBlank(form, 'phone', address.phone || '');
-          form.querySelector('[name="street"]').value = address.street || '';
+          fillStreetFields(form, address.street || '');
           form.querySelector('[name="city"]').value = address.city || '';
           form.querySelector('[name="country"]').value = address.country || 'RO';
           setCheckoutRegionValue(form, address.county || '');
@@ -251,6 +251,32 @@
     if (field && !field.value && value) field.value = value;
   }
 
+  function splitStreetAndNumber(value) {
+    const full = String(value || '').trim();
+    const trailingNumber = full.match(/^(.*?)(?:,\s*|\s+)(?:nr\.?\s*)?(\d+[a-z]?(?:[-/]\d+[a-z]?)?)$/i);
+    if (trailingNumber) return { street: trailingNumber[1].trim(), number: trailingNumber[2].trim() };
+    const leadingNumber = full.match(/^(\d+[a-z]?)\s+(.+)$/i);
+    if (leadingNumber) return { street: leadingNumber[2].trim(), number: leadingNumber[1].trim() };
+    return { street: full, number: '' };
+  }
+
+  function checkoutStreetAddress(form) {
+    const street = form.querySelector('[name="street"]')?.value.trim() || '';
+    const number = form.querySelector('[name="house_number"]')?.value.trim() || '';
+    if (!street || !number) return '';
+    return form.querySelector('[name="country"]')?.value === 'RO'
+      ? `${street}, Nr. ${number}`
+      : `${street} ${number}`;
+  }
+
+  function fillStreetFields(form, fullAddress) {
+    const parts = splitStreetAndNumber(fullAddress);
+    const street = form.querySelector('[name="street"]');
+    const number = form.querySelector('[name="house_number"]');
+    if (street) street.value = parts.street;
+    if (number) number.value = parts.number;
+  }
+
   function initBillingAddress(form) {
     const same = form.querySelector('[name="billing_same_as_shipping"]');
     const fields = form.querySelector('[data-billing-fields]');
@@ -272,7 +298,6 @@
     const same = form.querySelector('[name="billing_same_as_shipping"]');
     if (!same || !same.checked) return;
     const copies = {
-      billing_street: 'street',
       billing_city: 'city',
       billing_county: 'county',
       billing_postal: 'postal',
@@ -283,6 +308,8 @@
       const source = form.querySelector(`[name="${shippingName}"]`);
       if (target && source) target.value = source.value;
     });
+    const billingStreet = form.querySelector('[name="billing_street"]');
+    if (billingStreet) billingStreet.value = checkoutStreetAddress(form);
   }
 
   function billingAddressFromForm(form) {
@@ -310,7 +337,6 @@
     });
     if (isCompany) {
       const copies = {
-        company_address: 'street',
         company_city: 'city',
         company_county: 'county',
         company_postal: 'postal',
@@ -321,6 +347,8 @@
         const source = form.querySelector(`[name="${shippingName}"]`);
         if (target && source && !target.value.trim()) target.value = source.value;
       });
+      const companyAddress = form.querySelector('[name="company_address"]');
+      if (companyAddress && !companyAddress.value.trim()) companyAddress.value = checkoutStreetAddress(form);
     }
   }
 
@@ -396,7 +424,7 @@
     const error = document.getElementById('eurosender-quote-error');
     const status = form.querySelector('[data-eurosender-quote-status]');
 
-    ['street', 'city', 'county', 'postal'].forEach((name) => {
+    ['street', 'house_number', 'city', 'county', 'postal'].forEach((name) => {
       const input = form.querySelector(`[name="${name}"]`);
       if (input) input.addEventListener('input', () => invalidateEurosenderQuote(form));
     });
@@ -438,7 +466,7 @@
       if (!eurosenderEnabled) return;
       if (error) error.classList.add('hidden');
       const payload = {
-        street: form.querySelector('[name="street"]')?.value.trim() || '',
+        street: checkoutStreetAddress(form),
         city: form.querySelector('[name="city"]')?.value.trim() || '',
         county: form.querySelector('[name="county"]')?.value.trim() || '',
         postal: form.querySelector('[name="postal"]')?.value.trim() || '',
@@ -682,7 +710,7 @@
       }
     }));
 
-    ['street', 'city', 'county', 'postal', 'phone'].forEach((name) => {
+    ['street', 'house_number', 'city', 'county', 'postal', 'phone'].forEach((name) => {
       const input = form.querySelector(`[name="${name}"]`);
       if (input) input.addEventListener('input', () => invalidateSamedayQuote(form));
     });
@@ -696,7 +724,7 @@
         selected.classList.remove('hidden');
       }
       invalidateSamedayQuote(form);
-      const quoteFields = ['phone', 'street', 'city', 'county', 'postal'];
+      const quoteFields = ['phone', 'street', 'house_number', 'city', 'county', 'postal'];
       if (quoteFields.every((name) => form.querySelector(`[name="${name}"]`)?.value.trim())) requestSamedayQuote();
     }
 
@@ -843,7 +871,7 @@
         customer_name: `${form.querySelector('[name="first_name"]').value} ${form.querySelector('[name="last_name"]').value}`.trim(),
         email: form.querySelector('[name="email"]').value,
         phone: form.querySelector('[name="phone"]').value,
-        street: form.querySelector('[name="street"]').value,
+        street: checkoutStreetAddress(form),
         city: form.querySelector('[name="city"]').value,
         county: form.querySelector('[name="county"]').value,
         postal: form.querySelector('[name="postal"]').value,
@@ -1022,6 +1050,7 @@
       email: formData.get('email'),
       phone: formData.get('phone') || '',
       street: formData.get('street'),
+      house_number: formData.get('house_number'),
       city: formData.get('city'),
       county: formData.get('county') || '',
       postal: formData.get('postal'),

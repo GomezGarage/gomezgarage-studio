@@ -25,6 +25,8 @@ esCheck(!ggs_eurosender_enabled(), 'runtime integration remains disabled');
 esCheck(!ggs_eurosender_checkout_enabled() && !ggs_eurosender_booking_enabled(), 'checkout and booking remain disabled by default');
 esCheck(count(ggs_eurosender_eu_countries()) === 27 && !isset(ggs_eurosender_eu_countries()['GB']), 'destination selector contains EU only');
 esCheck(ggs_eurosender_postal_valid('RO', '031726') && !ggs_eurosender_postal_valid('RO', '31726'), 'Romanian postal codes require six digits');
+esCheck(ggs_eurosender_format_romanian_street('Strada Magnoliei 12D') === 'Strada Magnoliei, Nr. 12D', 'Romanian pickup address explicitly separates street and house number');
+esCheck(ggs_eurosender_format_romanian_street('Reconstructiei, Nr. 1') === 'Reconstructiei, Nr. 1', 'Romanian street format is idempotent for new checkout addresses');
 esCheck(ggs_eurosender_postal_valid('NL', '1234 AB') && ggs_eurosender_postal_valid('IE', 'D02 X285'), 'common EU alphanumeric postal formats are accepted');
 esCheck(
     ggs_eurosender_normalize_geo_name('București') === ggs_eurosender_normalize_geo_name('Bucharest'),
@@ -104,6 +106,8 @@ esCheck(count($quoteCalls) === 5 && $quoteCalls[4]['method'] === 'POST', 'Romani
 $quotePayload = json_decode((string) $quoteCalls[4]['body'], true, 512, JSON_THROW_ON_ERROR);
 esCheck($quotePayload['shipment']['pickupAddress']['cityId'] === 100 && $quotePayload['shipment']['pickupAddress']['regionId'] === 10, 'pickup canonical IDs included');
 esCheck($quotePayload['shipment']['deliveryAddress']['cityId'] === 101 && $quotePayload['shipment']['deliveryAddress']['regionId'] === 11, 'delivery canonical IDs included');
+esCheck($quotePayload['shipment']['pickupAddress']['street'] === 'Strada Test, Nr. 12D', 'Eurosender pickup payload formats legacy Romanian street number explicitly');
+esCheck($quotePayload['shipment']['deliveryAddress']['street'] === 'Strada Test, Nr. 15A', 'Eurosender delivery payload formats Romanian street number explicitly');
 esCheck($quotePayload['paymentMethod'] === 'credit' && $quotePayload['serviceType'] === 'selection', 'safe standard quote selection');
 esCheck($quotePayload['parcels']['packages'][0]['weight'] === 1.2, 'package measurements mapped');
 

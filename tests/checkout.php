@@ -37,6 +37,7 @@ $check(!str_contains($html, '<option value="GB">'), 'UK removed from checkout co
 $check(substr_count($html, '<option value="RO">Romania</option>') >= 3, 'EU country selects include Romania');
 $check(str_contains($html, 'billing_same_as_shipping'), 'editable billing-address choice');
 $check(str_contains($html, 'data-eurosender-delivery') && str_contains($html, 'data-eurosender-options'), 'Eurosender delivery choice is embedded in checkout');
+$check(str_contains($html, 'name="house_number"') && str_contains($js, 'Nr. ${number}'), 'checkout requires a separate house number and formats it explicitly for Romania');
 
 $check(str_contains($js, 'billingAddress: payload.billing_address'), 'billing address passed to Revolut');
 $check(str_contains($js, 'onShippingAddressChange(address)'), 'shipping-address callback');
@@ -53,6 +54,7 @@ $check(str_contains($locations, "ooh_type = 0"), 'locker-only location query');
 $check(str_contains($locations, "latitude BETWEEN ? AND ?"), 'map-bounds location query');
 $check(str_contains($locations, "'%Sectorul '"), 'Bucharest sector search alias');
 $check(str_contains($orders, 'Company invoice country must be within the European Union'), 'EU-only server validation');
+$check(str_contains($orders, "'house_number'") && str_contains($orders, "', Nr. ' . \$houseNumber"), 'order API requires the street number and stores it with the Romanian street');
 $check(str_contains($sameday, "'%Locker%Nextday%'"), 'Easybox quote uses locker service');
 $check(str_contains($sameday, "\$payload['oohLastMile'] = \$oohId"), 'selected locker reaches Sameday payload');
 $check(str_contains($sameday, "'serviceTaxes'] = 'PDO '"), 'PDO tax uses documented payload format');

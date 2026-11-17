@@ -110,9 +110,10 @@
                 </div>
                 <div class="form-group"><label data-en="City / locality" data-ro="Oras / localitate">City / locality</label><input type="text" name="city" list="eurosender-city-suggestions" autocomplete="address-level2"><datalist id="eurosender-city-suggestions"></datalist><small class="form-hint" data-en="Start typing, then choose the matching locality." data-ro="Incepe sa scrii, apoi alege localitatea corecta.">Start typing, then choose the matching locality.</small></div>
               </div>
+              <div class="form-group"><label data-en="Postal code" data-ro="Cod postal">Postal code</label><input type="text" name="postal" autocomplete="postal-code" maxlength="30"><small class="form-hint" data-en="Use the postal code for this exact address." data-ro="Introdu codul postal al adresei exacte.">Use the postal code for this exact address.</small></div>
               <div class="form-row">
-                <div class="form-group"><label data-en="Postal code" data-ro="Cod postal">Postal code</label><input type="text" name="postal" autocomplete="postal-code" maxlength="30"><small class="form-hint" data-en="Use the postal code for this exact address." data-ro="Introdu codul postal al adresei exacte.">Use the postal code for this exact address.</small></div>
-                <div class="form-group"><label data-en="Street and number" data-ro="Strada si numar">Street and number</label><input type="text" name="street" autocomplete="street-address"></div>
+                <div class="form-group"><label data-en="Street name" data-ro="Strada">Street name</label><input type="text" name="street" autocomplete="address-line1" maxlength="200"></div>
+                <div class="form-group"><label data-en="House number" data-ro="Numar">House number</label><input type="text" name="house_number" autocomplete="off" maxlength="30"><small class="form-hint" data-en="Enter the building number separately." data-ro="Introdu separat numarul imobilului.">Enter the building number separately.</small></div>
               </div>
               <div class="form-group">
                 <label data-en="Invoice type" data-ro="Tip factura">Invoice type</label>

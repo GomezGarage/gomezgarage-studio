@@ -319,6 +319,21 @@ function ggs_eurosender_is_bucharest_alias(string $value): bool
     return $normalized === 'bucharest' || preg_match('/^(?:sector|sectorul)[1-6]$/', $normalized) === 1;
 }
 
+/**
+ * Make Romanian house numbers explicit in the single street field required by
+ * the Eurosender API. This also upgrades stored orders created before checkout
+ * asked for street and number separately.
+ */
+function ggs_eurosender_format_romanian_street(string $street): string
+{
+    $street = trim($street);
+    if (preg_match('/^(.*?)(?:,\s*|\s+)(?:nr\.?\s*)?(\d+[a-z]?(?:[-\/]\d+[a-z]?)?)$/i', $street, $matches) !== 1) {
+        return $street;
+    }
+    $name = trim($matches[1], " ,\t\n\r\0\x0B");
+    return $name !== '' ? $name . ', Nr. ' . trim($matches[2]) : $street;
+}
+
 /** @return array{id:int,name:string,code:?string} */
 function ggs_eurosender_match_geo_item(array $items, string $wanted, string $label, ?int $regionId = null): array
 {
@@ -355,6 +370,7 @@ function ggs_eurosender_resolve_address(array $address, ?callable $transport = n
     if (!preg_match('/^[A-Z]{2}$/', $country)) throw new InvalidArgumentException('Eurosender pickup/delivery country must be a two-letter code.');
     if ($city === '' || $zip === '' || $street === '') throw new InvalidArgumentException('Eurosender address requires street, city and postal code.');
 
+    if ($country === 'RO') $street = ggs_eurosender_format_romanian_street($street);
     $resolved = ['country' => $country, 'zip' => $zip, 'city' => $city, 'street' => $street];
     if ($country !== 'RO') {
         if ($region !== '') $resolved['region'] = $region;
