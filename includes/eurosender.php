@@ -681,7 +681,9 @@ function ggs_eurosender_order_payload(array $order, ?callable $transport = null)
                 'height' => round((float) $package['height'], 2),
                 'length' => round((float) $package['length'], 2),
                 'weight' => round((float) $package['weight'], 3),
-                'content' => trim((string) ($package['content'] ?? '3D printed products')),
+                // Eurosender's booking endpoint enforces a shorter content field
+                // than our quote payload. Keep this carrier-facing description concise.
+                'content' => '3D printed item',
                 'value' => round((float) ($package['value'] ?? $order['subtotal_eur'] ?? 0), 2),
             ]],
             'pallets' => [],

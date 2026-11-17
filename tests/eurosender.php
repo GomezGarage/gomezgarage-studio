@@ -158,7 +158,7 @@ $orderFixture = [
     'customer_name' => 'Fixture Customer', 'customer_email' => 'customer@example.invalid', 'customer_phone' => '+33123456789',
     'shipping_address' => json_encode(['country' => 'FR', 'county' => '', 'city' => 'Paris', 'postal' => '75001', 'street' => 'Rue de Test 1']),
     'items' => json_encode([['name' => 'Part A', 'price_eur' => 50, 'qty' => 1, 'shipping_length_cm' => 20, 'shipping_width_cm' => 15, 'shipping_height_cm' => 10, 'shipping_weight_kg' => 0.5]]),
-    'shipping_package' => json_encode(['length' => 20, 'width' => 15, 'height' => 10, 'weight' => 0.5, 'value' => 50, 'content' => 'Part A']),
+    'shipping_package' => json_encode(['length' => 20, 'width' => 15, 'height' => 10, 'weight' => 0.5, 'value' => 50, 'content' => 'A deliberately long product title that exceeds the carrier limit']),
     'subtotal_eur' => 50, 'eurosender_service_type' => 'flexi', 'eurosender_service_subtype' => 'door_to_door', 'eurosender_courier_id' => 7,
 ];
 $orderCalls = [];
@@ -175,6 +175,7 @@ $created = ggs_eurosender_create_order($orderFixture, static function (string $m
 esCheck(count($orderCalls) === 4 && str_ends_with($orderCalls[2]['url'], '/validate_creation') && str_ends_with($orderCalls[3]['url'], '/v1/orders'), 'order validated before creation');
 $createPayload = json_decode((string) $orderCalls[3]['body'], true, 512, JSON_THROW_ON_ERROR);
 esCheck($createPayload['customerInternalReference'] === 'GGS-2026-9999' && $createPayload['serviceType'] === 'flexi' && $createPayload['serviceSubtype'] === 'door_to_door', 'order reference and selected service preserved');
+esCheck($createPayload['parcels']['packages'][0]['content'] === '3D printed item', 'booking content uses a concise carrier-safe description');
 esCheck($createPayload['shipment']['pickupContact']['email'] === 'sender@example.invalid' && $createPayload['shipment']['deliveryContact']['name'] === 'Fixture Customer', 'sender and recipient contacts mapped');
 esCheck($created['order_code'] === '123456-26' && $created['tracking_number'] === 'TRACK-1', 'created shipment identifiers parsed');
 
