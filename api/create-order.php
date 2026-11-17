@@ -246,7 +246,7 @@ $customerPhone = $body['phone'] ?? '';
 $stmt = $db->prepare(
   'INSERT INTO orders
     (order_number, customer_account_id, status, payment_method, customer_type, company_name, company_cui, company_reg, company_address, company_city, company_county, company_postal, company_country, company_vat_payer, customer_name, customer_email, customer_phone, shipping_address, customer_note, items, subtotal_eur, shipping_eur, shipping_provider, shipping_method, shipping_service_id, shipping_service_name, shipping_ooh_id, shipping_ooh_name, shipping_ooh_address, shipping_quote_amount, shipping_quote_currency, shipping_package, eurosender_service_type, eurosender_service_subtype, eurosender_courier_id, eurosender_status, total_eur)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->execute([
   $orderNumber,
