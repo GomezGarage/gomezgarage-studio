@@ -215,7 +215,18 @@ function ggs_eurosender_request(string $method, string $path, ?array $payload = 
             $uncertainOnFailure
         );
     }
-    if (!is_array($data)) throw new GgsEurosenderException('Eurosender returned an invalid JSON response.');
+    if (!is_array($data)) {
+        $contentType = trim((string) ($response['content_type'] ?? '')) ?: 'unknown';
+        throw new GgsEurosenderException(
+            sprintf(
+                'Eurosender returned invalid JSON (HTTP %d; Content-Type %s; %d response bytes).',
+                $response['status'],
+                $contentType,
+                strlen($response['body'])
+            ),
+            $uncertainOnFailure
+        );
+    }
 
     return $response;
 }

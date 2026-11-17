@@ -196,4 +196,19 @@ try {
     esCheck($error->isUncertain(), 'ambiguous creation failure blocks automatic retry');
 }
 
+try {
+    ggs_eurosender_request('POST', '/v1/orders', ['fixture' => true], static fn(): array => [
+        'status' => 201, 'body' => '', 'content_type' => 'text/html; charset=utf-8',
+    ], true);
+    esCheck(false, 'invalid successful booking response accepted');
+} catch (GgsEurosenderException $error) {
+    esCheck(
+        $error->isUncertain()
+            && str_contains($error->getMessage(), 'HTTP 201')
+            && str_contains($error->getMessage(), 'text/html; charset=utf-8')
+            && str_contains($error->getMessage(), '0 response bytes'),
+        'invalid successful booking response includes diagnostics and blocks blind retry'
+    );
+}
+
 echo "PASS: {$checks} Eurosender sandbox connection checks. No config, database or network loaded.\n";
