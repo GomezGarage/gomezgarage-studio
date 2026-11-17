@@ -215,11 +215,21 @@ function ggs_eurosender_request(string $method, string $path, ?array $payload = 
             $uncertainOnFailure
         );
     }
+    // Eurosender documents validate_creation as HTTP 200 with a JSON `null`
+    // response. Their sandbox currently also returns an empty body for this
+    // successful, non-mutating validation call. Accept only that endpoint's
+    // documented empty/null result; order creation must still return its code.
+    $isValidationEndpoint = strtoupper($method) === 'POST'
+        && rtrim('/' . trim($path, '/'), '/') === '/v1/orders/validate_creation';
+    if ($isValidationEndpoint && ($response['body'] === '' || trim($response['body']) === 'null')) {
+        return $response;
+    }
     if (!is_array($data)) {
         $contentType = trim((string) ($response['content_type'] ?? '')) ?: 'unknown';
         throw new GgsEurosenderException(
             sprintf(
-                'Eurosender returned invalid JSON (HTTP %d; Content-Type %s; %d response bytes).',
+                'Eurosender returned invalid JSON from %s (HTTP %d; Content-Type %s; %d response bytes).',
+                '/' . ltrim($path, '/'),
                 $response['status'],
                 $contentType,
                 strlen($response['body'])

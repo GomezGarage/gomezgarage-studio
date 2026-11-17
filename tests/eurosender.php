@@ -162,11 +162,15 @@ $orderFixture = [
     'subtotal_eur' => 50, 'eurosender_service_type' => 'flexi', 'eurosender_service_subtype' => 'door_to_door', 'eurosender_courier_id' => 7,
 ];
 $orderCalls = [];
-$created = ggs_eurosender_create_order($orderFixture, static function (string $method, string $url, array $headers, ?string $body) use (&$orderCalls): array {
+$validationResponseBody = null;
+$created = ggs_eurosender_create_order($orderFixture, static function (string $method, string $url, array $headers, ?string $body) use (&$orderCalls, &$validationResponseBody): array {
     $orderCalls[] = compact('method', 'url', 'headers', 'body');
     if (str_ends_with($url, '/v1/countries/RO/regions')) return ['status' => 200, 'body' => json_encode([['id' => 10, 'name' => 'Ilfov']])];
     if (str_ends_with($url, '/v1/countries/RO/cities')) return ['status' => 200, 'body' => json_encode([['id' => 100, 'name' => 'Dumbraveni', 'regionId' => 10]])];
-    if (str_ends_with($url, '/validate_creation')) return ['status' => 200, 'body' => json_encode(['valid' => true])];
+    if (str_ends_with($url, '/validate_creation')) {
+        $validationResponseBody = '';
+        return ['status' => 200, 'body' => ''];
+    }
     return ['status' => 201, 'body' => json_encode([
         'orderCode' => '123456-26', 'status' => 'Order Received', 'labelLink' => 'https://example.invalid/label.pdf',
         'parcels' => ['packages' => [['tracking' => ['number' => 'TRACK-1', 'url' => 'https://example.invalid/track']]]],
@@ -178,6 +182,7 @@ esCheck($createPayload['customerInternalReference'] === 'GGS-2026-9999' && $crea
 esCheck($createPayload['parcels']['packages'][0]['content'] === '3D printed item', 'booking content uses a concise carrier-safe description');
 esCheck($createPayload['shipment']['pickupContact']['email'] === 'sender@example.invalid' && $createPayload['shipment']['deliveryContact']['name'] === 'Fixture Customer', 'sender and recipient contacts mapped');
 esCheck($created['order_code'] === '123456-26' && $created['tracking_number'] === 'TRACK-1', 'created shipment identifiers parsed');
+esCheck($validationResponseBody === '', 'empty HTTP 200 validation response is accepted before order creation');
 
 try {
     ggs_eurosender_request('POST', '/v1/orders/validate_creation', ['fixture' => true], static fn(): array => [
@@ -198,14 +203,15 @@ try {
 
 try {
     ggs_eurosender_request('POST', '/v1/orders', ['fixture' => true], static fn(): array => [
-        'status' => 201, 'body' => '', 'content_type' => 'text/html; charset=utf-8',
+        'status' => 200, 'body' => '', 'content_type' => 'application/json',
     ], true);
     esCheck(false, 'invalid successful booking response accepted');
 } catch (GgsEurosenderException $error) {
     esCheck(
         $error->isUncertain()
-            && str_contains($error->getMessage(), 'HTTP 201')
-            && str_contains($error->getMessage(), 'text/html; charset=utf-8')
+            && str_contains($error->getMessage(), '/v1/orders')
+            && str_contains($error->getMessage(), 'HTTP 200')
+            && str_contains($error->getMessage(), 'application/json')
             && str_contains($error->getMessage(), '0 response bytes'),
         'invalid successful booking response includes diagnostics and blocks blind retry'
     );
