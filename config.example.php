@@ -161,6 +161,9 @@ define('EUROSENDER_API_BASE', EUROSENDER_ENV === 'sandbox'
   ? 'https://sandbox-api.eurosender.com'
   : 'https://api.eurosender.com');
 define('EUROSENDER_API_KEY', 'REPLACE_WITH_EUROSENDER_X_API_KEY');
+// Copy the production Webhook Signing Key from the Eurosender API dashboard.
+// Keep this secret only in the ignored production config.php.
+define('EUROSENDER_WEBHOOK_SIGNING_KEY', 'REPLACE_WITH_EUROSENDER_WEBHOOK_SIGNING_KEY');
 define('EUROSENDER_TIMEOUT_SECONDS', 25);
 // Sender address used for quotes and, in a later release, bookings. Romania
 // requires an exact Eurosender city and region; the integration resolves their

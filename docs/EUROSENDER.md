@@ -31,6 +31,9 @@ production environments cannot be mixed.
   automatically;
 - the admin order page can retry a definite failure, refresh status, and open
   the tracking or label URL when Eurosender returns them.
+- the signed `api/eurosender-webhook.php` endpoint deduplicates provider events,
+  stores tracking numbers/statuses, updates the customer order timeline, and
+  advances the shop order to `shipped` or `delivered` when tracking confirms it.
 
 No real Revolut payment is required for sandbox quote and payload validation.
 An actual sandbox shipment may require a virtual sandbox wallet balance, but
@@ -46,6 +49,11 @@ Git pull does not run the migration. The migration is additive and stores the
 selected service, remote order code, status, label/tracking links and booking
 attempt state.
 
+For webhook support, also import
+`database/migrations/20261117_eurosender_webhooks.sql` exactly once. It stores
+delivery IDs and processing metadata for replay protection; webhook bodies are
+not retained.
+
 ## Configuration
 
 Copy the Eurosender block from `config.example.php` into the ignored server
@@ -58,6 +66,40 @@ Required sender data:
 - `EUROSENDER_PICKUP_CONTACT_PHONE`: the operational sender phone, including
   country prefix
 - pickup address: Strada Magnoliei 12D, Dumbraveni, Ilfov, 077016, Romania
+- production API key and webhook signing key: copy them from the Eurosender
+  dashboard directly into the ignored server `config.php`; never put either in
+  Git or chat
+
+The production environment is supported by the same integration. For the live
+cutover, set `APP_ENV` and `EUROSENDER_ENV` to `production`, use the production
+API base and key, and enable the existing Eurosender checkout and booking gates
+only after checking the sender details. Add `EUROSENDER_WEBHOOK_SIGNING_KEY`
+from the example config.
+
+### Webhook setup
+
+In the Eurosender business dashboard, open **User dashboard → Eurosender API**,
+get the Webhook Signing Key, and create a webhook with this URL:
+
+`https://gomezgarage.eu/api/eurosender-webhook.php`
+
+Subscribe to `order_label_ready`, `order_submitted_to_courier`,
+`order_tracking_ready`, `order_cancelled`, and `delivery_status_updated`.
+The endpoint checks `Webhook-Id`, `Webhook-Event`, and `Webhook-Signature`,
+uses HMAC-SHA256 on the exact raw request body, and accepts hex or Base64 digest
+encoding (optionally prefixed with `sha256=`). A unique delivery ID prevents
+retries from duplicating timeline entries. Shipment progress changes are
+recorded in the customer order history; tracking-confirmed pickup/in-transit
+and delivery transitions update the shop status. A carrier cancellation is
+recorded as a provider status and does not cancel the paid shop order.
+
+Eurosender's published webhook reference confirms HMAC-SHA256 but does not
+specify the exact signature serialization/encoding. Confirm the first live
+delivery is accepted (HTTP 200) in the dashboard. If their signature is over a
+different canonical string or uses a different encoding, ask Eurosender for a
+signed example and adjust the verifier before enabling the webhook in
+production. The endpoint does not create/cancel shipments or call payment or
+invoicing providers.
 
 All three provider gates start disabled:
 
